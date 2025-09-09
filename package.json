@@ -1,0 +1,14 @@
+{
+  "name": "tariff-sheriff",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
+}
