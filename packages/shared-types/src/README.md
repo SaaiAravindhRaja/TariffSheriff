@@ -1,0 +1,3 @@
+# Shared Types Source
+
+Placeholder.
