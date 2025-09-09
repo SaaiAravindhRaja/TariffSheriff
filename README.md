@@ -1,10 +1,7 @@
 # TariffSheriff
 
-A full-stack monorepo for calculating tariffs and fees for Electric Vehicles (EVs) across countries.
-
-## Overview
-
-This project is structured as a monorepo with separate applications for backend and frontend, shared packages, and documentation.
+**TariffSheriff** is a full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry.  
+It acts as a **truth engine** for tariff calculation, providing accurate, transparent, and defensible data for pricing, compliance, and financial planning.  
 
 ## Structure
 
@@ -12,13 +9,3 @@ This project is structured as a monorepo with separate applications for backend 
 - `apps/frontend/`: Frontend UI for user interactions
 - `packages/`: Shared libraries
 - `docs/`: Documentation
-
-## Setup
-
-1. Install dependencies: `npm install`
-2. Run backend: `cd apps/backend && ./mvnw spring-boot:run`
-3. Run frontend: `cd apps/frontend && npm start`
-
-## Contributing
-
-Please read the `docs/` folder for guidelines.
