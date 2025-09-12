@@ -52,6 +52,52 @@ cd apps/frontend && npm start
 
 ---
 
+
+## 👥 Contributors
+
+<table>
+	<tr>
+		<td align="center">
+			<a href="https://github.com/SaaiAravindhRaja">
+				<img src="https://github.com/SaaiAravindhRaja.png" width="80" alt="Saai"/><br/>
+				<sub><b>Saai</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/thanh913">
+				<img src="https://github.com/thanh913.png" width="80" alt="Billy"/><br/>
+				<sub><b>Billy</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/minyiseah">
+				<img src="https://github.com/minyiseah.png" width="80" alt="Min yi"/><br/>
+				<sub><b>Min yi</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/LSH-Tech-tp">
+				<img src="https://github.com/LSH-Tech-tp.png" width="80" alt="Sing Ho"/><br/>
+				<sub><b>Sing Ho</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/GarvitSobti">
+				<img src="https://github.com/GarvitSobti.png" width="80" alt="Garvit"/><br/>
+				<sub><b>Garvit</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/nathan11474">
+				<img src="https://github.com/nathan11474.png" width="80" alt="Nathan"/><br/>
+				<sub><b>Nathan</b></sub>
+			</a>
+		</td>
+	</tr>
+</table>
+
+---
+
 ## 📄 License
 
 This project is private and not yet licensed for public use.
