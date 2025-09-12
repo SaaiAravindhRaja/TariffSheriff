@@ -1,20 +1,8 @@
-
-<div align="center">
-	<img src="https://img.icons8.com/color/96/ev-charging-station.png" alt="EV Charging" width="96"/>
-  
-	# ⚡️ TariffSheriff
-  
-	<b>Truth engine for EV tariff calculation</b>
-	<br>
-	<a href="https://github.com/SaaiAravindhRaja/TariffSheriff"><img src="https://img.shields.io/badge/EV-Ready-green?style=for-the-badge"/></a>
-	<a href="https://github.com/SaaiAravindhRaja/TariffSheriff"><img src="https://img.shields.io/badge/Monorepo-Structure-blue?style=for-the-badge"/></a>
-</div>
-
 ---
 
 ## 🚀 What is TariffSheriff?
 
-TariffSheriff is a full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry. It provides accurate, transparent, and defensible data for pricing, compliance, and financial planning.
+👮 TariffSheriff is a full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry. It provides accurate, transparent, and defensible data for pricing, compliance, and financial planning.
 
 ---
 
