@@ -13,8 +13,6 @@
 <!-- App icon + Issue link -->
 [![TariffSheriff icon](/shield.svg "TariffSheriff")](https://github.com/SaaiAravindhRaja/TariffSheriff/issues/19)
 
-If you'd like to discuss the app icon or suggest alternatives, see issue #19: https://github.com/SaaiAravindhRaja/TariffSheriff/issues/19
-
 ___
 
 
