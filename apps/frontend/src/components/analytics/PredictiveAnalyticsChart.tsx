@@ -1,8 +1,8 @@
 import React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Brain, TrendingUp, AlertCircle } from 'lucide-react'
+import { Brain, AlertCircle } from 'lucide-react'
 
 const historicalData = [
   { month: 'Jan 23', actual: 12.5, predicted: null, confidence: null, type: 'historical' },
