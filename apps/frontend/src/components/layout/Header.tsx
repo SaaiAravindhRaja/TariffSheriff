@@ -112,7 +112,7 @@ export function Header({ className }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          <button onClick={() => navigate('/profile')} className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
+          <button onClick={() => navigate('/profile')} aria-haspopup="true" aria-expanded="false" className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
             <div className="flex flex-col text-right">
               <span className="text-sm font-medium">{profile?.name || 'John Doe'}</span>
               <span className="text-xs text-muted-foreground">{profile?.role || 'Trade Analyst'}</span>

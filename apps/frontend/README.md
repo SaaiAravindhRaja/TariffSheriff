@@ -199,6 +199,21 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
+
+## 👤 Profile (local)
+
+This project includes a local, client-side Profile feature for quick demos:
+
+- Profile data (name, role, email, location, avatar) is stored in `localStorage` under the key `app_profile`.
+- To edit the profile, click the user name/avatar in the header and choose "Edit Profile" on the Profile page.
+- To reset the profile data, open the browser devtools and run:
+
+```js
+localStorage.removeItem('app_profile')
+window.location.reload()
+```
+
+Note: This is a local demo implementation. For production, integrate with your auth/user API and replace localStorage persistence.
 # Generate coverage report
 npm run test:coverage
 ```
