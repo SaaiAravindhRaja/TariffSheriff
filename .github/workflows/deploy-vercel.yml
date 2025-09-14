@@ -4,65 +4,125 @@ on:
   push:
     branches:
       - main
-      - '**'
+      - SaaiAravindhRaja-patch-1
+    paths:
+      - 'apps/frontend/**'
+      - '.github/workflows/deploy-vercel.yml'
   pull_request:
     types: [opened, synchronize, reopened]
-  workflow_dispatch: {}
+    paths:
+      - 'apps/frontend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # We keep the job public but guard deploy steps below so PRs/forks without secrets don't fail
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'apps/frontend/package-lock.json'
 
-      - name: Install deps (frontend)
-        run: npm ci --prefix apps/frontend
+      - name: Install dependencies
+        working-directory: apps/frontend
+        run: npm ci
 
-      - name: Build (frontend)
-        run: npm run build --prefix apps/frontend --if-present
+      - name: Run tests
+        working-directory: apps/frontend
+        run: npm run test -- --run
+
+      - name: Run linting
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Build application
+        working-directory: apps/frontend
+        run: npm run build 2>&1 | tee build.log
 
       - name: Build diagnostics
         working-directory: apps/frontend
         run: |
-          echo "--- Node $(node -v)";
-          echo "--- NPM $(npm -v)";
-          echo "--- Listing apps/frontend/dist (if present)";
-          ls -la dist || true;
-          echo "--- Print last 200 lines of build log (if present)";
-          [ -f build.log ] && tail -n 200 build.log || true;
+          echo "--- Node $(node -v)"
+          echo "--- NPM $(npm -v)"
+          echo "--- Build output:"
+          ls -la dist/ || echo "No dist directory found"
+          echo "--- Last 200 lines of build.log (if present):"
+          [ -f build.log ] && tail -n 200 build.log || echo "No build.log present"
 
       - name: Install Vercel CLI
-        # Only install the Vercel CLI if a token is available (avoids failures on forks/PRs)
         if: ${{ secrets.VERCEL_TOKEN != '' }}
-        run: npm i -g vercel
+        run: npm i -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        working-directory: apps/frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=preview
 
       - name: Deploy to Vercel
-        # Only attempt deployment when the VERCEL_TOKEN secret is present. This avoids
-        # failing the workflow for pull requests / forks where secrets are not available.
+        id: deploy
         if: ${{ secrets.VERCEL_TOKEN != '' }}
+        working-directory: apps/frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           echo "Deploying from branch ${GITHUB_REF} (event: ${GITHUB_EVENT_NAME})"
-          # If on main/master deploy to production
-          if [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ]; then
-            vercel --cwd apps/frontend --prod --confirm
+          
+          # Determine if this should be a production deployment
+          if [[ "${GITHUB_REF}" == "refs/heads/main" && "${GITHUB_EVENT_NAME}" == "push" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+            echo "🚀 Deploying to PRODUCTION"
+            DEPLOYMENT_URL=$(vercel --prebuilt --prod --confirm)
           else
-            # For other branches, create a preview deployment
-            vercel --cwd apps/frontend --confirm
+            echo "🔍 Deploying to PREVIEW"
+            DEPLOYMENT_URL=$(vercel --prebuilt --confirm)
           fi
+          
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployment completed: $DEPLOYMENT_URL"
 
-      - name: Skip deploy (no token)
+      - name: Comment PR with deployment URL
+        if: ${{ github.event_name == 'pull_request' && secrets.VERCEL_TOKEN != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentUrl = '${{ steps.deploy.outputs.url }}';
+            if (deploymentUrl) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **Preview deployment ready!**\n\n📱 **Live Preview:** ${deploymentUrl}\n\n*Deployed from commit: ${context.sha.substring(0, 7)}*`
+              });
+            }
+
+      - name: Skip deployment (no secrets)
         if: ${{ secrets.VERCEL_TOKEN == '' }}
         run: |
-          echo "VERCEL_TOKEN is not configured for this repository."
-          echo "Skipping Vercel deployment. To enable deployments add the VERCEL_TOKEN repository secret."
+          echo "⚠️  VERCEL_TOKEN is not configured for this repository."
+          echo "📝 To enable Vercel deployments, add these repository secrets:"
+          echo "   - VERCEL_TOKEN"
+          echo "   - VERCEL_ORG_ID" 
+          echo "   - VERCEL_PROJECT_ID"
+          echo ""
+          echo "🔗 Get these values from: https://vercel.com/account/tokens"
