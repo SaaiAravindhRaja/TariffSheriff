@@ -182,6 +182,147 @@ sequenceDiagram
 - 🏆 **MFN Treatment**: Most-Favored-Nation rate calculations
 - 📜 **Certificate Handling**: Processes origin certificates and special conditions
 
+## 🗃️ Database Schema
+
+```mermaid
+erDiagram
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string first_name
+        string last_name
+        enum role
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    COUNTRIES {
+        string code PK "ISO 3166-1"
+        string name
+        string region
+        boolean active
+    }
+    
+    PRODUCTS {
+        uuid id PK
+        string hs_code UK "6-10 digits"
+        string name
+        string description
+        string category
+        timestamp created_at
+    }
+    
+    TARIFF_RULES {
+        uuid id PK
+        string origin_country FK
+        string destination_country FK
+        uuid product_id FK
+        decimal rate
+        enum rate_type "PERCENTAGE|FLAT"
+        date valid_from
+        date valid_to
+        json conditions
+        string citation
+        timestamp created_at
+        uuid created_by FK
+    }
+    
+    CALCULATIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid product_id FK
+        string origin_country FK
+        string destination_country FK
+        decimal quantity
+        decimal unit_value
+        string currency
+        decimal total_tariff
+        json breakdown
+        timestamp calculated_at
+    }
+    
+    TRADE_AGREEMENTS {
+        uuid id PK
+        string name
+        string agreement_type
+        date effective_from
+        date effective_to
+        json participating_countries
+        decimal preferential_rate
+    }
+    
+    USERS ||--o{ TARIFF_RULES : creates
+    USERS ||--o{ CALCULATIONS : performs
+    COUNTRIES ||--o{ TARIFF_RULES : origin
+    COUNTRIES ||--o{ TARIFF_RULES : destination
+    PRODUCTS ||--o{ TARIFF_RULES : applies_to
+    PRODUCTS ||--o{ CALCULATIONS : calculates
+    COUNTRIES ||--o{ CALCULATIONS : origin
+    COUNTRIES ||--o{ CALCULATIONS : destination
+```
+
+## 🚀 Deployment Pipeline
+
+```mermaid
+gitGraph
+    commit id: "Initial Setup"
+    branch develop
+    checkout develop
+    commit id: "Feature: Auth"
+    commit id: "Feature: Tariff Engine"
+    commit id: "Feature: Admin Panel"
+    
+    branch feature/recommendations
+    checkout feature/recommendations
+    commit id: "Add Recommendation Logic"
+    commit id: "Optimize Algorithms"
+    
+    checkout develop
+    merge feature/recommendations
+    commit id: "Integration Tests"
+    
+    checkout main
+    merge develop
+    commit id: "Release v1.0" tag: "v1.0"
+    
+    branch hotfix/security
+    checkout hotfix/security
+    commit id: "Security Patch"
+    
+    checkout main
+    merge hotfix/security
+    commit id: "Release v1.0.1" tag: "v1.0.1"
+```
+
+## 📊 Feature Development Timeline
+
+```mermaid
+gantt
+    title TariffSheriff Development Timeline
+    dateFormat  YYYY-MM-DD
+    section Backend Core
+    Authentication System    :done, auth, 2024-01-15, 2024-01-25
+    Database Setup          :done, db, 2024-01-20, 2024-01-30
+    Tariff Calculation API  :done, tariff, 2024-02-01, 2024-02-15
+    Admin Console          :done, admin, 2024-02-10, 2024-02-20
+    
+    section Frontend
+    UI Components          :done, ui, 2024-02-05, 2024-02-18
+    Dashboard              :done, dash, 2024-02-15, 2024-02-28
+    Tariff Calculator      :done, calc, 2024-02-20, 2024-03-05
+    
+    section Advanced Features
+    Recommendation Engine  :active, rec, 2024-03-01, 2024-03-15
+    Tariff Simulator      :sim, 2024-03-10, 2024-03-25
+    Data Visualization    :viz, 2024-03-20, 2024-04-05
+    
+    section Deployment
+    AWS Infrastructure    :infra, 2024-03-25, 2024-04-10
+    CI/CD Pipeline       :cicd, 2024-04-01, 2024-04-15
+    Production Deploy    :prod, 2024-04-10, 2024-04-20
+```
+
 ---
 
 ## 🛠️ Getting Started
@@ -227,6 +368,115 @@ cd apps/frontend && npm start
 - **Trade Data**: World Integrated Trade Solution (WITS) API
 - **Product Classification**: HS Code lookup services
 - **Regional Data**: Country-specific trade portals
+
+## 🔄 API Endpoints Overview
+
+```mermaid
+mindmap
+  root((TariffSheriff API))
+    Authentication
+      POST /auth/login
+      POST /auth/register
+      POST /auth/refresh
+      DELETE /auth/logout
+    Tariff Calculation
+      POST /api/tariffs/calculate
+      GET /api/tariffs/history
+      GET /api/tariffs/rules
+    Product Management
+      GET /api/products
+      GET /api/products/search
+      GET /api/products/{id}
+      POST /api/products/classify
+    Country Data
+      GET /api/countries
+      GET /api/countries/{code}/agreements
+      GET /api/countries/{code}/rates
+    Admin Operations
+      POST /api/admin/rules
+      PUT /api/admin/rules/{id}
+      DELETE /api/admin/rules/{id}
+      GET /api/admin/users
+    Recommendations
+      POST /api/recommendations/routes
+      GET /api/recommendations/agreements
+      POST /api/recommendations/optimize
+    Simulation
+      POST /api/simulator/scenarios
+      GET /api/simulator/results/{id}
+      POST /api/simulator/compare
+```
+
+## 🎯 User Journey Flow
+
+```mermaid
+journey
+    title Business User Tariff Calculation Journey
+    section Discovery
+      Visit TariffSheriff: 5: User
+      View Demo: 4: User
+      Sign Up: 3: User
+    section Setup
+      Complete Profile: 4: User
+      Verify Email: 3: User
+      Explore Dashboard: 5: User
+    section Core Usage
+      Enter Product Details: 4: User
+      Select Countries: 5: User
+      Calculate Tariff: 5: User, System
+      Review Breakdown: 5: User
+      Export Results: 4: User
+    section Advanced Features
+      Compare Routes: 5: User
+      Run Simulations: 4: User
+      Get Recommendations: 5: User, System
+      Save Scenarios: 4: User
+    section Business Value
+      Make Pricing Decisions: 5: User
+      Ensure Compliance: 5: User
+      Optimize Trade Routes: 5: User
+```
+
+## 🏛️ Microservices Architecture
+
+```mermaid
+C4Context
+    title System Context Diagram for TariffSheriff
+    
+    Person(user, "Business User", "Imports/exports goods, needs tariff calculations")
+    Person(admin, "System Admin", "Manages tariff rules and system configuration")
+    
+    System(tariffSheriff, "TariffSheriff", "Calculates import tariffs and provides trade recommendations")
+    
+    System_Ext(wits, "WITS Database", "World Integrated Trade Solution - provides trade statistics")
+    System_Ext(hsCode, "HS Code Service", "Harmonized System product classification")
+    System_Ext(regional, "Regional Trade Portals", "Country-specific trade data and regulations")
+    
+    Rel(user, tariffSheriff, "Calculates tariffs, gets recommendations")
+    Rel(admin, tariffSheriff, "Manages rules and configurations")
+    Rel(tariffSheriff, wits, "Fetches trade data")
+    Rel(tariffSheriff, hsCode, "Classifies products")
+    Rel(tariffSheriff, regional, "Gets country-specific rates")
+```
+
+## 📈 Performance Metrics
+
+```mermaid
+xychart-beta
+    title "System Performance Metrics"
+    x-axis [Jan, Feb, Mar, Apr, May, Jun]
+    y-axis "Response Time (ms)" 0 --> 500
+    line [120, 95, 85, 78, 82, 75]
+```
+
+```mermaid
+pie title API Usage Distribution
+    "Tariff Calculations" : 45
+    "Product Classification" : 25
+    "Route Recommendations" : 15
+    "Admin Operations" : 10
+    "Simulations" : 5
+```
 
 ---
 
