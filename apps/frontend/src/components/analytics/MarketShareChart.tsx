@@ -157,7 +157,7 @@ export function MarketShareChart() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ company, marketShare }) => `${company}: ${marketShare.toFixed(1)}%`}
+                  label={({ company, marketShare }: any) => `${company}: ${marketShare.toFixed(1)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="marketShare"
@@ -201,7 +201,7 @@ export function MarketShareChart() {
               .sort((a, b) => b.growth - a.growth)
               .slice(0, 3)
               .map((item, index) => (
-                <div key={item.company || item.region} className="flex items-center justify-between p-2 rounded border">
+                <div key={(item as any).company || (item as any).region} className="flex items-center justify-between p-2 rounded border">
                   <div className="flex items-center gap-2">
                     {viewMode === 'companies' && (
                       <div 
