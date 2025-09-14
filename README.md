@@ -19,61 +19,61 @@ ___
 graph TB
     %% User Layer
     subgraph "👥 User Layer"
-        WEB[🌐 Web Interface<br/>React + TypeScript]
-        MOB[📱 Mobile Interface<br/>Responsive Design]
+        WEB[🌐 Web Interface<br/>React + TS]
+        MOB[📱 Mobile Interface<br/>Responsive]
     end
 
     %% API Gateway & Load Balancer
     subgraph "🚪 API Gateway"
         LB[⚖️ Load Balancer<br/>AWS ALB]
-        GATE[🔐 API Gateway<br/>Rate Limiting & CORS]
+        GATE[🔐 API Gateway<br/>Rate Limiting]
     end
 
     %% Backend Services
     subgraph "🔧 Backend Services"
-        subgraph "🏛️ Spring Boot Application"
-            AUTH[🔑 Authentication Service<br/>JWT + Spring Security]
-            TARIFF[📊 Tariff Calculation Engine<br/>Core Business Logic]
-            ADMIN[👨‍💼 Admin Console<br/>CRUD Operations]
-            REC[🎯 Recommendation Engine<br/>Optimal Trade Routes]
-            SIM[🔬 Tariff Simulator<br/>Policy Scenario Modeling]
+        subgraph "🏛️ Spring Boot App"
+            AUTH[🔑 Auth Service<br/>JWT Security]
+            TARIFF[📊 Tariff Engine<br/>Business Logic]
+            ADMIN[👨‍💼 Admin Console<br/>CRUD Ops]
+            REC[🎯 Recommender<br/>Trade Routes]
+            SIM[🔬 Simulator<br/>Policy Modeling]
         end
         
-        SWAGGER[📚 Swagger UI<br/>API Documentation]
+        SWAGGER[📚 Swagger UI<br/>API Docs]
     end
 
     %% Data Layer
     subgraph "💾 Data Layer"
-        subgraph "🗄️ Primary Database"
-            POSTGRES[(🐘 PostgreSQL<br/>Tariff Rules & User Data)]
+        subgraph "🗄️ Primary DB"
+            POSTGRES[(🐘 PostgreSQL<br/>Rules & Users)]
         end
         
-        subgraph "📡 External Data Sources"
-            WITS[🌍 WITS API<br/>World Trade Data]
-            HS[🏷️ HS Code API<br/>Product Classification]
-            REGIONAL[🌏 Regional Portals<br/>Country-Specific Data]
+        subgraph "📡 External APIs"
+            WITS[🌍 WITS API<br/>Trade Data]
+            HS[🏷️ HS Code API<br/>Classification]
+            REGIONAL[🌏 Regional APIs<br/>Country Data]
         end
         
-        subgraph "💨 Caching Layer"
-            REDIS[(⚡ Redis<br/>Session & Query Cache)]
+        subgraph "💨 Cache"
+            REDIS[(⚡ Redis<br/>Sessions)]
         end
     end
 
     %% Infrastructure & Deployment
-    subgraph "☁️ AWS Cloud Infrastructure"
-        subgraph "🐳 Container Services"
-            ECS[📦 AWS ECS<br/>Container Orchestration]
-            ECR[🏪 AWS ECR<br/>Container Registry]
+    subgraph "☁️ AWS Infrastructure"
+        subgraph "🐳 Containers"
+            ECS[📦 AWS ECS<br/>Orchestration]
+            ECR[🏪 AWS ECR<br/>Registry]
         end
         
-        subgraph "🔄 CI/CD Pipeline"
+        subgraph "🔄 CI/CD"
             GITHUB[🐙 GitHub Actions<br/>Build & Test]
-            DOCKER[🐋 Docker<br/>Containerization]
+            DOCKER[🐋 Docker<br/>Containers]
         end
         
-        subgraph "📊 Monitoring & Analytics"
-            LOGS[📝 CloudWatch Logs]
-            METRICS[📈 Application Metrics]
+        subgraph "📊 Monitoring"
+            LOGS[📝 CloudWatch<br/>Logs]
+            METRICS[📈 Metrics<br/>Analytics]
         end
     end
 
