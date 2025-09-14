@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@radix-ui/react-dialog'
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -46,10 +46,10 @@ export function ProfileEditModal({ children }: { children: React.ReactNode }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
-          <DialogDescription>Update your name, role, contact details and avatar.</DialogDescription>
-        </DialogHeader>
+        <div className="mb-2">
+          <h3 className="text-lg font-semibold">Edit profile</h3>
+          <p className="text-sm text-muted-foreground">Update your name, role, contact details and avatar.</p>
+        </div>
         <div className="space-y-4 mt-4">
           <label className="block">
             <div className="text-sm text-muted-foreground">Full name</div>
