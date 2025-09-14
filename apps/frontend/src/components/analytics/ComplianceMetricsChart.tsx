@@ -1,5 +1,5 @@
-import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts'
+
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react'
@@ -60,7 +60,7 @@ export function ComplianceMetricsChart() {
   const totalIssues = complianceData.reduce((sum, item) => sum + item.issues, 0)
   const avgResolutionTime = complianceData.reduce((sum, item) => sum + item.avgResolutionTime, 0) / complianceData.length
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
