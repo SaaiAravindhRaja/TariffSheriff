@@ -10,6 +10,10 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "start": "vite"
   },
+  "vitest": {
+    "setupFiles": "./vitest.setup.ts",
+    "environment": "jsdom"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -39,6 +43,9 @@
   "devDependencies": {
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+  "@testing-library/jest-dom": "^6.0.0",
+  "@testing-library/react": "^14.0.0",
+  "jsdom": "^22.1.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.1.1",

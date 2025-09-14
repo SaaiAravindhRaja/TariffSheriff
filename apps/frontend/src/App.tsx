@@ -11,6 +11,7 @@ import { Simulator } from '@/pages/Simulator'
 import { Routes as TradeRoutes } from '@/pages/Routes'
 import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
+import Profile from '@/pages/Profile'
 import '@/styles/globals.css'
 
 // Create a client
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/simulator" element={<Simulator />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>

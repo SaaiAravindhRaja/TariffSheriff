@@ -9,6 +9,7 @@ import {
   Search
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,23 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const { resolvedTheme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
+  const [profile, setProfile] = React.useState<{ name: string; role: string; avatar?: string } | null>(null)
+
+  React.useEffect(() => {
+    const raw = typeof window !== 'undefined' && localStorage.getItem('app_profile')
+    if (raw) {
+      try {
+        setProfile(JSON.parse(raw))
+      } catch (e) {}
+    }
+    const handler = () => {
+      const updated = localStorage.getItem('app_profile')
+      if (updated) setProfile(JSON.parse(updated))
+    }
+    window.addEventListener('profile:updated', handler)
+    return () => window.removeEventListener('profile:updated', handler)
+  }, [])
   const [isSearchFocused, setIsSearchFocused] = React.useState(false)
 
   return (
@@ -94,17 +112,19 @@ export function Header({ className }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-2 pl-2 border-l">
+          <button onClick={() => navigate('/profile')} aria-haspopup="true" aria-expanded="false" className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
             <div className="flex flex-col text-right">
-              <span className="text-sm font-medium">John Doe</span>
-              <span className="text-xs text-muted-foreground">Trade Analyst</span>
+              <span className="text-sm font-medium">{profile?.name || 'John Doe'}</span>
+              <span className="text-xs text-muted-foreground">{profile?.role || 'Trade Analyst'}</span>
             </div>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
+              {profile?.avatar ? (
+                <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
                 <User className="w-4 h-4 text-white" />
-              </div>
-            </Button>
-          </div>
+              )}
+            </div>
+          </button>
         </div>
       </div>
     </motion.header>
