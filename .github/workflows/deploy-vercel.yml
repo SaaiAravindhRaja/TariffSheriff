@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - '**'
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch: {}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: "github.event_name != 'pull_request'"
+    # We keep the job public but guard deploy steps below so PRs/forks without secrets don't fail
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,20 +30,42 @@ jobs:
         working-directory: apps/frontend
         run: npm run build --if-present
 
+      - name: Build diagnostics
+        working-directory: apps/frontend
+        run: |
+          echo "--- Node $(node -v)";
+          echo "--- NPM $(npm -v)";
+          echo "--- Listing apps/frontend/dist (if present)";
+          ls -la dist || true;
+          echo "--- Print last 200 lines of build log (if present)";
+          [ -f build.log ] && tail -n 200 build.log || true;
+
       - name: Install Vercel CLI
+        # Only install the Vercel CLI if a token is available (avoids failures on forks/PRs)
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         run: npm i -g vercel
 
       - name: Deploy to Vercel
+        # Only attempt deployment when the VERCEL_TOKEN secret is present. This avoids
+        # failing the workflow for pull requests / forks where secrets are not available.
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         working-directory: apps/frontend
         run: |
+          echo "Deploying from branch ${GITHUB_REF} (event: ${GITHUB_EVENT_NAME})"
           # If on main/master deploy to production
-          if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ]; then
             vercel --prod --confirm
           else
             # For other branches, create a preview deployment
             vercel --confirm
           fi
+
+      - name: Skip deploy (no token)
+        if: ${{ secrets.VERCEL_TOKEN == '' }}
+        run: |
+          echo "VERCEL_TOKEN is not configured for this repository."
+          echo "Skipping Vercel deployment. To enable deployments add the VERCEL_TOKEN repository secret."
