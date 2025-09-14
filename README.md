@@ -16,64 +16,60 @@ ___
 ## 🏗️ System Architecture
 
 ```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'curve': 'linear'}}}%%
 graph TB
     %% User Layer
     subgraph "👥 User Layer"
-        WEB[🌐 Web Interface<br/>React + TS]
-        MOB[📱 Mobile Interface<br/>Responsive]
+    WEB[🌐 Web Interface\nReact + TS]
+    MOB[📱 Mobile Interface\nResponsive]
     end
 
     %% API Gateway & Load Balancer
-    subgraph "🚪 API Gateway"
-        LB[⚖️ Load Balancer<br/>AWS ALB]
-        GATE[🔐 API Gateway<br/>Rate Limiting]
+    subgraph "🚪 API"
+        LB[⚖️ Load Balancer\nAWS ALB]
+        GATE[🔐 API Gateway\nRate Limiting]
     end
 
     %% Backend Services
-    subgraph "🔧 Backend Services"
-        subgraph "🏛️ Spring Boot App"
-            AUTH[🔑 Auth Service<br/>JWT Security]
-            TARIFF[📊 Tariff Engine<br/>Business Logic]
-            ADMIN[👨‍💼 Admin Console<br/>CRUD Ops]
-            REC[🎯 Recommender<br/>Trade Routes]
-            SIM[🔬 Simulator<br/>Policy Modeling]
+    subgraph "🔧 Backend"
+        subgraph "🏛️ Spring Boot"
+            AUTH[🔑 Auth\nJWT Security]
+            TARIFF[📊 Tariff Engine\nBusiness Logic]
+            ADMIN[👨‍💼 Admin\nCRUD Ops]
+            REC[🎯 Recommender\nRoutes]
+            SIM[🔬 Simulator\nPolicy Modeling]
         end
-        
-        SWAGGER[📚 Swagger UI<br/>API Docs]
+        SWAGGER[📚 Swagger UI\nAPI Docs]
     end
 
     %% Data Layer
-    subgraph "💾 Data Layer"
+    subgraph "💾 Data"
         subgraph "🗄️ Primary DB"
-            POSTGRES[(🐘 PostgreSQL<br/>Rules & Users)]
+            POSTGRES[(🐘 PostgreSQL\nRules & Users)]
         end
-        
-        subgraph "📡 External APIs"
-            WITS[🌍 WITS API<br/>Trade Data]
-            HS[🏷️ HS Code API<br/>Classification]
-            REGIONAL[🌏 Regional APIs<br/>Country Data]
+        subgraph "📡 External"
+            WITS[🌍 WITS API\nTrade Data]
+            HS[🏷️ HS Code API\nClassification]
+            REGIONAL[🌏 Regional APIs\nCountry Data]
         end
-        
         subgraph "💨 Cache"
-            REDIS[(⚡ Redis<br/>Sessions)]
+            REDIS[(⚡ Redis\nSessions)]
         end
     end
 
     %% Infrastructure & Deployment
-    subgraph "☁️ AWS Infrastructure"
+    subgraph "☁️ AWS"
         subgraph "🐳 Containers"
-            ECS[📦 AWS ECS<br/>Orchestration]
-            ECR[🏪 AWS ECR<br/>Registry]
+            ECS[📦 AWS ECS\nOrchestration]
+            ECR[🏪 AWS ECR\nRegistry]
         end
-        
         subgraph "🔄 CI/CD"
-            GITHUB[🐙 GitHub Actions<br/>Build & Test]
-            DOCKER[🐋 Docker<br/>Containers]
+            GITHUB[🐙 GitHub Actions\nBuild & Test]
+            DOCKER[🐋 Docker\nContainers]
         end
-        
         subgraph "📊 Monitoring"
-            LOGS[📝 CloudWatch<br/>Logs]
-            METRICS[📈 Metrics<br/>Analytics]
+            LOGS[📝 CloudWatch\nLogs]
+            METRICS[📈 Metrics\nAnalytics]
         end
     end
 
