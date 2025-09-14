@@ -23,12 +23,10 @@ jobs:
           node-version: '18'
 
       - name: Install deps (frontend)
-        working-directory: apps/frontend
-        run: npm ci
+        run: npm ci --prefix apps/frontend
 
       - name: Build (frontend)
-        working-directory: apps/frontend
-        run: npm run build --if-present
+        run: npm run build --prefix apps/frontend --if-present
 
       - name: Build diagnostics
         working-directory: apps/frontend
@@ -53,15 +51,14 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: apps/frontend
         run: |
           echo "Deploying from branch ${GITHUB_REF} (event: ${GITHUB_EVENT_NAME})"
           # If on main/master deploy to production
           if [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ]; then
-            vercel --prod --confirm
+            vercel --cwd apps/frontend --prod --confirm
           else
             # For other branches, create a preview deployment
-            vercel --confirm
+            vercel --cwd apps/frontend --confirm
           fi
 
       - name: Skip deploy (no token)
