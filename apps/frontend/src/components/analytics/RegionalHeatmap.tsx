@@ -1,7 +1,7 @@
-import React from 'react'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, getCountryFlag } from '@/lib/utils'
+import { getCountryFlag } from '@/lib/utils'
 import { Thermometer, TrendingUp, TrendingDown } from 'lucide-react'
 
 const regionData = [

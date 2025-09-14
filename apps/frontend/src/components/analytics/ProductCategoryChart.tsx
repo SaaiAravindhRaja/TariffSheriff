@@ -194,7 +194,7 @@ export function ProductCategoryChart() {
             {productData
               .sort((a, b) => b.growth - a.growth)
               .slice(0, 3)
-              .map((product, index) => (
+              .map((product) => (
                 <div key={product.hsCode} className="flex items-center justify-between p-2 rounded border">
                   <div className="flex items-center gap-2">
                     <div 
