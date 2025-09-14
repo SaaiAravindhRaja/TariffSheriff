@@ -5,8 +5,6 @@ import {
   Moon, 
   Sun, 
   User, 
-  Settings, 
-  LogOut,
   Bell,
   Search
 } from 'lucide-react'

@@ -56,7 +56,6 @@ export function useTheme() {
       mql.addEventListener('change', listener)
     } catch (err) {
       // Safari fallback
-      // @ts-expect-error - fall back to older API on Safari
       mql.addListener && mql.addListener(listener)
     }
 
@@ -64,7 +63,6 @@ export function useTheme() {
       try {
         mql.removeEventListener('change', listener)
       } catch (err) {
-        // @ts-expect-error - fall back to older API on Safari
         mql.removeListener && mql.removeListener(listener)
       }
     }
