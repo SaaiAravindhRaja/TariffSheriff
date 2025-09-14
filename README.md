@@ -27,6 +27,7 @@ docs/         # Documentation
 
 ## 🛠️ Getting Started
 
+### Local Development
 ```bash
 # 1. Install dependencies
 npm install
@@ -35,7 +36,26 @@ npm install
 cd apps/backend && ./mvnw spring-boot:run
 
 # 3. Run frontend (React)
-cd apps/frontend && npm start
+cd apps/frontend && npm run dev
+```
+
+### 🚀 Deployment
+
+This project uses automated deployment with GitHub Actions and Vercel:
+
+- **Production:** Automatically deploys from `main` branch
+- **Preview:** Automatically creates preview deployments for PRs
+- **Manual:** Use `./scripts/deploy.sh` for local deployments
+
+For detailed deployment setup and troubleshooting, see [`.github/DEPLOYMENT.md`](.github/DEPLOYMENT.md).
+
+#### Quick Deploy
+```bash
+# Deploy preview
+./scripts/deploy.sh preview
+
+# Deploy to production
+./scripts/deploy.sh production
 ```
 
 ---
