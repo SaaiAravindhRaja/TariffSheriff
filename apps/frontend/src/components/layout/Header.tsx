@@ -20,7 +20,7 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { theme, resolvedTheme, toggleTheme } = useTheme()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const [isSearchFocused, setIsSearchFocused] = React.useState(false)
 
   return (
