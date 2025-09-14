@@ -119,3 +119,27 @@
   background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
   background-size: 200px 100%;
 }
+
+/* Skip link styles */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus,
+.skip-link.focused,
+.skip-link:not(.sr-only) {
+  position: static;
+  left: auto;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem;
+  background: var(--primary-foreground);
+  color: var(--primary);
+  border-radius: 0.25rem;
+  z-index: 60;
+}
