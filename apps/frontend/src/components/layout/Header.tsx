@@ -5,8 +5,6 @@ import {
   Moon, 
   Sun, 
   User, 
-  Settings, 
-  LogOut,
   Bell,
   Search
 } from 'lucide-react'
@@ -20,7 +18,7 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const [isSearchFocused, setIsSearchFocused] = React.useState(false)
 
   return (
@@ -83,10 +81,12 @@ export function Header({ className }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={() => toggleTheme()}
+            aria-label={`Toggle theme, currently ${resolvedTheme}`}
+            title={`Toggle theme (currently ${resolvedTheme})`}
             className="transition-transform hover:scale-110"
           >
-            {theme === 'dark' ? (
+            {resolvedTheme === 'dark' ? (
               <Sun className="w-5 h-5" />
             ) : (
               <Moon className="w-5 h-5" />

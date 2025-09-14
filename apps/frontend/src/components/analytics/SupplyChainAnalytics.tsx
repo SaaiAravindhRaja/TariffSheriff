@@ -95,7 +95,7 @@ const alternativeRoutes = [
 ]
 
 export function SupplyChainAnalytics() {
-  const [selectedComponent, setSelectedComponent] = React.useState('Battery Cells')
+  
 
   const getRiskColor = (risk: string) => {
     switch (risk) {

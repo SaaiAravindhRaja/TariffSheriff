@@ -28,10 +28,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <div className="min-h-screen bg-background font-sans antialiased">
+          {/* Skip link for keyboard users */}
+          <a href="#main-content" className="sr-only focus:not-sr-only skip-link">Skip to content</a>
           <Header />
           <div className="flex">
             <Sidebar />
-            <main className="flex-1 ml-64 transition-all duration-300">
+            <main id="main-content" className="flex-1 ml-64 transition-all duration-300">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/calculator" element={<Calculator />} />
