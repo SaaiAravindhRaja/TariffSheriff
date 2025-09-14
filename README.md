@@ -9,10 +9,6 @@
 ## 🌐 Live Demo
 
 [https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
-
-<!-- App icon + Issue link -->
-[![TariffSheriff icon](/shield.svg "TariffSheriff")](https://github.com/SaaiAravindhRaja/TariffSheriff/issues/19)
-
 ___
 
 
