@@ -29,7 +29,13 @@ export function HistoricalRatesChart({ hsCode, originCountry, destinationCountry
   const rateChange = currentRate - previousRate
   const isIncreasing = rateChange > 0
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  type CustomTooltipProps = {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+};
+
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border border-border rounded-lg shadow-lg p-3">
