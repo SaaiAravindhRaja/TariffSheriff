@@ -16,105 +16,117 @@ ___
 ## 🏗️ System Architecture
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'curve': 'linear'}}}%%
 graph TB
-    %% User Layer
-    subgraph "👥 User Layer"
-    WEB[🌐 Web Interface\nReact + TS]
-    MOB[📱 Mobile Interface\nResponsive]
+    %% Client Layer
+    subgraph CLIENT["🌐 Client Applications"]
+        WEB["� Web rDashboard<br/>React + TypeScript<br/>Tailwind CSS"]
+        MOBILE["📱 Mobile App<br/>Responsive Design<br/>PWA Support"]
+        API_CLIENT["🔌 API Clients<br/>Third-party Integrations"]
     end
 
-    %% API Gateway & Load Balancer
-    subgraph "🚪 API"
-        LB[⚖️ Load Balancer\nAWS ALB]
-        GATE[🔐 API Gateway\nRate Limiting]
+    %% Load Balancer & Gateway
+    subgraph GATEWAY["🚪 API Gateway Layer"]
+        ALB["⚖️ Application Load Balancer<br/>AWS ALB<br/>SSL Termination"]
+        RATE_LIMIT["�️e Rate Limiting<br/>DDoS Protection<br/>CORS Handling"]
     end
 
-    %% Backend Services
-    subgraph "🔧 Backend"
-        subgraph "🏛️ Spring Boot"
-            AUTH[🔑 Auth\nJWT Security]
-            TARIFF[📊 Tariff Engine\nBusiness Logic]
-            ADMIN[👨‍💼 Admin\nCRUD Ops]
-            REC[🎯 Recommender\nRoutes]
-            SIM[🔬 Simulator\nPolicy Modeling]
-        end
-        SWAGGER[📚 Swagger UI\nAPI Docs]
+    %% Core Application Services
+    subgraph BACKEND["🏛️ TariffSheriff Backend Services"]
+        AUTH_SVC["🔐 Authentication Service<br/>JWT + Spring Security<br/>User Management"]
+        
+        CALC_ENGINE["📊 Tariff Calculation Engine<br/>Core Business Logic<br/>HS Code Processing"]
+        
+        ADMIN_SVC["👨‍💼 Admin Service<br/>Rule Management<br/>CRUD Operations"]
+        
+        REC_ENGINE["🎯 Recommendation Engine<br/>Route Optimization<br/>Cost Analysis"]
+        
+        SIM_ENGINE["🔬 Simulation Engine<br/>Policy Modeling<br/>Scenario Analysis"]
+        
+        SWAGGER_UI["📚 API Documentation<br/>Swagger/OpenAPI<br/>Interactive Testing"]
     end
 
-    %% Data Layer
-    subgraph "💾 Data"
-        subgraph "🗄️ Primary DB"
-            POSTGRES[(🐘 PostgreSQL\nRules & Users)]
-        end
-        subgraph "📡 External"
-            WITS[🌍 WITS API\nTrade Data]
-            HS[🏷️ HS Code API\nClassification]
-            REGIONAL[🌏 Regional APIs\nCountry Data]
-        end
-        subgraph "💨 Cache"
-            REDIS[(⚡ Redis\nSessions)]
-        end
+    %% Data Storage Layer
+    subgraph DATA_LAYER["💾 Data Management Layer"]
+        PRIMARY_DB[("🐘 PostgreSQL<br/>Primary Database<br/>Tariff Rules & Users")]
+        
+        CACHE_LAYER[("⚡ Redis Cache<br/>Session Storage<br/>Query Optimization")]
+        
+        FILE_STORAGE[("📁 AWS S3<br/>Document Storage<br/>Export Files")]
     end
 
-    %% Infrastructure & Deployment
-    subgraph "☁️ AWS"
-        subgraph "🐳 Containers"
-            ECS[📦 AWS ECS\nOrchestration]
-            ECR[🏪 AWS ECR\nRegistry]
-        end
-        subgraph "🔄 CI/CD"
-            GITHUB[🐙 GitHub Actions\nBuild & Test]
-            DOCKER[🐋 Docker\nContainers]
-        end
-        subgraph "📊 Monitoring"
-            LOGS[📝 CloudWatch\nLogs]
-            METRICS[📈 Metrics\nAnalytics]
-        end
+    %% External Data Sources
+    subgraph EXTERNAL["📡 External Data Sources"]
+        WITS_API["🌍 WITS Database<br/>World Trade Statistics<br/>Historical Data"]
+        
+        HS_CODE_API["🏷️ HS Code Services<br/>Product Classification<br/>SimplyDuty/Mooah API"]
+        
+        REGIONAL_API["🌏 Regional Trade Portals<br/>Country-Specific Data<br/>Legal Citations"]
+        
+        TRADE_AGREEMENTS["📜 Trade Agreement APIs<br/>Bilateral Agreements<br/>MFN Rates"]
     end
 
-    %% Connections
-    WEB --> LB
-    MOB --> LB
-    LB --> GATE
-    GATE --> AUTH
-    GATE --> TARIFF
-    GATE --> ADMIN
-    GATE --> REC
-    GATE --> SIM
+    %% Infrastructure & DevOps
+    subgraph INFRA["☁️ AWS Cloud Infrastructure"]
+        CONTAINER_REGISTRY["🏪 AWS ECR<br/>Container Registry<br/>Image Management"]
+        
+        ORCHESTRATION["�t AWS ECS<br/>Container Orchestration<br/>Auto Scaling"]
+        
+        MONITORING["📊 CloudWatch<br/>Logging & Metrics<br/>Performance Monitoring"]
+        
+        CICD["🔄 GitHub Actions<br/>CI/CD Pipeline<br/>Automated Testing"]
+    end
+
+    %% Data Flow Connections
+    WEB --> ALB
+    MOBILE --> ALB
+    API_CLIENT --> ALB
     
-    AUTH --> POSTGRES
-    TARIFF --> POSTGRES
-    ADMIN --> POSTGRES
-    REC --> POSTGRES
-    SIM --> POSTGRES
+    ALB --> RATE_LIMIT
+    RATE_LIMIT --> AUTH_SVC
+    RATE_LIMIT --> CALC_ENGINE
+    RATE_LIMIT --> ADMIN_SVC
+    RATE_LIMIT --> REC_ENGINE
+    RATE_LIMIT --> SIM_ENGINE
     
-    TARIFF --> REDIS
-    REC --> REDIS
+    AUTH_SVC --> PRIMARY_DB
+    AUTH_SVC --> CACHE_LAYER
     
-    TARIFF --> WITS
-    TARIFF --> HS
-    TARIFF --> REGIONAL
+    CALC_ENGINE --> PRIMARY_DB
+    CALC_ENGINE --> CACHE_LAYER
+    CALC_ENGINE --> WITS_API
+    CALC_ENGINE --> HS_CODE_API
+    CALC_ENGINE --> REGIONAL_API
+    CALC_ENGINE --> TRADE_AGREEMENTS
     
-    GITHUB --> DOCKER
-    DOCKER --> ECR
-    ECR --> ECS
+    ADMIN_SVC --> PRIMARY_DB
+    ADMIN_SVC --> FILE_STORAGE
     
-    ECS --> LOGS
-    ECS --> METRICS
+    REC_ENGINE --> PRIMARY_DB
+    REC_ENGINE --> CACHE_LAYER
+    REC_ENGINE --> CALC_ENGINE
+    
+    SIM_ENGINE --> PRIMARY_DB
+    SIM_ENGINE --> CALC_ENGINE
+    SIM_ENGINE --> FILE_STORAGE
+    
+    CICD --> CONTAINER_REGISTRY
+    CONTAINER_REGISTRY --> ORCHESTRATION
+    ORCHESTRATION --> MONITORING
     
     %% Styling
-    classDef userLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef apiLayer fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef backendLayer fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef dataLayer fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef infraLayer fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef clientStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef gatewayStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef backendStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef externalStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+    classDef infraStyle fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
     
-    class WEB,MOB userLayer
-    class LB,GATE apiLayer
-    class AUTH,TARIFF,ADMIN,REC,SIM,SWAGGER backendLayer
-    class POSTGRES,WITS,HS,REGIONAL,REDIS dataLayer
-    class ECS,ECR,GITHUB,DOCKER,LOGS,METRICS infraLayer
+    class WEB,MOBILE,API_CLIENT clientStyle
+    class ALB,RATE_LIMIT gatewayStyle
+    class AUTH_SVC,CALC_ENGINE,ADMIN_SVC,REC_ENGINE,SIM_ENGINE,SWAGGER_UI backendStyle
+    class PRIMARY_DB,CACHE_LAYER,FILE_STORAGE dataStyle
+    class WITS_API,HS_CODE_API,REGIONAL_API,TRADE_AGREEMENTS externalStyle
+    class CONTAINER_REGISTRY,ORCHESTRATION,MONITORING,CICD infraStyle
 ```
 
 ## 🗂️ Project Structure
