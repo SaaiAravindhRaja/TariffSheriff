@@ -1,8 +1,23 @@
+# 👮 TariffSheriff
+
+A full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the **Electric Vehicle (EV) industry**.
+
 ---
 
-## 🚀 What is TariffSheriff?
+<p align="center">
+<img src="https://private-user-images.githubusercontent.com/189733602/489261761-f63f8f5b-6540-4f21-9f6f-508ea4254337.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTc4NDc0MzIsIm5iZiI6MTc1Nzg0NzEzMiwicGF0aCI6Ii8xODk3MzM2MDIvNDg5MjYxNzYxLWY2M2Y4ZjViLTY1NDAtNGYyMS05ZjZmLTUwOGVhNDI1NDMzNy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTE0JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkxNFQxMDUyMTJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1hNjUxZjQwNDJhOTQxYjZiMTM2ODNjMzk4NGE0YzM3M2Y4NWY4NDk2ZjhhNDdjMzc3YzU3Njk5YzVlMGIwMjBkJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.78NT_LseNJIE8V7926zVyWvMHJOJ3jhvKGpLXl3b_qA" alt="TariffSheriff App Icon" width="150"/>
+</p>
 
-👮 TariffSheriff is a full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry. It provides accurate, transparent, and defensible data for pricing, compliance, and financial planning.
+---
+
+## 🚀 Features
+
+- **Accurate Tariff Calculations** - Real-time import duty calculations across multiple countries
+- **EV Industry Focus** - Specialized data for Electric Vehicle trade compliance  
+- **Route Optimization** - Find the most cost-effective shipping routes
+- **Transparent Pricing** - Detailed breakdowns with legal citations
+- **Admin Dashboard** - Manage tariff rules and user permissions
+- **API Integration** - Connect with WITS, HS Code services, and regional trade portals
 
 ---
 
