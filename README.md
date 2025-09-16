@@ -25,7 +25,7 @@ A full-stack web application that helps businesses calculate and analyze import 
 
 ## 🌐 Live Demo
 
-[https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
+[https://saaiaravindhraja.github.io/TariffSheriff/](https://saaiaravindhraja.github.io/TariffSheriff/)
 ___
 
 
