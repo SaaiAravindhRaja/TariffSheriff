@@ -225,16 +225,16 @@ npm run test:coverage
 npm run build
 ```
 
-### Deploy to Vercel
-```bash
-npm install -g vercel
-vercel --prod
-```
+### Deploy to GitHub Pages
 
-### Deploy to Netlify
+Production builds are published automatically by the GitHub Actions workflow in `.github/workflows/ci.yml`. Pushes to `main` trigger a fresh build and deploy to GitHub Pages.
+
+For a manual publish (e.g., from a fork), build locally and push the generated `dist/` folder with a tool like [`gh-pages`](https://github.com/tschaub/gh-pages):
+
 ```bash
+cd apps/frontend
 npm run build
-# Upload dist/ folder to Netlify
+npx gh-pages -d dist
 ```
 
 ## 🤝 Contributing
