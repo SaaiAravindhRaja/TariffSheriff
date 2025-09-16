@@ -1,5 +1,7 @@
 # 👮 TariffSheriff
 
+[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)]
+
 A full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the **Electric Vehicle (EV) industry**.
 
 ---
@@ -56,7 +58,7 @@ npm run test --workspace=frontend
 
 ## 🌐 Live Demo
 
-[https://saaiaravindhraja.github.io/TariffSheriff/](https://saaiaravindhraja.github.io/TariffSheriff/)
+[https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
 ___
 
 
@@ -239,18 +241,35 @@ sequenceDiagram
 
 ---
 
-## 🛠️ Getting Started
+## 🛠️ Getting Started (Monorepo)
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Install dependencies (from repo root)
+npm ci
 
-# 2. Run backend (Spring Boot)
+# 2. Start the backend (Spring Boot)
 cd apps/backend && ./mvnw spring-boot:run
 
-# 3. Run frontend (React)
-cd apps/frontend && npm start
+# 3. Start the frontend (Vite)
+npm run dev --workspace=frontend
+
+# 4. Build frontend for production (from repo root)
+npm run build
 ```
+
+Deployment (Vercel)
+
+- If you deploy the monorepo to Vercel, the frontend app is in `apps/frontend`.
+- Place a `vercel.json` inside `apps/frontend/` with:
+
+```json
+{
+    "outputDirectory": "dist"
+}
+```
+
+- Alternatively, in the Vercel project settings set the **Root Directory** to `apps/frontend` and the **Output Directory** to `dist`.
+- The root-level `vercel.json` is intentionally minimal to avoid schema validation errors — per-app configs in subfolders are recommended for monorepos.
 
 ## 🛠️ Technology Stack
 
