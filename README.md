@@ -23,6 +23,37 @@ A full-stack web application that helps businesses calculate and analyze import 
 
 ---
 
+## 🛠 Development Quickstart
+
+**Prerequisites:** Node.js 18+, npm 9+, Java 17, Docker (Docker Desktop or Colima).
+
+```bash
+# 1. Install dependencies (from repo root)
+npm ci
+
+# 2. Start the backend (Flyway will auto-run migrations and seed data)
+export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"  # only required for Colima/rootless Docker
+cd apps/backend
+mvn spring-boot:run
+
+# 3. In another terminal (from repo root), start the frontend dev server
+npm run dev --workspace=frontend
+
+# Dev servers
+#   Frontend: http://localhost:3000
+#   Backend : http://localhost:8080
+
+# 4. Automated checks before committing
+mvn test                     # backend (Testcontainers)
+npm run test --workspace=frontend
+
+# 5. Production deployment is handled by GitHub Actions (.github/workflows/ci.yml)
+```
+
+> Need a clean database? Stop the backend, remove any local Postgres container (e.g. `docker rm -f tariffsheriff-pg`), then rerun `mvn spring-boot:run` to replay Flyway migrations and the mock seed.
+
+---
+
 ## 🌐 Live Demo
 
 [https://saaiaravindhraja.github.io/TariffSheriff/](https://saaiaravindhraja.github.io/TariffSheriff/)
