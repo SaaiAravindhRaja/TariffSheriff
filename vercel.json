@@ -1,8 +1,1 @@
-{
-  "projects": [
-    {
-      "src": "apps/frontend",
-      "outputDirectory": "dist"
-    }
-  ]
-}
+{}
