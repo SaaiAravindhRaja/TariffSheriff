@@ -1,6 +1,6 @@
 # 👮 TariffSheriff
 
-[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)]
+[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
 
 A full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the **Electric Vehicle (EV) industry**.
 
