@@ -42,21 +42,21 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: npm run build --workspace=frontend
-      - name: Upload static site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: apps/frontend/dist
+      # - name: Upload static site artifact
+      #   uses: actions/upload-pages-artifact@v3
+      #   with:
+      #     path: apps/frontend/dist
 
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - backend-tests
-      - frontend-build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+  # deploy:
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   needs:
+  #     - backend-tests
+  #     - frontend-build
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deploy.outputs.page_url }}
+  #   steps:
+  #     - name: Deploy to GitHub Pages
+  #       id: deploy
+  #       uses: actions/deploy-pages@v4
