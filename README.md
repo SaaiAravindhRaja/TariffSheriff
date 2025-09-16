@@ -42,3 +42,17 @@ LIMIT 1;
 -- VAT for EU importer
 SELECT standard_rate FROM vat WHERE importer_id = 1;
 ```
+
+### Running backend tests
+
+These tests use Testcontainers to launch PostgreSQL automatically. Ensure Docker is running (Docker Desktop or Colima).
+
+```bash
+# if you are using Colima, expose the socket for JVM-based tools
+export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"
+
+cd apps/backend
+mvn test
+```
+
+The Maven build disables Ryuk cleanup (via `TESTCONTAINERS_RYUK_DISABLED=true`) so Testcontainers works with rootless Docker setups such as Colima. Containers are still stopped at the end of the test run.
