@@ -257,7 +257,7 @@ npm run dev --workspace=frontend
 npm run build
 ```
 
-Deployment (Vercel)
+### Deployment (Vercel)
 
 - If you deploy the monorepo to Vercel, the frontend app is in `apps/frontend`.
 - Place a `vercel.json` inside `apps/frontend/` with:
