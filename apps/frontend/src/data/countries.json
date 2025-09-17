@@ -1,0 +1,412 @@
+{
+  "countries": [
+    {
+      "code": "US",
+      "name": "United States",
+      "emoji": "🇺🇸",
+      "region": "North America",
+      "currency": "USD",
+      "active": true
+    },
+    {
+      "code": "CN",
+      "name": "China",
+      "emoji": "🇨🇳",
+      "region": "Asia",
+      "currency": "CNY",
+      "active": true
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "emoji": "🇩🇪",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "JP",
+      "name": "Japan",
+      "emoji": "🇯🇵",
+      "region": "Asia",
+      "currency": "JPY",
+      "active": true
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "emoji": "🇬🇧",
+      "region": "Europe",
+      "currency": "GBP",
+      "active": true
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "emoji": "🇫🇷",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "emoji": "🇮🇳",
+      "region": "Asia",
+      "currency": "INR",
+      "active": true
+    },
+    {
+      "code": "IT",
+      "name": "Italy",
+      "emoji": "🇮🇹",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "BR",
+      "name": "Brazil",
+      "emoji": "🇧🇷",
+      "region": "South America",
+      "currency": "BRL",
+      "active": true
+    },
+    {
+      "code": "CA",
+      "name": "Canada",
+      "emoji": "🇨🇦",
+      "region": "North America",
+      "currency": "CAD",
+      "active": true
+    },
+    {
+      "code": "KR",
+      "name": "South Korea",
+      "emoji": "🇰🇷",
+      "region": "Asia",
+      "currency": "KRW",
+      "active": true
+    },
+    {
+      "code": "ES",
+      "name": "Spain",
+      "emoji": "🇪🇸",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "emoji": "🇦🇺",
+      "region": "Oceania",
+      "currency": "AUD",
+      "active": true
+    },
+    {
+      "code": "MX",
+      "name": "Mexico",
+      "emoji": "🇲🇽",
+      "region": "North America",
+      "currency": "MXN",
+      "active": true
+    },
+    {
+      "code": "ID",
+      "name": "Indonesia",
+      "emoji": "🇮🇩",
+      "region": "Asia",
+      "currency": "IDR",
+      "active": true
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands",
+      "emoji": "🇳🇱",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "SA",
+      "name": "Saudi Arabia",
+      "emoji": "🇸🇦",
+      "region": "Middle East",
+      "currency": "SAR",
+      "active": true
+    },
+    {
+      "code": "TR",
+      "name": "Turkey",
+      "emoji": "🇹🇷",
+      "region": "Europe/Asia",
+      "currency": "TRY",
+      "active": true
+    },
+    {
+      "code": "TW",
+      "name": "Taiwan",
+      "emoji": "🇹🇼",
+      "region": "Asia",
+      "currency": "TWD",
+      "active": true
+    },
+    {
+      "code": "BE",
+      "name": "Belgium",
+      "emoji": "🇧🇪",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "PL",
+      "name": "Poland",
+      "emoji": "🇵🇱",
+      "region": "Europe",
+      "currency": "PLN",
+      "active": true
+    },
+    {
+      "code": "AR",
+      "name": "Argentina",
+      "emoji": "🇦🇷",
+      "region": "South America",
+      "currency": "ARS",
+      "active": true
+    },
+    {
+      "code": "IE",
+      "name": "Ireland",
+      "emoji": "🇮🇪",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "AT",
+      "name": "Austria",
+      "emoji": "🇦🇹",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "IL",
+      "name": "Israel",
+      "emoji": "🇮🇱",
+      "region": "Middle East",
+      "currency": "ILS",
+      "active": true
+    },
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "emoji": "🇳🇬",
+      "region": "Africa",
+      "currency": "NGN",
+      "active": true
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "emoji": "🇳🇴",
+      "region": "Europe",
+      "currency": "NOK",
+      "active": true
+    },
+    {
+      "code": "AE",
+      "name": "United Arab Emirates",
+      "emoji": "🇦🇪",
+      "region": "Middle East",
+      "currency": "AED",
+      "active": true
+    },
+    {
+      "code": "MY",
+      "name": "Malaysia",
+      "emoji": "🇲🇾",
+      "region": "Asia",
+      "currency": "MYR",
+      "active": true
+    },
+    {
+      "code": "ZA",
+      "name": "South Africa",
+      "emoji": "🇿🇦",
+      "region": "Africa",
+      "currency": "ZAR",
+      "active": true
+    },
+    {
+      "code": "PH",
+      "name": "Philippines",
+      "emoji": "🇵🇭",
+      "region": "Asia",
+      "currency": "PHP",
+      "active": true
+    },
+    {
+      "code": "BD",
+      "name": "Bangladesh",
+      "emoji": "🇧🇩",
+      "region": "Asia",
+      "currency": "BDT",
+      "active": true
+    },
+    {
+      "code": "VN",
+      "name": "Vietnam",
+      "emoji": "🇻🇳",
+      "region": "Asia",
+      "currency": "VND",
+      "active": true
+    },
+    {
+      "code": "CL",
+      "name": "Chile",
+      "emoji": "🇨🇱",
+      "region": "South America",
+      "currency": "CLP",
+      "active": true
+    },
+    {
+      "code": "FI",
+      "name": "Finland",
+      "emoji": "🇫🇮",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "RO",
+      "name": "Romania",
+      "emoji": "🇷🇴",
+      "region": "Europe",
+      "currency": "RON",
+      "active": true
+    },
+    {
+      "code": "CZ",
+      "name": "Czech Republic",
+      "emoji": "🇨🇿",
+      "region": "Europe",
+      "currency": "CZK",
+      "active": true
+    },
+    {
+      "code": "NZ",
+      "name": "New Zealand",
+      "emoji": "🇳🇿",
+      "region": "Oceania",
+      "currency": "NZD",
+      "active": true
+    },
+    {
+      "code": "PE",
+      "name": "Peru",
+      "emoji": "🇵🇪",
+      "region": "South America",
+      "currency": "PEN",
+      "active": true
+    },
+    {
+      "code": "IQ",
+      "name": "Iraq",
+      "emoji": "🇮🇶",
+      "region": "Middle East",
+      "currency": "IQD",
+      "active": true
+    },
+    {
+      "code": "DK",
+      "name": "Denmark",
+      "emoji": "🇩🇰",
+      "region": "Europe",
+      "currency": "DKK",
+      "active": true
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "emoji": "🇸🇪",
+      "region": "Europe",
+      "currency": "SEK",
+      "active": true
+    },
+    {
+      "code": "PT",
+      "name": "Portugal",
+      "emoji": "🇵🇹",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "KZ",
+      "name": "Kazakhstan",
+      "emoji": "🇰🇿",
+      "region": "Asia",
+      "currency": "KZT",
+      "active": true
+    },
+    {
+      "code": "EG",
+      "name": "Egypt",
+      "emoji": "🇪🇬",
+      "region": "Africa",
+      "currency": "EGP",
+      "active": true
+    },
+    {
+      "code": "GR",
+      "name": "Greece",
+      "emoji": "🇬🇷",
+      "region": "Europe",
+      "currency": "EUR",
+      "active": true
+    },
+    {
+      "code": "HU",
+      "name": "Hungary",
+      "emoji": "🇭🇺",
+      "region": "Europe",
+      "currency": "HUF",
+      "active": true
+    },
+    {
+      "code": "TH",
+      "name": "Thailand",
+      "emoji": "🇹🇭",
+      "region": "Asia",
+      "currency": "THB",
+      "active": true
+    },
+    {
+      "code": "SG",
+      "name": "Singapore",
+      "emoji": "🇸🇬",
+      "region": "Asia",
+      "currency": "SGD",
+      "active": true
+    },
+    {
+      "code": "HK",
+      "name": "Hong Kong",
+      "emoji": "🇭🇰",
+      "region": "Asia",
+      "currency": "HKD",
+      "active": true
+    },
+    {
+      "code": "CH",
+      "name": "Switzerland",
+      "emoji": "🇨🇭",
+      "region": "Europe",
+      "currency": "CHF",
+      "active": true
+    }
+  ]
+}
