@@ -1,36 +1,12 @@
 import React from 'react'
-
-export type Country = {
-  code: string // ISO2 code e.g. 'SG'
-  name: string
-  flag: string // emoji flag
-}
-
-// Expanded default list for reasonable suggestions in calculators
-const DEFAULT_COUNTRIES: Country[] = [
-  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
-  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'CN', name: 'China', flag: '🇨🇳' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-]
+import { countries as COUNTRIES, Country as CountryDef } from '@/data/countries'
 
 type Props = {
   // single-select: value is string | undefined
   // multi-select: value is comma-separated codes OR JSON array string (for backward compatibility)
   value?: string
   onChange?: (codeOrCodes: string | string[]) => void
-  countries?: Country[]
+  countries?: CountryDef[]
   placeholder?: string
   className?: string
   multi?: boolean
@@ -42,13 +18,14 @@ type Props = {
  * - keyboard navigation (arrows + enter)
  * - single-select by default (multi optional)
  */
-export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DEFAULT_COUNTRIES, placeholder = 'Select country', className = '', multi = false }) => {
+export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = COUNTRIES, placeholder = 'Select country', className = '', multi = false }) => {
   const [query, setQuery] = React.useState('')
   const [open, setOpen] = React.useState(false)
   const [highlight, setHighlight] = React.useState(0)
   const ref = React.useRef<HTMLDivElement | null>(null)
   // internal selected codes for multi-mode
   const [selectedCodes, setSelectedCodes] = React.useState<string[]>([])
+  const allCountries = countries && countries.length ? countries : COUNTRIES
 
   // If a value (code) is provided, keep input text in sync
   React.useEffect(() => {
@@ -66,13 +43,13 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DE
         }
       }
       setQuery('')
-    } else {
-      if (value) {
-        const found = countries.find(c => c.code === value)
-        if (found) setQuery(found.name)
       } else {
-        setQuery('')
-      }
+        if (value) {
+          const found = allCountries.find((c: CountryDef) => c.code === value)
+          if (found) setQuery(found.name)
+        } else {
+          setQuery('')
+        }
     }
   }, [value, countries, multi])
 
@@ -91,21 +68,21 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DE
   const q = normalized(query)
 
   // Filter and prioritize startsWith matches
-  const filtered = countries
-    .map(c => ({
+  const filtered = allCountries
+    .map((c: CountryDef) => ({
       c,
       name: normalized(c.name)
     }))
-    .filter(({ name }) => q === '' ? true : name.includes(q))
-    .sort((a, b) => {
+    .filter(({ name }: { name: string }) => q === '' ? true : name.includes(q))
+    .sort((a: { c: CountryDef; name: string }, b: { c: CountryDef; name: string }) => {
       const aStarts = a.name.startsWith(q) ? 0 : 1
       const bStarts = b.name.startsWith(q) ? 0 : 1
       if (aStarts !== bStarts) return aStarts - bStarts
       return a.c.name.localeCompare(b.c.name)
     })
-    .map(x => x.c)
+    .map((x: { c: CountryDef; name: string }) => x.c)
 
-  const select = (c: Country) => {
+  const select = (c: CountryDef) => {
     if (multi) {
       setSelectedCodes(prev => {
         if (prev.includes(c.code)) return prev
@@ -156,15 +133,15 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DE
     <div ref={ref} className={`relative ${className}`}>
       <div className="flex flex-col">
         <div className="flex flex-wrap gap-2 items-center">
-          {multi && selectedCodes.length > 0 && (
+                {multi && selectedCodes.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {selectedCodes.map(code => {
-                const c = countries.find(x => x.code === code)
+              {selectedCodes.map((code: string) => {
+                const c = allCountries.find((x: CountryDef) => x.code === code)
                 return (
-                  <button key={code} type="button" onClick={() => removeCode(code)} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-muted/20 text-sm">
-                    <span>{c?.flag ?? '🏳️'}</span>
-                    <span>{c?.name ?? code}</span>
-                    <span className="ml-1 text-xs">✕</span>
+                  <button key={code} type="button" onClick={() => removeCode(code)} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-brand-50 dark:bg-brand-800/40 text-sm border border-brand-100 dark:border-brand-700">
+                    <span className="text-lg">{c?.emoji ?? '🏳️'}</span>
+                    <span className="font-medium text-sm">{c?.name ?? code}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">✕</span>
                   </button>
                 )
               })}
@@ -190,7 +167,7 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DE
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">No results</li>
           ) : (
-            filtered.map((c, idx) => (
+            filtered.map((c: CountryDef, idx: number) => (
               <li
                 key={c.code}
                 role="option"
@@ -199,7 +176,7 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = DE
                 onMouseEnter={() => setHighlight(idx)}
                 className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm ${idx === highlight ? 'bg-brand-50 dark:bg-brand-800/40' : ''}`}
               >
-                <span className="text-lg">{c.flag}</span>
+                <span className="text-lg">{c.emoji ?? '🏳️'}</span>
                 <span className="flex-1">{c.name}</span>
                 <span className="text-xs text-muted-foreground">{c.code}</span>
               </li>
