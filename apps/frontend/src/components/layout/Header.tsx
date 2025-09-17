@@ -56,9 +56,19 @@ export function Header({ className }: HeaderProps) {
           whileHover={{ scale: 1.05 }}
           transition={{ type: "spring", stiffness: 400, damping: 10 }}
         >
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 shadow-lg">
-            <Shield className="w-6 h-6 text-white" />
-          </div>
+          <a
+            onClick={(e) => { e.preventDefault(); navigate('/') }}
+            href="/"
+            aria-label="Go to TariffSheriff home"
+            title="TariffSheriff home"
+            className="flex items-center justify-center w-16 h-16 rounded-md bg-transparent overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
+          >
+            <img
+              src="https://github.com/user-attachments/assets/aafe9ae4-9f11-47c1-998c-7012a57c0e72"
+              alt="TariffSheriff"
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
+            />
+          </a>
           <div className="flex flex-col">
             <h1 className="text-xl font-bold bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">
               TariffSheriff
