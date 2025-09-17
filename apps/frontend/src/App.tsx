@@ -12,7 +12,12 @@ import { Routes as TradeRoutes } from '@/pages/Routes'
 import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
 import Profile from '@/pages/Profile'
+import { About } from '@/pages/About'
+import { Privacy } from '@/pages/Privacy'
+import { Team } from '@/pages/Team'
+import { Contact } from '@/pages/Contact'
 import '@/styles/globals.css'
+import Footer from '@/components/layout/Footer'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -45,9 +50,14 @@ function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/team" element={<Team />} />
+                <Route path="/contact" element={<Contact />} />
               </Routes>
             </main>
           </div>
+          <Footer />
         </div>
       </Router>
     </QueryClientProvider>
