@@ -64,7 +64,7 @@ export function Header({ className }: HeaderProps) {
             className="flex items-center justify-center w-16 h-16 rounded-md bg-transparent overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
           >
             <img
-              src="https://github.com/user-attachments/assets/aafe9ae4-9f11-47c1-998c-7012a57c0e72"
+              src="https://github.com/user-attachments/assets/f63f8f5b-6540-4f21-9f6f-508ea4254337"
               alt="TariffSheriff"
               className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
             />
