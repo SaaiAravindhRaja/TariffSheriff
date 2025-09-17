@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import CountrySelect from '@/components/inputs/CountrySelect'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatPercentage, getCountryFlag } from '@/lib/utils'
 import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownChart'
@@ -265,10 +266,13 @@ export function Calculator() {
                     <MapPin className="w-4 h-4" />
                     Origin Country
                   </label>
-                  <Input 
-                    placeholder="e.g., China"
+                  <CountrySelect
+                    placeholder="Type to search (e.g., Saudi, Singapore)"
                     value={formData.originCountry}
-                    onChange={(e) => handleInputChange('originCountry', e.target.value)}
+                    onChange={(code) => {
+                      const single = Array.isArray(code) ? code[0] ?? '' : code ?? ''
+                      handleInputChange('originCountry', String(single))
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -276,10 +280,13 @@ export function Calculator() {
                     <MapPin className="w-4 h-4" />
                     Destination Country
                   </label>
-                  <Input 
-                    placeholder="e.g., United States"
+                  <CountrySelect
+                    placeholder="Type to search (e.g., United, Spain)"
                     value={formData.destinationCountry}
-                    onChange={(e) => handleInputChange('destinationCountry', e.target.value)}
+                    onChange={(code) => {
+                      const single = Array.isArray(code) ? code[0] ?? '' : code ?? ''
+                      handleInputChange('destinationCountry', String(single))
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
