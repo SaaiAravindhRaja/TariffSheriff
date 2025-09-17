@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24" fill="none" role="img" aria-label="TariffSheriff logo">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#0ea5a4"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" rx="4" fill="url(#g)"/>
+  <path d="M6 8c0-1.1.9-2 2-2h8v8a4 4 0 0 1-4 4H8V8z" fill="#fff" opacity="0.12"/>
+  <path d="M7 7h6v2H9v6H7V7z" fill="#fff"/>
+  <text x="4" y="19" font-family="Inter, Arial, sans-serif" font-size="3.2" fill="#fff" font-weight="700">TS</text>
+</svg>
