@@ -1,6 +1,6 @@
 const https = require('https')
 const fs = require('fs')
-const url = 'https://github.com/user-attachments/assets/aafe9ae4-9f11-47c1-998c-7012a57c0e72'
+const url = 'https://github.com/user-attachments/assets/f63f8f5b-6540-4f21-9f6f-508ea4254337'
 const out = 'apps/frontend/public/logo.png'
 
 function download(url, dest) {
