@@ -319,10 +319,11 @@ npm run build
 	<tr>
 		<td align="center">
 			<a href="https://github.com/SaaiAravindhRaja">
-        <img src="https://github.com/user-attachments/assets/f63f8f5b-6540-4f21-9f6f-508ea4254337" width="48" />
+				<img src="https://github.com/SaaiAravindhRaja.png" width="80" alt="Saai"/><br/>
 				<sub><b>Saai</b></sub>
+			</a>
 		</td>
-        ![TariffSheriff Logo](https://github.com/user-attachments/assets/f63f8f5b-6540-4f21-9f6f-508ea4254337)
+		<td align="center">
 			<a href="https://github.com/thanh913">
 				<img src="https://github.com/thanh913.png" width="80" alt="Billy"/><br/>
 				<sub><b>Billy</b></sub>
