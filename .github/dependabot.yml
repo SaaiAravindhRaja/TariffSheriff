@@ -4,8 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
@@ -15,8 +13,6 @@ updates:
     directory: "/apps/frontend"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 6
     labels:
       - "dependencies"
@@ -26,8 +22,6 @@ updates:
     directory: "/packages/shared-utils"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 6
     labels:
       - "dependencies"
@@ -37,8 +31,6 @@ updates:
     directory: "/packages/shared-types"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 6
     labels:
       - "dependencies"
@@ -48,8 +40,6 @@ updates:
     directory: "/apps/backend"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -59,8 +49,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -70,8 +58,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    versioning-strategy: "increase"
-    security-updates: true
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
