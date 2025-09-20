@@ -44,29 +44,18 @@ import { ComparisonChart } from '@/components/calculator/ComparisonChart';
 import { HistoricalRatesChart } from '@/components/calculator/HistoricalRatesChart';
 import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 
-// Enhanced interfaces for professional calculator
+// Core interfaces
 interface ProductInfo {
   description: string;
   hsCode: string;
-  hsCodeDescription: string;
-  category: string;
+  hsCodeDescription?: string;
   quantity: number;
   unitValue: number;
-  currency: string;
   weight: number;
-  weightUnit: 'kg' | 'lbs';
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    unit: 'cm' | 'in';
-  };
   originCountry: string;
   destinationCountry: string;
   shipmentDate: string;
-  incoterms: string;
-  certificates: string[];
-  specialConditions: string[];
+  currency: string;
 }
 
 interface TariffCalculation {
@@ -94,7 +83,7 @@ interface TariffCalculation {
     effectiveRate: number;
     breakdown: Array<{
       type: string;
-      category: 'duty' | 'tax' | 'fee';
+      category: string;
       rate: number;
       amount: number;
       description: string;
@@ -110,9 +99,9 @@ interface TariffCalculation {
       tradeAgreement?: string;
     }>;
     warnings: Array<{
-      type: 'info' | 'warning' | 'error';
+      type: 'warning' | 'info';
       message: string;
-      recommendation?: string;
+      recommendation: string;
     }>;
     alternativeRoutes: Array<{
       country: string;
@@ -122,7 +111,7 @@ interface TariffCalculation {
       savings: number;
       savingsPercentage: number;
       tradeAgreement?: string;
-      transitTime?: number;
+      transitTime: number;
     }>;
     compliance: {
       requiredDocuments: string[];
@@ -130,6 +119,63 @@ interface TariffCalculation {
       restrictions: string[];
       prohibitions: string[];
     };
+  };
+}
+
+// EV-focused interfaces for tariff calculator
+interface EVProduct {
+  id: string;
+  description: string;
+  hsCode: string;
+  evType: 'BEV' | 'PHEV' | 'HEV' | 'FCEV'; // Battery, Plug-in Hybrid, Hybrid, Fuel Cell
+  batteryCapacity: number; // kWh
+  range: number; // km
+  manufacturer: string;
+  model: string;
+  year: number;
+  quantity: number;
+  unitValue: number;
+  currency: string;
+  originCountry: string;
+  destinationCountry: string;
+  shipmentDate: string;
+  certificates: string[];
+}
+
+interface EVTariffCalculation {
+  id: string;
+  timestamp: string;
+  product: EVProduct;
+  results: {
+    baseValue: number;
+    tariffRate: number;
+    tariffAmount: number;
+    evIncentive: number; // EV-specific incentives/penalties
+    carbonTax: number;
+    vat: number;
+    processingFee: number;
+    totalCost: number;
+    effectiveRate: number;
+    breakdown: Array<{
+      type: string;
+      rate: number;
+      amount: number;
+      description: string;
+    }>;
+    appliedRules: Array<{
+      ruleId: string;
+      description: string;
+      source: string;
+      tradeAgreement?: string;
+    }>;
+    alternativeRoutes: Array<{
+      country: string;
+      countryName: string;
+      tariffRate: number;
+      totalCost: number;
+      savings: number;
+      tradeAgreement?: string;
+    }>;
   };
 }
 
@@ -143,62 +189,60 @@ interface HSCodeSuggestion {
 export function Calculator() {
   const { settings } = useSettings();
 
-  // Enhanced form state
-  const [productInfo, setProductInfo] = useState<ProductInfo>({
+  // Core state variables
+  const [productInfo, setProductInfo] = useState({
     description: '',
     hsCode: '',
     hsCodeDescription: '',
-    category: '',
     quantity: 1,
     unitValue: 0,
-    currency: settings.currency,
     weight: 0,
-    weightUnit: 'kg',
-    dimensions: {
-      length: 0,
-      width: 0,
-      height: 0,
-      unit: 'cm'
-    },
     originCountry: '',
     destinationCountry: '',
     shipmentDate: new Date().toISOString().split('T')[0],
-    incoterms: 'CIF',
-    certificates: [],
-    specialConditions: []
+    currency: settings.currency
   });
 
-  // Calculation state
-  const [calculation, setCalculation] = useState<TariffCalculation | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [calculationHistory, setCalculationHistory] = useState<TariffCalculation[]>([]);
-
-  // UI state
-  const [activeTab, setActiveTab] = useState('basic');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
+  const [calculation, setCalculation] = useState<any>(null);
+  const [calculationHistory, setCalculationHistory] = useState<any[]>([]);
   const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // EV products state
+  const [evProducts, setEvProducts] = useState<EVProduct[]>([
+    {
+      id: '1',
+      description: '',
+      hsCode: '8703.80.10',
+      evType: 'BEV',
+      batteryCapacity: 0,
+      range: 0,
+      manufacturer: '',
+      model: '',
+      year: new Date().getFullYear(),
+      quantity: 1,
+      unitValue: 0,
+      currency: settings.currency,
+      originCountry: '',
+      destinationCountry: '',
+      shipmentDate: new Date().toISOString().split('T')[0],
+      certificates: []
+    }
+  ]);
+
+  // Calculation results for each product
+  const [calculations, setCalculations] = useState<Record<string, EVTariffCalculation>>({});
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Auto-save to localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('tariff-calculator-draft');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setProductInfo(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Failed to load saved draft:', e);
-      }
-    }
-  }, []);
-
+  // Auto-save EV products
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem('tariff-calculator-draft', JSON.stringify(productInfo));
+      localStorage.setItem('ev-calculator-draft', JSON.stringify(evProducts));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [productInfo]);
+  }, [evProducts]);
 
   // Validation logic
   const validateForm = useCallback((): Record<string, string> => {
@@ -470,14 +514,213 @@ export function Calculator() {
   const exportCalculation = () => {
     if (calculation) {
       const dataStr = JSON.stringify(calculation, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tariff-calculation-${calculation.id}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+      const exportFileDefaultName = `tariff-calculation-${calculation.id}.json`;
+
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
     }
+  };
+
+  // EV Product Management
+  const addProduct = () => {
+    const newProduct: EVProduct = {
+      id: `ev_${Date.now()}`,
+      description: '',
+      hsCode: '8703.80.10',
+      evType: 'BEV',
+      batteryCapacity: 0,
+      range: 0,
+      manufacturer: '',
+      model: '',
+      year: new Date().getFullYear(),
+      quantity: 1,
+      unitValue: 0,
+      currency: settings.currency,
+      originCountry: '',
+      destinationCountry: '',
+      shipmentDate: new Date().toISOString().split('T')[0],
+      certificates: []
+    };
+    setEvProducts(prev => [...prev, newProduct]);
+  };
+
+  const removeProduct = (id: string) => {
+    setEvProducts(prev => prev.filter(p => p.id !== id));
+    setCalculations(prev => {
+      const newCalcs = { ...prev };
+      delete newCalcs[id];
+      return newCalcs;
+    });
+  };
+
+  const updateProduct = (id: string, field: keyof EVProduct, value: any) => {
+    setEvProducts(prev => prev.map(p =>
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+
+    // Clear calculation for this product when data changes
+    if (calculations[id]) {
+      setCalculations(prev => {
+        const newCalcs = { ...prev };
+        delete newCalcs[id];
+        return newCalcs;
+      });
+    }
+  };
+
+  // Calculate single EV
+  const calculateSingle = async (productId: string) => {
+    const product = evProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    setIsCalculating(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const baseValue = product.unitValue * product.quantity;
+      const tariffRate = getEVTariffRate(product);
+      const tariffAmount = baseValue * tariffRate;
+      const evIncentive = getEVIncentive(product);
+      const carbonTax = getCarbonTax(product);
+      const vat = (baseValue + tariffAmount) * 0.20; // 20% VAT
+      const processingFee = Math.min(baseValue * 0.005, 500);
+
+      const totalCost = baseValue + tariffAmount - evIncentive + carbonTax + vat + processingFee;
+
+      const calculation: EVTariffCalculation = {
+        id: `calc_${productId}_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        product,
+        results: {
+          baseValue,
+          tariffRate,
+          tariffAmount,
+          evIncentive,
+          carbonTax,
+          vat,
+          processingFee,
+          totalCost,
+          effectiveRate: ((totalCost - baseValue) / baseValue),
+          breakdown: [
+            {
+              type: 'Import Duty',
+              rate: tariffRate,
+              amount: tariffAmount,
+              description: `${product.evType} tariff rate`
+            },
+            {
+              type: 'EV Incentive',
+              rate: evIncentive / baseValue,
+              amount: -evIncentive,
+              description: 'Green vehicle incentive'
+            },
+            {
+              type: 'Carbon Tax',
+              rate: carbonTax / baseValue,
+              amount: carbonTax,
+              description: 'Environmental impact tax'
+            },
+            {
+              type: 'VAT',
+              rate: 0.20,
+              amount: vat,
+              description: 'Value Added Tax'
+            }
+          ],
+          appliedRules: [
+            {
+              ruleId: `EV-${product.hsCode}-2024`,
+              description: `Electric vehicle classification for ${product.evType}`,
+              source: 'EV Tariff Schedule',
+              tradeAgreement: product.originCountry === 'MX' ? 'USMCA' : undefined
+            }
+          ],
+          alternativeRoutes: []
+        }
+      };
+
+      setCalculations(prev => ({ ...prev, [productId]: calculation }));
+
+    } catch (error) {
+      console.error('Calculation failed:', error);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // Calculate all EVs
+  const calculateAll = async () => {
+    setIsCalculating(true);
+
+    for (const product of evProducts) {
+      if (product.description && product.unitValue && product.originCountry && product.destinationCountry) {
+        await calculateSingle(product.id);
+      }
+    }
+
+    setIsCalculating(false);
+  };
+
+  // EV-specific tariff logic
+  const getEVTariffRate = (product: EVProduct): number => {
+    // Simplified EV tariff logic
+    const baseRates = {
+      'BEV': 0.10,  // 10% for Battery Electric
+      'PHEV': 0.12, // 12% for Plug-in Hybrid
+      'HEV': 0.15,  // 15% for Hybrid
+      'FCEV': 0.08  // 8% for Fuel Cell
+    };
+
+    let rate = baseRates[product.evType];
+
+    // Trade agreement adjustments
+    if (product.originCountry === 'MX' || product.originCountry === 'CA') {
+      rate *= 0.7; // 30% reduction for USMCA
+    }
+
+    // Battery capacity incentives
+    if (product.batteryCapacity > 75) {
+      rate *= 0.9; // 10% reduction for large batteries
+    }
+
+    return rate;
+  };
+
+  const getEVIncentive = (product: EVProduct): number => {
+    // EV incentives based on type and battery capacity
+    const baseIncentives = {
+      'BEV': 2500,
+      'PHEV': 1500,
+      'HEV': 500,
+      'FCEV': 3000
+    };
+
+    let incentive = baseIncentives[product.evType];
+
+    // Battery capacity bonus
+    if (product.batteryCapacity > 50) {
+      incentive += 1000;
+    }
+
+    return incentive * product.quantity;
+  };
+
+  const getCarbonTax = (product: EVProduct): number => {
+    // Carbon tax (lower for EVs)
+    const carbonRates = {
+      'BEV': 0,     // No carbon tax for pure electric
+      'PHEV': 200,  // Low carbon tax for plug-in hybrid
+      'HEV': 500,   // Medium carbon tax for hybrid
+      'FCEV': 0     // No carbon tax for fuel cell
+    };
+
+    return carbonRates[product.evType] * product.quantity;
   };
 
   return (
@@ -491,11 +734,11 @@ export function Calculator() {
       >
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <CalculatorIcon className="w-8 h-8 text-brand-600" />
-            Professional Tariff Calculator
+            <Zap className="w-8 h-8 text-brand-600" />
+            EV Tariff Calculator
           </h1>
           <p className="text-muted-foreground">
-            Industry-standard import duty and tax calculations with compliance insights
+            Professional import duty calculations for Electric Vehicles with EV-specific incentives and classifications
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -561,842 +804,262 @@ export function Calculator() {
         >
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Product & Shipment Details
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={showAdvanced}
-                    onCheckedChange={setShowAdvanced}
-                  />
-                  <span className="text-sm text-muted-foreground">Advanced</span>
-                </div>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                EV Tariff Calculator
               </CardTitle>
               <CardDescription>
-                Enter comprehensive product and shipment information for accurate calculations
+                Calculate import tariffs for electric vehicles with industry-specific classifications
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="classification">Classification</TabsTrigger>
-                  <TabsTrigger value="logistics">Logistics</TabsTrigger>
-                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                </TabsList>
-
-                {/* Basic Information Tab */}
-                <TabsContent value="basic" className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Description *</label>
-                      <Input
-                        placeholder="e.g., Tesla Model Y Long Range Electric Vehicle"
-                        value={productInfo.description}
-                        onChange={(e) => updateProductInfo('description', e.target.value)}
-                        className={validationErrors.description ? 'border-red-500' : ''}
-                      />
-                      {validationErrors.description && (
-                        <p className="text-sm text-red-600">{validationErrors.description}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Quantity *</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="1"
-                          value={productInfo.quantity || ''}
-                          onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
-                          className={validationErrors.quantity ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Unit Value *</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="45000.00"
-                          value={productInfo.unitValue || ''}
-                          onChange={(e) => updateProductInfo('unitValue', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.unitValue ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Currency</label>
-                        <select
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                          value={productInfo.currency}
-                          onChange={(e) => updateProductInfo('currency', e.target.value)}
-                        >
-                          <option value="USD">USD - US Dollar</option>
-                          <option value="EUR">EUR - Euro</option>
-                          <option value="GBP">GBP - British Pound</option>
-                          <option value="JPY">JPY - Japanese Yen</option>
-                          <option value="CAD">CAD - Canadian Dollar</option>
-                          <option value="AUD">AUD - Australian Dollar</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Origin Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select origin country"
-                          value={productInfo.originCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('originCountry', String(single));
-                          }}
-                          className={validationErrors.originCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Destination Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select destination country"
-                          value={productInfo.destinationCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('destinationCountry', String(single));
-                          }}
-                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Shipment Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={productInfo.shipmentDate}
-                          onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Classification Tab */}
-                <TabsContent value="classification" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">HS Code *</label>
-                      <div className="relative">
-                        <Input
-                          placeholder="e.g., 8703.80.10"
-                          value={productInfo.hsCode}
-                          onChange={(e) => {
-                            updateProductInfo('hsCode', e.target.value);
-                            searchHSCode(e.target.value);
-                          }}
-                          className={validationErrors.hsCode ? 'border-red-500' : ''}
-                        />
-                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      </div>
-                      {validationErrors.hsCode && (
-                        <p className="text-sm text-red-600">{validationErrors.hsCode}</p>
-                      )}
-                    </div>
-
-                    {/* HS Code Suggestions */}
-                    {hsCodeSuggestions.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Suggested Classifications</label>
-                        <div className="space-y-2">
-                          {hsCodeSuggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => {
-                                updateProductInfo('hsCode', suggestion.code);
-                                updateProductInfo('hsCodeDescription', suggestion.description);
-                                updateProductInfo('category', suggestion.category);
-                                setHsCodeSuggestions([]);
-                              }}
-                              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              {/* EV Tariff Calculation Table */}
+              <div className="space-y-6">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">EV Model</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Type</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">HS Code</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Battery (kWh)</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Range (km)</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Qty</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Unit Value</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Origin</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Destination</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Tariff Rate</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Total Cost</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evProducts.map((product, index) => (
+                        <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              placeholder="Tesla Model Y"
+                              value={product.description}
+                              onChange={(e) => updateProduct(product.id, 'description', e.target.value)}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <select
+                              className="w-full px-2 py-1 border-0 bg-transparent text-sm"
+                              value={product.evType}
+                              onChange={(e) => updateProduct(product.id, 'evType', e.target.value)}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="font-medium">{suggestion.code}</div>
-                                  <div className="text-sm text-muted-foreground">{suggestion.description}</div>
-                                  <div className="text-xs text-muted-foreground">{suggestion.category}</div>
-                                </div>
-                                <Badge variant="secondary">
-                                  {Math.round(suggestion.confidence * 100)}% match
-                                </Badge>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">HS Code Description</label>
-                      <Input
-                        placeholder="Auto-filled from HS code lookup"
-                        value={productInfo.hsCodeDescription}
-                        onChange={(e) => updateProductInfo('hsCodeDescription', e.target.value)}
-                        disabled
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Category</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                        value={productInfo.category}
-                        onChange={(e) => updateProductInfo('category', e.target.value)}
-                      >
-                        <option value="">Select category</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Automotive">Automotive</option>
-                        <option value="Textiles">Textiles</option>
-                        <option value="Machinery">Machinery</option>
-                        <option value="Chemicals">Chemicals</option>
-                        <option value="Food & Beverages">Food & Beverages</option>
-                      </select>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Logistics Tab */}
-                <TabsContent value="logistics" className="space-y-4">
-                  {showAdvanced && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Weight</label>
-                          <div className="flex gap-2">
+                              <option value="BEV">BEV</option>
+                              <option value="PHEV">PHEV</option>
+                              <option value="HEV">HEV</option>
+                              <option value="FCEV">FCEV</option>
+                            </select>
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <select
+                              className="w-full px-2 py-1 border-0 bg-transparent text-sm"
+                              value={product.hsCode}
+                              onChange={(e) => updateProduct(product.id, 'hsCode', e.target.value)}
+                            >
+                              <option value="8703.80.10">8703.80.10 - BEV</option>
+                              <option value="8703.80.20">8703.80.20 - PHEV</option>
+                              <option value="8703.80.30">8703.80.30 - HEV</option>
+                              <option value="8703.80.40">8703.80.40 - FCEV</option>
+                            </select>
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
                             <Input
                               type="number"
-                              min="0"
-                              step="0.1"
-                              placeholder="1500"
-                              value={productInfo.weight || ''}
-                              onChange={(e) => updateProductInfo('weight', parseFloat(e.target.value) || 0)}
+                              placeholder="75"
+                              value={product.batteryCapacity || ''}
+                              onChange={(e) => updateProduct(product.id, 'batteryCapacity', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-20"
                             />
-                            <select
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                              value={productInfo.weightUnit}
-                              onChange={(e) => updateProductInfo('weightUnit', e.target.value)}
-                            >
-                              <option value="kg">kg</option>
-                              <option value="lbs">lbs</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Incoterms</label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                            value={productInfo.incoterms}
-                            onChange={(e) => updateProductInfo('incoterms', e.target.value)}
-                          >
-                            <option value="CIF">CIF - Cost, Insurance & Freight</option>
-                            <option value="FOB">FOB - Free on Board</option>
-                            <option value="EXW">EXW - Ex Works</option>
-                            <option value="DDP">DDP - Delivered Duty Paid</option>
-                            <option value="DDU">DDU - Delivered Duty Unpaid</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Dimensions (L × W × H)</label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            placeholder="Length"
-                            value={productInfo.dimensions.length || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              length: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Width"
-                            value={productInfo.dimensions.width || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              width: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Height"
-                            value={productInfo.dimensions.height || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              height: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <select
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                            value={productInfo.dimensions.unit}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              unit: e.target.value as 'cm' | 'in'
-                            })}
-                          >
-                            <option value="cm">cm</option>
-                            <option value="in">in</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Compliance Tab */}
-                <TabsContent value="compliance" className="space-y-4">
-                  {showAdvanced && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Certificates & Licenses</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            'Certificate of Origin',
-                            'CE Marking',
-                            'FDA Approval',
-                            'FCC Certification',
-                            'ISO Certificate',
-                            'Safety Certificate'
-                          ].map((cert) => (
-                            <label key={cert} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={productInfo.certificates.includes(cert)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    updateProductInfo('certificates', [...productInfo.certificates, cert]);
-                                  } else {
-                                    updateProductInfo('certificates', productInfo.certificates.filter(c => c !== cert));
-                                  }
-                                }}
-                                className="rounded"
-                              />
-                              <span className="text-sm">{cert}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Special Conditions</label>
-                        <div className="grid grid-cols-1 gap-2">
-                          {[
-                            'Temporary Import',
-                            'Re-export',
-                            'Duty Drawback',
-                            'Bonded Warehouse',
-                            'Free Trade Zone'
-                          ].map((condition) => (
-                            <label key={condition} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={productInfo.specialConditions.includes(condition)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    updateProductInfo('specialConditions', [...productInfo.specialConditions, condition]);
-                                  } else {
-                                    updateProductInfo('specialConditions', productInfo.specialConditions.filter(c => c !== condition));
-                                  }
-                                }}
-                                className="rounded"
-                              />
-                              <span className="text-sm">{condition}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-
-              {/* Calculate Button */}
-              <div className="pt-6 border-t">
-                <Button
-                  onClick={handleCalculate}
-                  disabled={Object.keys(validateForm()).length > 0 || isCalculating}
-                  className="w-full"
-                  variant="gradient"
-                  size="lg"
-                >
-                  {isCalculating ? (
-                    <div className="flex items-center space-x-2">
-                      <RefreshCw className="w-5 h-5 animate-spin" />
-                      <span>Calculating Comprehensive Tariff Analysis...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-5 h-5" />
-                      <span>Calculate Professional Tariff Analysis</span>
-                    </div>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Enhanced Results Panel */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="space-y-6"
-        >
-          {/* Main Results Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  Calculation Results
-                </div>
-                {calculation && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(calculation.id)}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Badge variant="outline" className="text-xs">
-                      ID: {calculation.id.slice(-6)}
-                    </Badge>
-                  </div>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Professional tariff analysis with compliance insights
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!calculation ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <CalculatorIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <h3 className="text-lg font-medium mb-2">Ready for Calculation</h3>
-                  <p className="text-sm">Complete the product information to generate a professional tariff analysis</p>
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  {/* Cost Summary */}
-                  <div className="p-6 bg-gradient-to-br from-brand-50 via-brand-100 to-brand-50 dark:from-brand-900/20 dark:via-brand-800/30 dark:to-brand-900/20 rounded-xl border border-brand-200 dark:border-brand-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-brand-700 dark:text-brand-300">
-                        Total Import Cost
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          Effective Rate: {formatPercentage(calculation.results.effectiveRate)}
-                        </Badge>
-                        <Badge
-                          variant={calculation.results.tariffRate < 0.1 ? 'success' : calculation.results.tariffRate < 0.2 ? 'warning' : 'destructive'}
-                        >
-                          {formatPercentage(calculation.results.tariffRate)} Duty
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="text-3xl font-bold text-brand-600 dark:text-brand-400 mb-4">
-                      {formatCurrency(calculation.results.totalCost, productInfo.currency)}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dutiable Value:</span>
-                          <span className="font-medium">{formatCurrency(calculation.results.dutiableValue, productInfo.currency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Import Duty:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.tariffAmount, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">VAT/GST:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.taxes.vat, productInfo.currency)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Processing Fees:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.fees.processing, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Other Fees:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.fees.inspection + calculation.results.fees.other, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2">
-                          <span className="font-medium">Total Charges:</span>
-                          <span className="font-bold text-orange-600">
-                            {formatCurrency(calculation.results.totalCost - calculation.results.dutiableValue, productInfo.currency)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Warnings & Alerts */}
-                  {calculation.results.warnings.length > 0 && (
-                    <div className="space-y-2">
-                      {calculation.results.warnings.map((warning, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border ${warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
-                              warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                                'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                            }`}
-                        >
-                          <div className="flex items-start gap-2">
-                            {warning.type === 'error' ? (
-                              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
-                            ) : warning.type === 'warning' ? (
-                              <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              placeholder="500"
+                              value={product.range || ''}
+                              onChange={(e) => updateProduct(product.id, 'range', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-20"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={product.quantity || ''}
+                              onChange={(e) => updateProduct(product.id, 'quantity', parseInt(e.target.value) || 1)}
+                              className="border-0 bg-transparent w-16"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              placeholder="45000"
+                              value={product.unitValue || ''}
+                              onChange={(e) => updateProduct(product.id, 'unitValue', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-24"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <CountrySelect
+                              placeholder="Origin"
+                              value={product.originCountry}
+                              onChange={(code) => {
+                                const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                                updateProduct(product.id, 'originCountry', String(single));
+                              }}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <CountrySelect
+                              placeholder="Destination"
+                              value={product.destinationCountry}
+                              onChange={(code) => {
+                                const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                                updateProduct(product.id, 'destinationCountry', String(single));
+                              }}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-center">
+                            {calculations[product.id] ? (
+                              <Badge variant="secondary">
+                                {formatPercentage(calculations[product.id].results.tariffRate)}
+                              </Badge>
                             ) : (
-                              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <span className="text-muted-foreground text-sm">-</span>
                             )}
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{warning.message}</p>
-                              {warning.recommendation && (
-                                <p className="text-xs text-muted-foreground mt-1">{warning.recommendation}</p>
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-center">
+                            {calculations[product.id] ? (
+                              <span className="font-medium">
+                                {formatCurrency(calculations[product.id].results.totalCost, product.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => calculateSingle(product.id)}
+                                disabled={!product.description || !product.unitValue || !product.originCountry || !product.destinationCountry}
+                              >
+                                <CalculatorIcon className="w-3 h-3" />
+                              </Button>
+                              {evProducts.length > 1 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeProduct(product.id)}
+                                >
+                                  ×
+                                </Button>
                               )}
                             </div>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
                       ))}
-                    </div>
-                  )}
+                    </tbody>
+                  </table>
+                </div>
 
-                  {/* Quick Actions */}
+                {/* Table Actions */}
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    onClick={addProduct}
+                  >
+                    + Add EV Model
+                  </Button>
+
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={saveCalculation}>
-                      <Bookmark className="w-4 h-4 mr-1" />
-                      Save
+                    <Button
+                      variant="outline"
+                      onClick={calculateAll}
+                      disabled={evProducts.length === 0 || isCalculating}
+                    >
+                      Calculate All
                     </Button>
-                    <Button variant="outline" size="sm" onClick={exportCalculation}>
-                      <Download className="w-4 h-4 mr-1" />
-                      Export
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
-                      <BarChart3 className="w-4 h-4 mr-1" />
-                      Compare
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Detailed Breakdown Card */}
-          {calculation && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Percent className="w-5 h-5" />
-                  Detailed Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="breakdown" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="breakdown">Charges</TabsTrigger>
-                    <TabsTrigger value="rules">Rules</TabsTrigger>
-                    <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="breakdown" className="space-y-3">
-                    {calculation.results.breakdown.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-medium">{item.type}</div>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${item.category === 'duty' ? 'border-orange-200 text-orange-700' :
-                                  item.category === 'tax' ? 'border-blue-200 text-blue-700' :
-                                    'border-gray-200 text-gray-700'
-                                }`}
-                            >
-                              {item.category}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {item.rate > 0 ? `${formatPercentage(item.rate)} rate` : 'Fixed fee'}
-                          </div>
+                    <Button
+                      variant="gradient"
+                      onClick={calculateAll}
+                      disabled={evProducts.length === 0 || isCalculating}
+                    >
+                      {isCalculating ? (
+                        <div className="flex items-center space-x-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Calculating...</span>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {formatCurrency(item.amount, productInfo.currency)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="rules" className="space-y-3">
-                    {calculation.results.appliedRules.map((rule, index) => (
-                      <div key={index} className="p-3 rounded-lg border">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <div className="text-sm font-medium">{rule.ruleId}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {rule.tradeAgreement && (
-                              <Badge variant="success" className="text-xs">
-                                {rule.tradeAgreement}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(rule.confidence * 100)}% confidence
-                            </Badge>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">{rule.description}</p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Source: {rule.source}</span>
-                          <span>Valid: {formatDate(rule.validFrom)} - {formatDate(rule.validTo)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="compliance" className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                          <FileText className="w-4 h-4" />
-                          Required Documents
-                        </h4>
-                        <div className="space-y-1">
-                          {calculation.results.compliance.requiredDocuments.map((doc, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <CheckCircle className="w-3 h-3 text-green-600" />
-                              <span>{doc}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                          <Shield className="w-4 h-4" />
-                          Certificates Required
-                        </h4>
-                        <div className="space-y-1">
-                          {calculation.results.compliance.certificates.map((cert, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <CheckCircle className="w-3 h-3 text-blue-600" />
-                              <span>{cert}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {calculation.results.compliance.restrictions.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                            <AlertTriangle className="w-4 h-4" />
-                            Import Restrictions
-                          </h4>
-                          <div className="space-y-1">
-                            {calculation.results.compliance.restrictions.map((restriction, index) => (
-                              <div key={index} className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-300">
-                                <AlertTriangle className="w-3 h-3" />
-                                <span>{restriction}</span>
-                              </div>
-                            ))}
-                          </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Zap className="w-4 h-4" />
+                          <span>Calculate EV Tariffs</span>
                         </div>
                       )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Enhanced Analytics Section */}
-      {calculation && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="space-y-6"
-        >
-          {/* Route Comparison */}
-          {showComparison && calculation.results.alternativeRoutes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
-                  Alternative Trade Routes
-                </CardTitle>
-                <CardDescription>
-                  Compare costs and savings across different routing options
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {calculation.results.alternativeRoutes.map((route, index) => (
-                    <div key={index} className="p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <CountryFlag countryCode={route.country} size="md" />
-                          <div>
-                            <div className="font-medium">{route.countryName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {route.tradeAgreement && `${route.tradeAgreement} Member`}
-                              {route.transitTime && ` • ${route.transitTime} days transit`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">
-                            {formatCurrency(route.totalCost, productInfo.currency)}
-                          </div>
-                          {route.savings > 0 && (
-                            <div className="text-sm text-green-600 dark:text-green-400">
-                              Save {formatCurrency(route.savings, productInfo.currency)} ({route.savingsPercentage.toFixed(1)}%)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Tariff Rate:</span>
-                          <div className="font-medium">{formatPercentage(route.tariffRate)}</div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Cost:</span>
-                          <div className="font-medium">{formatCurrency(route.totalCost, productInfo.currency)}</div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Savings:</span>
-                          <div className={`font-medium ${route.savings > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                            {route.savings > 0 ? `${formatCurrency(route.savings, productInfo.currency)}` : 'None'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Charts Grid */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TariffBreakdownChart data={{
-              ...calculation.results,
-              additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other,
-              breakdown: calculation.results.breakdown.map(item => ({
-                type: item.type,
-                rate: item.rate,
-                amount: item.amount,
-                description: item.description
-              }))
-            }} />
-            <HistoricalRatesChart
-              hsCode={productInfo.hsCode}
-              originCountry={productInfo.originCountry}
-              destinationCountry={productInfo.destinationCountry}
-            />
-          </div>
-
-          {/* Additional Analysis */}
-          {showComparison && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ComparisonChart
-                baseResult={calculation.results}
-                alternatives={calculation.results.alternativeRoutes}
-              />
-              <CostAnalysisChart data={{
-                ...calculation.results,
-                additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other
-              }} />
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* Calculation History */}
-      {calculationHistory.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Recent Calculations
-              </CardTitle>
-              <CardDescription>
-                Your calculation history for quick reference
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {calculationHistory.slice(0, 5).map((calc, index) => (
-                  <div key={calc.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{calc.productInfo.description}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {calc.productInfo.hsCode} •
-                        <CountryFlag countryCode={calc.productInfo.originCountry} size="sm" /> →
-                        <CountryFlag countryCode={calc.productInfo.destinationCountry} size="sm" />
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(calc.timestamp)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {formatCurrency(calc.results.totalCost, calc.productInfo.currency)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatPercentage(calc.results.effectiveRate)} effective
-                      </div>
-                    </div>
+                    </Button>
                   </div>
-                ))}
+                </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
-      )}
+
+        {/* Simple Results Summary */}
+        {Object.keys(calculations).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  EV Fleet Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const totalCost = Object.values(calculations).reduce((sum, calc) => sum + calc.results.totalCost, 0);
+                  const totalBaseValue = Object.values(calculations).reduce((sum, calc) => sum + calc.results.baseValue, 0);
+                  const totalIncentives = Object.values(calculations).reduce((sum, calc) => sum + calc.results.evIncentive, 0);
+
+                  return (
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {formatCurrency(totalBaseValue, settings.currency)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Fleet Value</div>
+                      </div>
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {formatCurrency(totalIncentives, settings.currency)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">EV Incentives</div>
+                      </div>
+                      <div className="p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-brand-600 dark:text-brand-400">
+                          {formatCurrency(totalCost, settings.currency)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Cost</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }
