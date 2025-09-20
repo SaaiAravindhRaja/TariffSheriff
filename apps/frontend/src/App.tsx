@@ -16,6 +16,7 @@ import { About } from '@/pages/About'
 import { Privacy } from '@/pages/Privacy'
 import { Team } from '@/pages/Team'
 import { Contact } from '@/pages/Contact'
+import { CountryDashboard } from '@/pages/CountryDashboard'
 import '@/styles/globals.css'
 import Footer from '@/components/layout/Footer'
 
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/country/:countryCode" element={<CountryDashboard />} />
               </Routes>
             </main>
           </div>
