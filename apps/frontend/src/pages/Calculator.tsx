@@ -480,7 +480,7 @@ export function Calculator() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -491,39 +491,63 @@ export function Calculator() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <CalculatorIcon className="w-8 h-8 text-brand-600" />
-            Tariff Calculator
+            Professional Tariff Calculator
           </h1>
           <p className="text-muted-foreground">
-            Calculate precise import tariffs and fees for your shipments
+            Industry-standard import duty and tax calculations with compliance insights
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
             <Filter className="w-4 h-4 mr-2" />
-            Advanced Filters
+            {showAdvanced ? 'Basic' : 'Advanced'} Mode
           </Button>
-          {result && (
+          {calculation && (
             <>
-              <Button variant="outline">
+              <Button variant="outline" onClick={exportCalculation}>
                 <Download className="w-4 h-4 mr-2" />
-                Export PDF
+                Export
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={saveCalculation}>
                 <Save className="w-4 h-4 mr-2" />
-                Save Calculation
+                Save
               </Button>
             </>
           )}
           <Button 
             variant="gradient"
             onClick={() => setShowComparison(!showComparison)}
-            disabled={!result}
+            disabled={!calculation}
           >
             <TrendingUp className="w-4 h-4 mr-2" />
-            Compare Routes
+            Route Analysis
           </Button>
         </div>
       </motion.div>
+
+      {/* Validation Errors */}
+      {Object.keys(validationErrors).length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+        >
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-red-800 dark:text-red-200">Please correct the following errors:</h4>
+              <ul className="mt-2 text-sm text-red-700 dark:text-red-300 space-y-1">
+                {Object.entries(validationErrors).map(([field, error]) => (
+                  <li key={field}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Main Content */}
       <div className="grid gap-6 lg:grid-cols-3">
