@@ -13,6 +13,7 @@ import {
   Percent,
   FileText,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   Clock,
   TrendingUp,
@@ -1247,38 +1248,157 @@ export function Calculator() {
         </motion.div>
       </div>
 
-      {/* Charts and Analytics */}
-      {result && (
+      {/* Enhanced Analytics Section */}
+      {calculation && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="grid gap-6 lg:grid-cols-2"
+          className="space-y-6"
         >
-          <TariffBreakdownChart data={result} />
-          <HistoricalRatesChart 
-            hsCode={formData.hsCode} 
-            originCountry={formData.originCountry}
-            destinationCountry={formData.destinationCountry}
-          />
+          {/* Route Comparison */}
+          {showComparison && calculation.results.alternativeRoutes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  Alternative Trade Routes
+                </CardTitle>
+                <CardDescription>
+                  Compare costs and savings across different routing options
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {calculation.results.alternativeRoutes.map((route, index) => (
+                    <div key={index} className="p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <CountryFlag countryCode={route.country} size="md" />
+                          <div>
+                            <div className="font-medium">{route.countryName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {route.tradeAgreement && `${route.tradeAgreement} Member`}
+                              {route.transitTime && ` • ${route.transitTime} days transit`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">
+                            {formatCurrency(route.totalCost, productInfo.currency)}
+                          </div>
+                          {route.savings > 0 && (
+                            <div className="text-sm text-green-600 dark:text-green-400">
+                              Save {formatCurrency(route.savings, productInfo.currency)} ({route.savingsPercentage.toFixed(1)}%)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Tariff Rate:</span>
+                          <div className="font-medium">{formatPercentage(route.tariffRate)}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total Cost:</span>
+                          <div className="font-medium">{formatCurrency(route.totalCost, productInfo.currency)}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Savings:</span>
+                          <div className={`font-medium ${route.savings > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                            {route.savings > 0 ? `${formatCurrency(route.savings, productInfo.currency)}` : 'None'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Charts Grid */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <TariffBreakdownChart data={{
+              ...calculation.results,
+              additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other,
+              breakdown: calculation.results.breakdown.map(item => ({
+                type: item.type,
+                rate: item.rate,
+                amount: item.amount,
+                description: item.description
+              }))
+            }} />
+            <HistoricalRatesChart 
+              hsCode={productInfo.hsCode} 
+              originCountry={productInfo.originCountry}
+              destinationCountry={productInfo.destinationCountry}
+            />
+          </div>
+
+          {/* Additional Analysis */}
+          {showComparison && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ComparisonChart 
+                baseResult={calculation.results}
+                alternatives={calculation.results.alternativeRoutes}
+              />
+              <CostAnalysisChart data={{
+                ...calculation.results,
+                additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other
+              }} />
+            </div>
+          )}
         </motion.div>
       )}
 
-      {/* Comparison and Cost Analysis */}
-      {result && showComparison && (
+      {/* Calculation History */}
+      {calculationHistory.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="grid gap-6 lg:grid-cols-2"
+          transition={{ duration: 0.5, delay: 0.7 }}
         >
-          <ComparisonChart 
-            baseResult={result}
-            alternatives={result.alternativeRoutes || []}
-          />
-          <CostAnalysisChart data={result} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Recent Calculations
+              </CardTitle>
+              <CardDescription>
+                Your calculation history for quick reference
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {calculationHistory.slice(0, 5).map((calc, index) => (
+                  <div key={calc.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{calc.productInfo.description}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {calc.productInfo.hsCode} • 
+                        <CountryFlag countryCode={calc.productInfo.originCountry} size="sm" /> → 
+                        <CountryFlag countryCode={calc.productInfo.destinationCountry} size="sm" />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(calc.timestamp)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {formatCurrency(calc.results.totalCost, calc.productInfo.currency)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatPercentage(calc.results.effectiveRate)} effective
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       )}
     </div>
-  )
+  );
 }
