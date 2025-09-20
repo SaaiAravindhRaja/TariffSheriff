@@ -5,14 +5,14 @@ import {
   Moon, 
   Sun, 
   User, 
-  Bell,
-  Search
+  Bell
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
-import { Input } from '@/components/ui/input'
+import { CountrySearch } from '@/components/search/CountrySearch'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
+import safeLocalStorage from '@/lib/safeLocalStorage'
 
 interface HeaderProps {
   className?: string
@@ -24,23 +24,30 @@ export function Header({ className }: HeaderProps) {
   const [profile, setProfile] = React.useState<{ name: string; role: string; avatar?: string } | null>(null)
 
   React.useEffect(() => {
-    const raw = typeof window !== 'undefined' && localStorage.getItem('app_profile')
+    const raw = safeLocalStorage.get<string>('app_profile')
     if (raw) {
       try {
-        setProfile(JSON.parse(raw))
+        setProfile(typeof raw === 'string' ? JSON.parse(raw) : raw)
       } catch (e) {}
     }
     const handler = () => {
-      const updated = localStorage.getItem('app_profile')
-      if (updated) setProfile(JSON.parse(updated))
+      const updated = safeLocalStorage.get<string>('app_profile')
+      if (updated) {
+        try { setProfile(typeof updated === 'string' ? JSON.parse(updated) : updated) } catch {}
+      }
     }
-    window.addEventListener('profile:updated', handler)
-    return () => window.removeEventListener('profile:updated', handler)
+    try {
+      if (typeof window !== 'undefined') window.addEventListener('profile:updated', handler)
+    } catch {}
+    return () => {
+      try { if (typeof window !== 'undefined') window.removeEventListener('profile:updated', handler) } catch {}
+    }
   }, [])
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false)
+
 
   return (
     <motion.header
+      role="banner"
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -79,26 +86,18 @@ export function Header({ className }: HeaderProps) {
           </div>
         </motion.div>
 
-        {/* Search Bar */}
+        {/* Country Search */}
         <div className="flex-1 max-w-md mx-8">
-          <div className="relative">
-            <Search className={cn(
-              "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 transition-colors",
-              isSearchFocused ? "text-brand-500" : "text-muted-foreground"
-            )} />
-            <Input
-              placeholder="Search tariffs, countries, or HS codes..."
-              className="pl-10 pr-4 bg-muted/50 border-0 focus:bg-background transition-all duration-200"
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-            />
-          </div>
+          <CountrySearch 
+            placeholder="Search countries for trade data..."
+            className="w-full"
+          />
         </div>
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
             <Bell className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger-500 rounded-full text-xs flex items-center justify-center">
               <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
@@ -122,14 +121,14 @@ export function Header({ className }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          <button onClick={() => navigate('/profile')} aria-haspopup="true" aria-expanded="false" className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
+          <button onClick={() => navigate('/profile')} aria-haspopup="true" aria-expanded="false" aria-label={`Open profile for ${profile?.name ?? 'user'}`} className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
             <div className="flex flex-col text-right">
               <span className="text-sm font-medium">{profile?.name || 'John Doe'}</span>
               <span className="text-xs text-muted-foreground">{profile?.role || 'Trade Analyst'}</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
               {profile?.avatar ? (
-                <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+                <img src={profile.avatar} alt={profile?.name ? `${profile.name} avatar` : 'User avatar'} className="w-full h-full object-cover" />
               ) : (
                 <User className="w-4 h-4 text-white" />
               )}

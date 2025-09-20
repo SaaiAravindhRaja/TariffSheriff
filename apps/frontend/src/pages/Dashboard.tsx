@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   TrendingUp,
   TrendingDown,
@@ -64,6 +65,7 @@ const topCountries = [
 ]
 
 export function Dashboard() {
+  const navigate = useNavigate();
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
@@ -174,11 +176,15 @@ export function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {topCountries.map((country, index) => (
-                <div key={country.code} className="flex items-center justify-between">
+              {topCountries.map((country) => (
+                <button
+                  key={country.code}
+                  onClick={() => navigate(`/country/${country.code.toLowerCase()}`)}
+                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
                   <div className="flex items-center space-x-3">
                     <div className="text-2xl">{getCountryFlag(country.code)}</div>
-                    <div>
+                    <div className="text-left">
                       <p className="text-sm font-medium">{country.name}</p>
                       <p className="text-xs text-muted-foreground">{country.volume}</p>
                     </div>
@@ -189,7 +195,7 @@ export function Dashboard() {
                   >
                     {country.change}
                   </Badge>
-                </div>
+                </button>
               ))}
             </CardContent>
           </Card>

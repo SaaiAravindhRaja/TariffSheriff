@@ -5,10 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+import { appConfig } from "@/config/app"
+
 export function formatCurrency(
   amount: number,
-  currency: string = "USD",
-  locale: string = "en-US"
+  currency: string = appConfig.i18n.defaultCurrency,
+  locale: string = appConfig.i18n.defaultLocale
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -20,7 +22,11 @@ export function formatPercentage(value: number, decimals: number = 2): string {
   return `${(value * 100).toFixed(decimals)}%`
 }
 
-export function formatDate(date: Date | string, format: string = "short"): string {
+export function formatDate(
+  date: Date | string, 
+  format: string = "short",
+  locale: string = appConfig.i18n.defaultLocale
+): string {
   const dateObj = typeof date === "string" ? new Date(date) : date
 
   const shortOptions: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }
@@ -42,10 +48,10 @@ export function formatDate(date: Date | string, format: string = "short"): strin
 
   // If only a time format is requested, use toLocaleTimeString
   if (format === "time") {
-    return dateObj.toLocaleTimeString("en-US", options)
+    return dateObj.toLocaleTimeString(locale, options)
   }
 
-  return dateObj.toLocaleDateString("en-US", options)
+  return dateObj.toLocaleDateString(locale, options)
 }
 
 export function debounce<T extends (...args: any[]) => any>(
