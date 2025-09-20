@@ -551,7 +551,7 @@ export function Calculator() {
 
       {/* Main Content */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Input Form */}
+        {/* Enhanced Input Form */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -560,130 +560,397 @@ export function Calculator() {
         >
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Product Information
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Product & Shipment Details
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showAdvanced}
+                    onCheckedChange={setShowAdvanced}
+                  />
+                  <span className="text-sm text-muted-foreground">Advanced</span>
+                </div>
               </CardTitle>
               <CardDescription>
-                Enter details about your product and shipment
+                Enter comprehensive product and shipment information for accurate calculations
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Product Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Product Description</label>
-                  <Input 
-                    placeholder="e.g., Tesla Model Y Electric Vehicle"
-                    value={formData.productDescription}
-                    onChange={(e) => handleInputChange('productDescription', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">HS Code</label>
-                  <div className="relative">
-                    <Input 
-                      placeholder="e.g., 8703.80.10"
-                      value={formData.hsCode}
-                      onChange={(e) => handleInputChange('hsCode', e.target.value)}
-                    />
-                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Quantity and Value */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Quantity</label>
-                  <Input 
-                    type="number" 
-                    placeholder="1"
-                    value={formData.quantity}
-                    onChange={(e) => handleInputChange('quantity', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Unit Value</label>
-                  <Input 
-                    type="number" 
-                    placeholder="45000"
-                    value={formData.unitValue}
-                    onChange={(e) => handleInputChange('unitValue', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Currency</label>
-                  <Input 
-                    placeholder="USD"
-                    value={formData.currency}
-                    onChange={(e) => handleInputChange('currency', e.target.value)}
-                  />
-                </div>
-              </div>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="classification">Classification</TabsTrigger>
+                  <TabsTrigger value="logistics">Logistics</TabsTrigger>
+                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                </TabsList>
 
-              {/* Countries and Date */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    Origin Country
-                  </label>
-                  <CountrySelect
-                    placeholder="Type to search (e.g., Saudi, Singapore)"
-                    value={formData.originCountry}
-                    onChange={(code) => {
-                      const single = Array.isArray(code) ? code[0] ?? '' : code ?? ''
-                      handleInputChange('originCountry', String(single))
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    Destination Country
-                  </label>
-                  <CountrySelect
-                    placeholder="Type to search (e.g., United, Spain)"
-                    value={formData.destinationCountry}
-                    onChange={(code) => {
-                      const single = Array.isArray(code) ? code[0] ?? '' : code ?? ''
-                      handleInputChange('destinationCountry', String(single))
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    Shipment Date
-                  </label>
-                  <Input 
-                    type="date"
-                    value={formData.shipmentDate}
-                    onChange={(e) => handleInputChange('shipmentDate', e.target.value)}
-                  />
-                </div>
-              </div>
+                {/* Basic Information Tab */}
+                <TabsContent value="basic" className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Product Description *</label>
+                      <Input 
+                        placeholder="e.g., Tesla Model Y Long Range Electric Vehicle"
+                        value={productInfo.description}
+                        onChange={(e) => updateProductInfo('description', e.target.value)}
+                        className={validationErrors.description ? 'border-red-500' : ''}
+                      />
+                      {validationErrors.description && (
+                        <p className="text-sm text-red-600">{validationErrors.description}</p>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Quantity *</label>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          placeholder="1"
+                          value={productInfo.quantity || ''}
+                          onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
+                          className={validationErrors.quantity ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Unit Value *</label>
+                        <Input 
+                          type="number" 
+                          min="0"
+                          step="0.01"
+                          placeholder="45000.00"
+                          value={productInfo.unitValue || ''}
+                          onChange={(e) => updateProductInfo('unitValue', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.unitValue ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Currency</label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                          value={productInfo.currency}
+                          onChange={(e) => updateProductInfo('currency', e.target.value)}
+                        >
+                          <option value="USD">USD - US Dollar</option>
+                          <option value="EUR">EUR - Euro</option>
+                          <option value="GBP">GBP - British Pound</option>
+                          <option value="JPY">JPY - Japanese Yen</option>
+                          <option value="CAD">CAD - Canadian Dollar</option>
+                          <option value="AUD">AUD - Australian Dollar</option>
+                        </select>
+                      </div>
+                    </div>
 
-              <Button 
-                onClick={handleCalculate}
-                disabled={!formData.productDescription || !formData.quantity || !formData.unitValue || isCalculating}
-                className="w-full" 
-                variant="gradient" 
-                size="lg"
-              >
-                {isCalculating ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Calculating Tariffs...</span>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Origin Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select origin country"
+                          value={productInfo.originCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('originCountry', String(single));
+                          }}
+                          className={validationErrors.originCountry ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Destination Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select destination country"
+                          value={productInfo.destinationCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('destinationCountry', String(single));
+                          }}
+                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Shipment Date
+                        </label>
+                        <Input 
+                          type="date"
+                          value={productInfo.shipmentDate}
+                          onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <CalculatorIcon className="w-5 h-5" />
-                    <span>Calculate Tariff</span>
+                </TabsContent>
+
+                {/* Classification Tab */}
+                <TabsContent value="classification" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">HS Code *</label>
+                      <div className="relative">
+                        <Input 
+                          placeholder="e.g., 8703.80.10"
+                          value={productInfo.hsCode}
+                          onChange={(e) => {
+                            updateProductInfo('hsCode', e.target.value);
+                            searchHSCode(e.target.value);
+                          }}
+                          className={validationErrors.hsCode ? 'border-red-500' : ''}
+                        />
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      </div>
+                      {validationErrors.hsCode && (
+                        <p className="text-sm text-red-600">{validationErrors.hsCode}</p>
+                      )}
+                    </div>
+
+                    {/* HS Code Suggestions */}
+                    {hsCodeSuggestions.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Suggested Classifications</label>
+                        <div className="space-y-2">
+                          {hsCodeSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                updateProductInfo('hsCode', suggestion.code);
+                                updateProductInfo('hsCodeDescription', suggestion.description);
+                                updateProductInfo('category', suggestion.category);
+                                setHsCodeSuggestions([]);
+                              }}
+                              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium">{suggestion.code}</div>
+                                  <div className="text-sm text-muted-foreground">{suggestion.description}</div>
+                                  <div className="text-xs text-muted-foreground">{suggestion.category}</div>
+                                </div>
+                                <Badge variant="secondary">
+                                  {Math.round(suggestion.confidence * 100)}% match
+                                </Badge>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">HS Code Description</label>
+                      <Input 
+                        placeholder="Auto-filled from HS code lookup"
+                        value={productInfo.hsCodeDescription}
+                        onChange={(e) => updateProductInfo('hsCodeDescription', e.target.value)}
+                        disabled
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Product Category</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                        value={productInfo.category}
+                        onChange={(e) => updateProductInfo('category', e.target.value)}
+                      >
+                        <option value="">Select category</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Automotive">Automotive</option>
+                        <option value="Textiles">Textiles</option>
+                        <option value="Machinery">Machinery</option>
+                        <option value="Chemicals">Chemicals</option>
+                        <option value="Food & Beverages">Food & Beverages</option>
+                      </select>
+                    </div>
                   </div>
-                )}
-              </Button>
+                </TabsContent>
+
+                {/* Logistics Tab */}
+                <TabsContent value="logistics" className="space-y-4">
+                  {showAdvanced && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Weight</label>
+                          <div className="flex gap-2">
+                            <Input 
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              placeholder="1500"
+                              value={productInfo.weight || ''}
+                              onChange={(e) => updateProductInfo('weight', parseFloat(e.target.value) || 0)}
+                            />
+                            <select
+                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                              value={productInfo.weightUnit}
+                              onChange={(e) => updateProductInfo('weightUnit', e.target.value)}
+                            >
+                              <option value="kg">kg</option>
+                              <option value="lbs">lbs</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Incoterms</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                            value={productInfo.incoterms}
+                            onChange={(e) => updateProductInfo('incoterms', e.target.value)}
+                          >
+                            <option value="CIF">CIF - Cost, Insurance & Freight</option>
+                            <option value="FOB">FOB - Free on Board</option>
+                            <option value="EXW">EXW - Ex Works</option>
+                            <option value="DDP">DDP - Delivered Duty Paid</option>
+                            <option value="DDU">DDU - Delivered Duty Unpaid</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Dimensions (L × W × H)</label>
+                        <div className="flex gap-2">
+                          <Input 
+                            type="number"
+                            placeholder="Length"
+                            value={productInfo.dimensions.length || ''}
+                            onChange={(e) => updateProductInfo('dimensions', {
+                              ...productInfo.dimensions,
+                              length: parseFloat(e.target.value) || 0
+                            })}
+                          />
+                          <Input 
+                            type="number"
+                            placeholder="Width"
+                            value={productInfo.dimensions.width || ''}
+                            onChange={(e) => updateProductInfo('dimensions', {
+                              ...productInfo.dimensions,
+                              width: parseFloat(e.target.value) || 0
+                            })}
+                          />
+                          <Input 
+                            type="number"
+                            placeholder="Height"
+                            value={productInfo.dimensions.height || ''}
+                            onChange={(e) => updateProductInfo('dimensions', {
+                              ...productInfo.dimensions,
+                              height: parseFloat(e.target.value) || 0
+                            })}
+                          />
+                          <select
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                            value={productInfo.dimensions.unit}
+                            onChange={(e) => updateProductInfo('dimensions', {
+                              ...productInfo.dimensions,
+                              unit: e.target.value as 'cm' | 'in'
+                            })}
+                          >
+                            <option value="cm">cm</option>
+                            <option value="in">in</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Compliance Tab */}
+                <TabsContent value="compliance" className="space-y-4">
+                  {showAdvanced && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Certificates & Licenses</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            'Certificate of Origin',
+                            'CE Marking',
+                            'FDA Approval',
+                            'FCC Certification',
+                            'ISO Certificate',
+                            'Safety Certificate'
+                          ].map((cert) => (
+                            <label key={cert} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={productInfo.certificates.includes(cert)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    updateProductInfo('certificates', [...productInfo.certificates, cert]);
+                                  } else {
+                                    updateProductInfo('certificates', productInfo.certificates.filter(c => c !== cert));
+                                  }
+                                }}
+                                className="rounded"
+                              />
+                              <span className="text-sm">{cert}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Special Conditions</label>
+                        <div className="grid grid-cols-1 gap-2">
+                          {[
+                            'Temporary Import',
+                            'Re-export',
+                            'Duty Drawback',
+                            'Bonded Warehouse',
+                            'Free Trade Zone'
+                          ].map((condition) => (
+                            <label key={condition} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={productInfo.specialConditions.includes(condition)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    updateProductInfo('specialConditions', [...productInfo.specialConditions, condition]);
+                                  } else {
+                                    updateProductInfo('specialConditions', productInfo.specialConditions.filter(c => c !== condition));
+                                  }
+                                }}
+                                className="rounded"
+                              />
+                              <span className="text-sm">{condition}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {/* Calculate Button */}
+              <div className="pt-6 border-t">
+                <Button 
+                  onClick={handleCalculate}
+                  disabled={Object.keys(validateForm()).length > 0 || isCalculating}
+                  className="w-full" 
+                  variant="gradient" 
+                  size="lg"
+                >
+                  {isCalculating ? (
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <span>Calculating Comprehensive Tariff Analysis...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Zap className="w-5 h-5" />
+                      <span>Calculate Professional Tariff Analysis</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
