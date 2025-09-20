@@ -16,6 +16,13 @@ export default defineConfig({
       origin: ['http://localhost:3000'],
       credentials: true,
     },
+    fs: {
+      strict: true,
+      allow: [
+        __dirname, // project root
+        path.resolve(__dirname, 'public'),
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

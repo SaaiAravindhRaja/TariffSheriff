@@ -1,10 +1,30 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, Sun, Moon } from 'lucide-react'
 
 export function Settings() {
+  const [theme, setTheme] = React.useState<'light' | 'dark'>('light')
+  const [email, setEmail] = React.useState('')
+  const [saved, setSaved] = React.useState(false)
+
+  React.useEffect(() => {
+    // Load from localStorage or API
+    const storedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
+    if (storedTheme) setTheme(storedTheme)
+    const storedEmail = localStorage.getItem('userEmail')
+    if (storedEmail) setEmail(storedEmail)
+  }, [])
+
+  function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    localStorage.setItem('theme', theme)
+    localStorage.setItem('userEmail', email)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-6 p-6 max-w-xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -18,10 +38,39 @@ export function Settings() {
           Preferences and configuration
         </p>
       </motion.div>
-      
-      <div className="flex items-center justify-center h-96 text-muted-foreground">
-        Settings page coming soon...
-      </div>
+
+      <form className="space-y-8" onSubmit={handleSave}>
+        <div>
+          <label className="block text-sm font-medium mb-2">Theme</label>
+          <div className="flex gap-4 items-center">
+            <button type="button" aria-label="Light mode" onClick={() => setTheme('light')} className={`p-2 rounded ${theme === 'light' ? 'bg-brand-100 dark:bg-brand-800' : 'bg-muted'}`}>
+              <Sun className="w-5 h-5" />
+            </button>
+            <button type="button" aria-label="Dark mode" onClick={() => setTheme('dark')} className={`p-2 rounded ${theme === 'dark' ? 'bg-brand-100 dark:bg-brand-800' : 'bg-muted'}`}>
+              <Moon className="w-5 h-5" />
+            </button>
+            <span className="ml-2 text-muted-foreground">Current: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="border rounded px-3 py-2 w-full bg-background"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            autoComplete="email"
+          />
+        </div>
+
+        <button type="submit" className="px-4 py-2 rounded bg-brand-600 text-white font-semibold hover:bg-brand-700 transition">
+          Save Settings
+        </button>
+        {saved && <div className="text-green-600 mt-2">Settings saved!</div>}
+      </form>
     </div>
   )
 }
