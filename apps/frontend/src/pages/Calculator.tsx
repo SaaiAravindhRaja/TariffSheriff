@@ -955,110 +955,295 @@ export function Calculator() {
           </Card>
         </motion.div>
 
-        {/* Results Panel */}
+        {/* Enhanced Results Panel */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
+          className="space-y-6"
         >
+          {/* Main Results Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                Calculation Result
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Calculation Results
+                </div>
+                {calculation && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(calculation.id)}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Badge variant="outline" className="text-xs">
+                      ID: {calculation.id.slice(-6)}
+                    </Badge>
+                  </div>
+                )}
               </CardTitle>
               <CardDescription>
-                Detailed breakdown of tariffs and fees
+                Professional tariff analysis with compliance insights
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!result ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CalculatorIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Enter product details to see calculation results</p>
+              {!calculation ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CalculatorIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <h3 className="text-lg font-medium mb-2">Ready for Calculation</h3>
+                  <p className="text-sm">Complete the product information to generate a professional tariff analysis</p>
                 </div>
               ) : (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
-                  {/* Summary */}
-                  <div className="p-4 bg-gradient-to-r from-brand-50 to-brand-100 dark:from-brand-900/20 dark:to-brand-800/20 rounded-lg border border-brand-200 dark:border-brand-800">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-brand-700 dark:text-brand-300">
+                  {/* Cost Summary */}
+                  <div className="p-6 bg-gradient-to-br from-brand-50 via-brand-100 to-brand-50 dark:from-brand-900/20 dark:via-brand-800/30 dark:to-brand-900/20 rounded-xl border border-brand-200 dark:border-brand-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold text-brand-700 dark:text-brand-300">
                         Total Import Cost
                       </h4>
-                      <Badge variant="success" className="text-xs">
-                        {formatPercentage(result.tariffRate)} Rate
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          Effective Rate: {formatPercentage(calculation.results.effectiveRate)}
+                        </Badge>
+                        <Badge 
+                          variant={calculation.results.tariffRate < 0.1 ? 'success' : calculation.results.tariffRate < 0.2 ? 'warning' : 'destructive'}
+                        >
+                          {formatPercentage(calculation.results.tariffRate)} Duty
+                        </Badge>
+                      </div>
                     </div>
                     
-                    <div className="text-2xl font-bold text-brand-600 mb-2">
-                      {formatCurrency(result.totalCost)}
+                    <div className="text-3xl font-bold text-brand-600 dark:text-brand-400 mb-4">
+                      {formatCurrency(calculation.results.totalCost, productInfo.currency)}
                     </div>
                     
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Base Value:</span>
-                        <span className="font-medium">{formatCurrency(result.baseValue)}</span>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Dutiable Value:</span>
+                          <span className="font-medium">{formatCurrency(calculation.results.dutiableValue, productInfo.currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Import Duty:</span>
+                          <span className="font-medium text-orange-600">
+                            {formatCurrency(calculation.results.tariffAmount, productInfo.currency)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">VAT/GST:</span>
+                          <span className="font-medium text-orange-600">
+                            {formatCurrency(calculation.results.taxes.vat, productInfo.currency)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tariff:</span>
-                        <span className="font-medium text-warning-600">
-                          {formatCurrency(result.tariffAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Additional Fees:</span>
-                        <span className="font-medium text-warning-600">
-                          {formatCurrency(result.additionalFees)}
-                        </span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Processing Fees:</span>
+                          <span className="font-medium text-orange-600">
+                            {formatCurrency(calculation.results.fees.processing, productInfo.currency)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Other Fees:</span>
+                          <span className="font-medium text-orange-600">
+                            {formatCurrency(calculation.results.fees.inspection + calculation.results.fees.other, productInfo.currency)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="font-medium">Total Charges:</span>
+                          <span className="font-bold text-orange-600">
+                            {formatCurrency(calculation.results.totalCost - calculation.results.dutiableValue, productInfo.currency)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Breakdown */}
-                  <div className="space-y-2">
-                    <h5 className="font-medium text-sm flex items-center gap-1">
-                      <Percent className="w-4 h-4" />
-                      Fee Breakdown
-                    </h5>
-                    {result.breakdown.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 rounded border">
-                        <div>
-                          <div className="text-sm font-medium">{item.type}</div>
-                          <div className="text-xs text-muted-foreground">{formatPercentage(item.rate)}</div>
+                  {/* Warnings & Alerts */}
+                  {calculation.results.warnings.length > 0 && (
+                    <div className="space-y-2">
+                      {calculation.results.warnings.map((warning, index) => (
+                        <div 
+                          key={index}
+                          className={`p-3 rounded-lg border ${
+                            warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                            warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                            'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {warning.type === 'error' ? (
+                              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+                            ) : warning.type === 'warning' ? (
+                              <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                            ) : (
+                              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{warning.message}</p>
+                              {warning.recommendation && (
+                                <p className="text-xs text-muted-foreground mt-1">{warning.recommendation}</p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm font-medium">
-                          {formatCurrency(item.amount)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
-                  {/* Applied Rules */}
-                  <div className="space-y-2">
-                    <h5 className="font-medium text-sm flex items-center gap-1">
-                      <FileText className="w-4 h-4" />
-                      Applied Rules
-                    </h5>
-                    {result.appliedRules.map((rule, index) => (
-                      <div key={index} className="p-2 rounded border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle className="w-3 h-3 text-success-500" />
-                          <div className="text-xs font-medium">{rule.ruleId}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {rule.description}
-                        </div>
-                      </div>
-                    ))}
+                  {/* Quick Actions */}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={saveCalculation}>
+                      <Bookmark className="w-4 h-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportCalculation}>
+                      <Download className="w-4 h-4 mr-1" />
+                      Export
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
+                      <BarChart3 className="w-4 h-4 mr-1" />
+                      Compare
+                    </Button>
                   </div>
                 </motion.div>
               )}
             </CardContent>
           </Card>
+
+          {/* Detailed Breakdown Card */}
+          {calculation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Percent className="w-5 h-5" />
+                  Detailed Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="breakdown" className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="breakdown">Charges</TabsTrigger>
+                    <TabsTrigger value="rules">Rules</TabsTrigger>
+                    <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="breakdown" className="space-y-3">
+                    {calculation.results.breakdown.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium">{item.type}</div>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                item.category === 'duty' ? 'border-orange-200 text-orange-700' :
+                                item.category === 'tax' ? 'border-blue-200 text-blue-700' :
+                                'border-gray-200 text-gray-700'
+                              }`}
+                            >
+                              {item.category}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.rate > 0 ? `${formatPercentage(item.rate)} rate` : 'Fixed fee'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">
+                            {formatCurrency(item.amount, productInfo.currency)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+
+                  <TabsContent value="rules" className="space-y-3">
+                    {calculation.results.appliedRules.map((rule, index) => (
+                      <div key={index} className="p-3 rounded-lg border">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            <div className="text-sm font-medium">{rule.ruleId}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {rule.tradeAgreement && (
+                              <Badge variant="success" className="text-xs">
+                                {rule.tradeAgreement}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {Math.round(rule.confidence * 100)}% confidence
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">{rule.description}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Source: {rule.source}</span>
+                          <span>Valid: {formatDate(rule.validFrom)} - {formatDate(rule.validTo)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+
+                  <TabsContent value="compliance" className="space-y-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                          <FileText className="w-4 h-4" />
+                          Required Documents
+                        </h4>
+                        <div className="space-y-1">
+                          {calculation.results.compliance.requiredDocuments.map((doc, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <CheckCircle className="w-3 h-3 text-green-600" />
+                              <span>{doc}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                          <Shield className="w-4 h-4" />
+                          Certificates Required
+                        </h4>
+                        <div className="space-y-1">
+                          {calculation.results.compliance.certificates.map((cert, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <CheckCircle className="w-3 h-3 text-blue-600" />
+                              <span>{cert}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {calculation.results.compliance.restrictions.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                            <AlertTriangle className="w-4 h-4" />
+                            Import Restrictions
+                          </h4>
+                          <div className="space-y-1">
+                            {calculation.results.compliance.restrictions.map((restriction, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>{restriction}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
         </motion.div>
       </div>
 
