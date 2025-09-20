@@ -1,64 +1,65 @@
 import React from 'react'
 import { countries as COUNTRIES, Country as CountryDef } from '@/data/countries'
 
-type Props = {
-  // single-select: value is string | undefined
-  // multi-select: value is comma-separated codes OR JSON array string (for backward compatibility)
+interface CountrySelectProps {
   value?: string
   onChange?: (codeOrCodes: string | string[]) => void
   countries?: CountryDef[]
   placeholder?: string
   className?: string
   multi?: boolean
+  disabled?: boolean
+  required?: boolean
+  'aria-label'?: string
+  'aria-describedby'?: string
 }
 
-/**
- * Searchable CountrySelect
- * - type to filter countries
- * - keyboard navigation (arrows + enter)
- * - single-select by default (multi optional)
- */
-export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = COUNTRIES, placeholder = 'Select country', className = '', multi = false }) => {
+const CountrySelect: React.FC<CountrySelectProps> = ({
+  value,
+  onChange,
+  countries = COUNTRIES,
+  placeholder = 'Select country',
+  className = '',
+  multi = false,
+  disabled = false,
+  required = false,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy
+}) => {
   const [query, setQuery] = React.useState('')
   const [open, setOpen] = React.useState(false)
   const [highlight, setHighlight] = React.useState(0)
   const ref = React.useRef<HTMLDivElement | null>(null)
-  // internal selected codes for multi-mode
+  const inputId = 'country-select-input'
+  const listboxId = 'country-select-listbox'
+
   const [selectedCodes, setSelectedCodes] = React.useState<string[]>([])
   const allCountries = countries && countries.length ? countries : COUNTRIES
 
-  // If a value (code) is provided, keep input text in sync
   React.useEffect(() => {
     if (multi) {
-      if (!value) {
-        setSelectedCodes([])
-      } else {
+      if (!value) setSelectedCodes([])
+      else {
         try {
-          // try parse JSON array
           const parsed = JSON.parse(value)
           if (Array.isArray(parsed)) setSelectedCodes(parsed)
           else setSelectedCodes(String(value).split(',').filter(Boolean))
-        } catch (e) {
+        } catch {
           setSelectedCodes(String(value).split(',').filter(Boolean))
         }
       }
       setQuery('')
-      } else {
-        if (value) {
-          const found = allCountries.find((c: CountryDef) => c.code === value)
-          if (found) setQuery(found.name)
-        } else {
-          setQuery('')
-        }
+    } else {
+      if (value) {
+        const found = allCountries.find((c) => c.code === value)
+        if (found) setQuery(found.name)
+      } else setQuery('')
     }
   }, [value, countries, multi])
 
-  // Close on outside click
   React.useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('click', onDoc)
     return () => document.removeEventListener('click', onDoc)
@@ -67,27 +68,22 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = CO
   const normalized = (s: string) => s.trim().toLowerCase()
   const q = normalized(query)
 
-  // Filter and prioritize startsWith matches
   const filtered = allCountries
-    .map((c: CountryDef) => ({
-      c,
-      name: normalized(c.name)
-    }))
-    .filter(({ name }: { name: string }) => q === '' ? true : name.includes(q))
-    .sort((a: { c: CountryDef; name: string }, b: { c: CountryDef; name: string }) => {
+    .map((c) => ({ c, name: normalized(c.name) }))
+    .filter(({ name }) => (q === '' ? true : name.includes(q)))
+    .sort((a, b) => {
       const aStarts = a.name.startsWith(q) ? 0 : 1
       const bStarts = b.name.startsWith(q) ? 0 : 1
       if (aStarts !== bStarts) return aStarts - bStarts
       return a.c.name.localeCompare(b.c.name)
     })
-    .map((x: { c: CountryDef; name: string }) => x.c)
+    .map((x) => x.c)
 
   const select = (c: CountryDef) => {
     if (multi) {
-      setSelectedCodes(prev => {
+      setSelectedCodes((prev) => {
         if (prev.includes(c.code)) return prev
         const next = [...prev, c.code]
-        // emit array to consumer
         onChange?.(next)
         return next
       })
@@ -101,8 +97,8 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = CO
   }
 
   const removeCode = (code: string) => {
-    setSelectedCodes(prev => {
-      const next = prev.filter(c => c !== code)
+    setSelectedCodes((prev) => {
+      const next = prev.filter((c) => c !== code)
       onChange?.(next)
       return next
     })
@@ -115,10 +111,10 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = CO
       return
     }
     if (e.key === 'ArrowDown') {
-      setHighlight(h => Math.min(h + 1, Math.max(0, filtered.length - 1)))
+      setHighlight((h) => Math.min(h + 1, Math.max(0, filtered.length - 1)))
       e.preventDefault()
     } else if (e.key === 'ArrowUp') {
-      setHighlight(h => Math.max(0, h - 1))
+      setHighlight((h) => Math.max(0, h - 1))
       e.preventDefault()
     } else if (e.key === 'Enter') {
       const sel = filtered[highlight]
@@ -132,13 +128,14 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = CO
   return (
     <div ref={ref} className={`relative ${className}`}>
       <div className="flex flex-col">
+        <label id="country-select-label" className="sr-only">Choose country</label>
         <div className="flex flex-wrap gap-2 items-center">
-                {multi && selectedCodes.length > 0 && (
+          {multi && selectedCodes.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {selectedCodes.map((code: string) => {
-                const c = allCountries.find((x: CountryDef) => x.code === code)
+              {selectedCodes.map((code) => {
+                const c = allCountries.find((x) => x.code === code)
                 return (
-                  <button key={code} type="button" onClick={() => removeCode(code)} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-brand-50 dark:bg-brand-800/40 text-sm border border-brand-100 dark:border-brand-700">
+                  <button key={code} type="button" onClick={() => removeCode(code)} aria-label={`Remove ${c?.name ?? code}`} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-brand-50 dark:bg-brand-800/40 text-sm border border-brand-100 dark:border-brand-700">
                     <span className="text-lg">{c?.emoji ?? '🏳️'}</span>
                     <span className="font-medium text-sm">{c?.name ?? code}</span>
                     <span className="ml-2 text-xs text-muted-foreground">✕</span>
@@ -148,29 +145,37 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, countries = CO
             </div>
           )}
           <input
+            id={inputId}
+            aria-labelledby="country-select-label"
+            aria-controls={listboxId}
             type="text"
             role="combobox"
             aria-expanded={open}
             aria-autocomplete="list"
+            aria-label={ariaLabel || `${multi ? 'Select countries' : 'Select country'}`}
+            aria-describedby={ariaDescribedBy}
+            aria-required={required}
             placeholder={placeholder}
             value={query}
+            disabled={disabled}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlight(0) }}
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
-            className="rounded-md border px-3 py-2 bg-white dark:bg-slate-900 w-full"
+            className="rounded-md border px-3 py-2 bg-white dark:bg-slate-900 w-full disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
       </div>
 
       {open && (
-        <ul role="listbox" className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-white dark:bg-slate-900 shadow-lg">
+        <ul id={listboxId} role="listbox" aria-labelledby="country-select-label" className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-white dark:bg-slate-900 shadow-lg">
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">No results</li>
           ) : (
-            filtered.map((c: CountryDef, idx: number) => (
+            filtered.map((c, idx) => (
               <li
                 key={c.code}
                 role="option"
+                id={`country-option-${c.code}`}
                 aria-selected={multi ? selectedCodes.includes(c.code) : value === c.code}
                 onMouseDown={(e) => { e.preventDefault(); select(c) }}
                 onMouseEnter={() => setHighlight(idx)}
