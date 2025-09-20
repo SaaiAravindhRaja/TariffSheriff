@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { User, Mail, Briefcase, MapPin } from 'lucide-react'
 import ProfileEditModal from '@/components/layout/ProfileEditModal'
+import safeLocalStorage from '@/lib/safeLocalStorage'
 
 type ProfileType = {
   name: string
@@ -18,19 +19,37 @@ export default function Profile() {
   const [profile, setProfile] = useState<ProfileType>({ name: 'John Doe', role: 'Trade Analyst', email: 'john.doe@example.com', location: 'New York, USA' })
 
   useEffect(() => {
-    const raw = typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY)
+    const raw = safeLocalStorage.get<string>(STORAGE_KEY)
     if (raw) {
       try {
-        setProfile(JSON.parse(raw))
-      } catch (e) {}
+        setProfile(typeof raw === 'string' ? JSON.parse(raw) : raw)
+      } catch {
+        // ignore
+      }
     }
 
     const handler = () => {
-      const updated = localStorage.getItem(STORAGE_KEY)
-      if (updated) setProfile(JSON.parse(updated))
+      const updated = safeLocalStorage.get<string>(STORAGE_KEY)
+      if (updated) {
+        try {
+          setProfile(typeof updated === 'string' ? JSON.parse(updated) : updated)
+        } catch {
+          // ignore
+        }
+      }
     }
-    window.addEventListener('profile:updated', handler)
-    return () => window.removeEventListener('profile:updated', handler)
+    try {
+      if (typeof window !== 'undefined') window.addEventListener('profile:updated', handler)
+    } catch {
+      // non-browser env
+    }
+    return () => {
+      try {
+        if (typeof window !== 'undefined') window.removeEventListener('profile:updated', handler)
+      } catch {
+        // noop
+      }
+    }
   }, [])
 
   return (
@@ -51,7 +70,7 @@ export default function Profile() {
               <ProfileEditModal>
                 <Button variant="secondary">Edit Profile</Button>
               </ProfileEditModal>
-              <Button onClick={() => { localStorage.removeItem(STORAGE_KEY); window.location.reload() }}>Sign Out</Button>
+              <Button onClick={() => { safeLocalStorage.remove(STORAGE_KEY); try { if (typeof window !== 'undefined') window.location.reload() } catch {} }}>Sign Out</Button>
             </div>
           </div>
         </CardHeader>
