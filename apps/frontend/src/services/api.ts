@@ -1,4 +1,5 @@
 import axios from 'axios'
+import safeLocalStorage from '@/lib/safeLocalStorage'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
 
@@ -13,8 +14,10 @@ export const api = axios.create({
 // Request interceptor for auth
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token')
+    const token = safeLocalStorage.get<string>('auth_token')
     if (token) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - axios types allow headers as any in runtime
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -29,8 +32,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      safeLocalStorage.remove('auth_token')
+      try {
+        if (typeof window !== 'undefined') window.location.href = '/login'
+      } catch {
+        // fallthrough in non-browser envs
+      }
     }
     return Promise.reject(error)
   }

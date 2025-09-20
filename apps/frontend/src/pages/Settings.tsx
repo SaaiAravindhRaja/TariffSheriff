@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Settings as SettingsIcon, Sun, Moon } from 'lucide-react'
+import safeLocalStorage from '@/lib/safeLocalStorage'
 
 export function Settings() {
   const [theme, setTheme] = React.useState<'light' | 'dark'>('light')
@@ -8,17 +9,16 @@ export function Settings() {
   const [saved, setSaved] = React.useState(false)
 
   React.useEffect(() => {
-    // Load from localStorage or API
-    const storedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
+    const storedTheme = safeLocalStorage.get<'light' | 'dark'>('theme')
     if (storedTheme) setTheme(storedTheme)
-    const storedEmail = localStorage.getItem('userEmail')
-    if (storedEmail) setEmail(storedEmail)
+    const storedEmail = safeLocalStorage.get<string>('userEmail')
+    if (storedEmail) setEmail(storedEmail ?? '')
   }, [])
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    localStorage.setItem('theme', theme)
-    localStorage.setItem('userEmail', email)
+    safeLocalStorage.set('theme', theme)
+    safeLocalStorage.set('userEmail', email)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
