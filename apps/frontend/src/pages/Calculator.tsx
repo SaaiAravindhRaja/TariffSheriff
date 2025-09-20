@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Calculator as CalculatorIcon, 
-  Search, 
-  Filter, 
-  Save, 
+import {
+  Calculator as CalculatorIcon,
+  Search,
+  Filter,
+  Save,
   Download,
   Calendar,
   MapPin,
@@ -142,7 +142,7 @@ interface HSCodeSuggestion {
 
 export function Calculator() {
   const { settings } = useSettings();
-  
+
   // Enhanced form state
   const [productInfo, setProductInfo] = useState<ProductInfo>({
     description: '',
@@ -172,14 +172,14 @@ export function Calculator() {
   const [calculation, setCalculation] = useState<TariffCalculation | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationHistory, setCalculationHistory] = useState<TariffCalculation[]>([]);
-  
+
   // UI state
   const [activeTab, setActiveTab] = useState('basic');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   // Auto-save to localStorage
   useEffect(() => {
     const saved = localStorage.getItem('tariff-calculator-draft');
@@ -203,37 +203,37 @@ export function Calculator() {
   // Validation logic
   const validateForm = useCallback((): Record<string, string> => {
     const errors: Record<string, string> = {};
-    
+
     if (!productInfo.description.trim()) {
       errors.description = 'Product description is required';
     }
-    
+
     if (!productInfo.hsCode.trim()) {
       errors.hsCode = 'HS Code is required';
     } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode)) {
       errors.hsCode = 'Invalid HS Code format (e.g., 8703.80.10)';
     }
-    
+
     if (productInfo.quantity <= 0) {
       errors.quantity = 'Quantity must be greater than 0';
     }
-    
+
     if (productInfo.unitValue <= 0) {
       errors.unitValue = 'Unit value must be greater than 0';
     }
-    
+
     if (!productInfo.originCountry) {
       errors.originCountry = 'Origin country is required';
     }
-    
+
     if (!productInfo.destinationCountry) {
       errors.destinationCountry = 'Destination country is required';
     }
-    
+
     if (productInfo.originCountry === productInfo.destinationCountry) {
       errors.destinationCountry = 'Origin and destination must be different';
     }
-    
+
     return errors;
   }, [productInfo]);
 
@@ -243,10 +243,10 @@ export function Calculator() {
       setHsCodeSuggestions([]);
       return;
     }
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     const mockSuggestions: HSCodeSuggestion[] = [
       {
         code: '8703.80.10',
@@ -267,7 +267,7 @@ export function Calculator() {
         confidence: 0.72
       }
     ];
-    
+
     setHsCodeSuggestions(mockSuggestions);
   }, []);
 
@@ -275,35 +275,35 @@ export function Calculator() {
   const handleCalculate = async () => {
     const errors = validateForm();
     setValidationErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       return;
     }
-    
+
     setIsCalculating(true);
-    
+
     try {
       // Simulate comprehensive API call
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       const baseValue = productInfo.unitValue * productInfo.quantity;
       const dutiableValue = baseValue; // Could be adjusted based on incoterms
-      
+
       // Complex tariff calculation
       const baseTariffRate = 0.125; // 12.5%
       const preferentialRate = 0.08; // 8% with trade agreement
       const actualRate = productInfo.originCountry === 'MX' ? preferentialRate : baseTariffRate;
-      
+
       const tariffAmount = dutiableValue * actualRate;
       const vatRate = 0.20; // 20% VAT
       const vatAmount = (dutiableValue + tariffAmount) * vatRate;
-      
+
       const processingFee = Math.min(dutiableValue * 0.005, 500); // 0.5% capped at $500
       const inspectionFee = 75; // Fixed fee
-      
+
       const totalCost = dutiableValue + tariffAmount + vatAmount + processingFee + inspectionFee;
       const effectiveRate = ((totalCost - dutiableValue) / dutiableValue) * 100;
-      
+
       const newCalculation: TariffCalculation = {
         id: `calc_${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -426,10 +426,10 @@ export function Calculator() {
           }
         }
       };
-      
+
       setCalculation(newCalculation);
       setCalculationHistory(prev => [newCalculation, ...prev.slice(0, 9)]); // Keep last 10
-      
+
     } catch (error) {
       console.error('Calculation failed:', error);
       setValidationErrors({ general: 'Calculation failed. Please try again.' });
@@ -441,7 +441,7 @@ export function Calculator() {
   // Update product info
   const updateProductInfo = (field: keyof ProductInfo, value: any) => {
     setProductInfo(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => {
@@ -450,7 +450,7 @@ export function Calculator() {
         return newErrors;
       });
     }
-    
+
     // Clear calculation when inputs change
     if (calculation) {
       setCalculation(null);
@@ -499,8 +499,8 @@ export function Calculator() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setShowAdvanced(!showAdvanced)}
           >
             <Filter className="w-4 h-4 mr-2" />
@@ -518,7 +518,7 @@ export function Calculator() {
               </Button>
             </>
           )}
-          <Button 
+          <Button
             variant="gradient"
             onClick={() => setShowComparison(!showComparison)}
             disabled={!calculation}
@@ -592,7 +592,7 @@ export function Calculator() {
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Product Description *</label>
-                      <Input 
+                      <Input
                         placeholder="e.g., Tesla Model Y Long Range Electric Vehicle"
                         value={productInfo.description}
                         onChange={(e) => updateProductInfo('description', e.target.value)}
@@ -602,12 +602,12 @@ export function Calculator() {
                         <p className="text-sm text-red-600">{validationErrors.description}</p>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Quantity *</label>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="1"
                           placeholder="1"
                           value={productInfo.quantity || ''}
@@ -617,8 +617,8 @@ export function Calculator() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Unit Value *</label>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="0"
                           step="0.01"
                           placeholder="45000.00"
@@ -680,7 +680,7 @@ export function Calculator() {
                           <Calendar className="w-4 h-4" />
                           Shipment Date
                         </label>
-                        <Input 
+                        <Input
                           type="date"
                           value={productInfo.shipmentDate}
                           onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
@@ -696,7 +696,7 @@ export function Calculator() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">HS Code *</label>
                       <div className="relative">
-                        <Input 
+                        <Input
                           placeholder="e.g., 8703.80.10"
                           value={productInfo.hsCode}
                           onChange={(e) => {
@@ -747,7 +747,7 @@ export function Calculator() {
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium">HS Code Description</label>
-                      <Input 
+                      <Input
                         placeholder="Auto-filled from HS code lookup"
                         value={productInfo.hsCodeDescription}
                         onChange={(e) => updateProductInfo('hsCodeDescription', e.target.value)}
@@ -782,7 +782,7 @@ export function Calculator() {
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Weight</label>
                           <div className="flex gap-2">
-                            <Input 
+                            <Input
                               type="number"
                               min="0"
                               step="0.1"
@@ -819,7 +819,7 @@ export function Calculator() {
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Dimensions (L × W × H)</label>
                         <div className="flex gap-2">
-                          <Input 
+                          <Input
                             type="number"
                             placeholder="Length"
                             value={productInfo.dimensions.length || ''}
@@ -828,7 +828,7 @@ export function Calculator() {
                               length: parseFloat(e.target.value) || 0
                             })}
                           />
-                          <Input 
+                          <Input
                             type="number"
                             placeholder="Width"
                             value={productInfo.dimensions.width || ''}
@@ -837,7 +837,7 @@ export function Calculator() {
                               width: parseFloat(e.target.value) || 0
                             })}
                           />
-                          <Input 
+                          <Input
                             type="number"
                             placeholder="Height"
                             value={productInfo.dimensions.height || ''}
@@ -932,11 +932,11 @@ export function Calculator() {
 
               {/* Calculate Button */}
               <div className="pt-6 border-t">
-                <Button 
+                <Button
                   onClick={handleCalculate}
                   disabled={Object.keys(validateForm()).length > 0 || isCalculating}
-                  className="w-full" 
-                  variant="gradient" 
+                  className="w-full"
+                  variant="gradient"
                   size="lg"
                 >
                   {isCalculating ? (
@@ -1009,18 +1009,18 @@ export function Calculator() {
                         <Badge variant="secondary" className="text-xs">
                           Effective Rate: {formatPercentage(calculation.results.effectiveRate)}
                         </Badge>
-                        <Badge 
+                        <Badge
                           variant={calculation.results.tariffRate < 0.1 ? 'success' : calculation.results.tariffRate < 0.2 ? 'warning' : 'destructive'}
                         >
                           {formatPercentage(calculation.results.tariffRate)} Duty
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="text-3xl font-bold text-brand-600 dark:text-brand-400 mb-4">
                       {formatCurrency(calculation.results.totalCost, productInfo.currency)}
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="space-y-2">
                         <div className="flex justify-between">
@@ -1067,13 +1067,12 @@ export function Calculator() {
                   {calculation.results.warnings.length > 0 && (
                     <div className="space-y-2">
                       {calculation.results.warnings.map((warning, index) => (
-                        <div 
+                        <div
                           key={index}
-                          className={`p-3 rounded-lg border ${
-                            warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
-                            warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                            'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                          }`}
+                          className={`p-3 rounded-lg border ${warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                              warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                                'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                            }`}
                         >
                           <div className="flex items-start gap-2">
                             {warning.type === 'error' ? (
@@ -1138,13 +1137,12 @@ export function Calculator() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <div className="text-sm font-medium">{item.type}</div>
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs ${
-                                item.category === 'duty' ? 'border-orange-200 text-orange-700' :
-                                item.category === 'tax' ? 'border-blue-200 text-blue-700' :
-                                'border-gray-200 text-gray-700'
-                              }`}
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${item.category === 'duty' ? 'border-orange-200 text-orange-700' :
+                                  item.category === 'tax' ? 'border-blue-200 text-blue-700' :
+                                    'border-gray-200 text-gray-700'
+                                }`}
                             >
                               {item.category}
                             </Badge>
@@ -1329,8 +1327,8 @@ export function Calculator() {
                 description: item.description
               }))
             }} />
-            <HistoricalRatesChart 
-              hsCode={productInfo.hsCode} 
+            <HistoricalRatesChart
+              hsCode={productInfo.hsCode}
               originCountry={productInfo.originCountry}
               destinationCountry={productInfo.destinationCountry}
             />
@@ -1339,7 +1337,7 @@ export function Calculator() {
           {/* Additional Analysis */}
           {showComparison && (
             <div className="grid gap-6 lg:grid-cols-2">
-              <ComparisonChart 
+              <ComparisonChart
                 baseResult={calculation.results}
                 alternatives={calculation.results.alternativeRoutes}
               />
@@ -1376,8 +1374,8 @@ export function Calculator() {
                     <div className="flex-1">
                       <div className="font-medium text-sm">{calc.productInfo.description}</div>
                       <div className="text-xs text-muted-foreground">
-                        {calc.productInfo.hsCode} • 
-                        <CountryFlag countryCode={calc.productInfo.originCountry} size="sm" /> → 
+                        {calc.productInfo.hsCode} •
+                        <CountryFlag countryCode={calc.productInfo.originCountry} size="sm" /> →
                         <CountryFlag countryCode={calc.productInfo.destinationCountry} size="sm" />
                       </div>
                       <div className="text-xs text-muted-foreground">
