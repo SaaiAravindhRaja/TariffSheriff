@@ -44,75 +44,51 @@ import { ComparisonChart } from '@/components/calculator/ComparisonChart';
 import { HistoricalRatesChart } from '@/components/calculator/HistoricalRatesChart';
 import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 
-// Enhanced interfaces for professional calculator
-interface ProductInfo {
+// EV-focused interfaces for tariff calculator
+interface EVProduct {
+  id: string;
   description: string;
   hsCode: string;
-  hsCodeDescription: string;
-  category: string;
+  evType: 'BEV' | 'PHEV' | 'HEV' | 'FCEV'; // Battery, Plug-in Hybrid, Hybrid, Fuel Cell
+  batteryCapacity: number; // kWh
+  range: number; // km
+  manufacturer: string;
+  model: string;
+  year: number;
   quantity: number;
   unitValue: number;
   currency: string;
-  weight: number;
-  weightUnit: 'kg' | 'lbs';
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    unit: 'cm' | 'in';
-  };
   originCountry: string;
   destinationCountry: string;
   shipmentDate: string;
-  incoterms: string;
   certificates: string[];
-  specialConditions: string[];
 }
 
-interface TariffCalculation {
+interface EVTariffCalculation {
   id: string;
   timestamp: string;
-  productInfo: ProductInfo;
+  product: EVProduct;
   results: {
     baseValue: number;
-    dutiableValue: number;
     tariffRate: number;
     tariffAmount: number;
-    additionalDuties: number;
-    taxes: {
-      vat: number;
-      excise: number;
-      other: number;
-    };
-    fees: {
-      processing: number;
-      inspection: number;
-      storage: number;
-      other: number;
-    };
+    evIncentive: number; // EV-specific incentives/penalties
+    carbonTax: number;
+    vat: number;
+    processingFee: number;
     totalCost: number;
     effectiveRate: number;
     breakdown: Array<{
       type: string;
-      category: 'duty' | 'tax' | 'fee';
       rate: number;
       amount: number;
       description: string;
-      legal_basis: string;
     }>;
     appliedRules: Array<{
       ruleId: string;
       description: string;
       source: string;
-      validFrom: string;
-      validTo: string;
-      confidence: number;
       tradeAgreement?: string;
-    }>;
-    warnings: Array<{
-      type: 'info' | 'warning' | 'error';
-      message: string;
-      recommendation?: string;
     }>;
     alternativeRoutes: Array<{
       country: string;
@@ -120,16 +96,8 @@ interface TariffCalculation {
       tariffRate: number;
       totalCost: number;
       savings: number;
-      savingsPercentage: number;
       tradeAgreement?: string;
-      transitTime?: number;
     }>;
-    compliance: {
-      requiredDocuments: string[];
-      certificates: string[];
-      restrictions: string[];
-      prohibitions: string[];
-    };
   };
 }
 
@@ -180,25 +148,40 @@ export function Calculator() {
   const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Auto-save to localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('tariff-calculator-draft');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setProductInfo(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Failed to load saved draft:', e);
-      }
+  // EV products state
+  const [evProducts, setEvProducts] = useState<EVProduct[]>([
+    {
+      id: '1',
+      description: '',
+      hsCode: '8703.80.10',
+      evType: 'BEV',
+      batteryCapacity: 0,
+      range: 0,
+      manufacturer: '',
+      model: '',
+      year: new Date().getFullYear(),
+      quantity: 1,
+      unitValue: 0,
+      currency: settings.currency,
+      originCountry: '',
+      destinationCountry: '',
+      shipmentDate: new Date().toISOString().split('T')[0],
+      certificates: []
     }
-  }, []);
+  ]);
 
+  // Calculation results for each product
+  const [calculations, setCalculations] = useState<Record<string, EVTariffCalculation>>({});
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+
+  // Auto-save EV products
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem('tariff-calculator-draft', JSON.stringify(productInfo));
+      localStorage.setItem('ev-calculator-draft', JSON.stringify(evProducts));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [productInfo]);
+  }, [evProducts]);
 
   // Validation logic
   const validateForm = useCallback((): Record<string, string> => {
@@ -466,18 +449,202 @@ export function Calculator() {
     }
   };
 
-  // Export calculation
-  const exportCalculation = () => {
-    if (calculation) {
-      const dataStr = JSON.stringify(calculation, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tariff-calculation-${calculation.id}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+  // EV Product Management
+  const addProduct = () => {
+    const newProduct: EVProduct = {
+      id: `ev_${Date.now()}`,
+      description: '',
+      hsCode: '8703.80.10',
+      evType: 'BEV',
+      batteryCapacity: 0,
+      range: 0,
+      manufacturer: '',
+      model: '',
+      year: new Date().getFullYear(),
+      quantity: 1,
+      unitValue: 0,
+      currency: settings.currency,
+      originCountry: '',
+      destinationCountry: '',
+      shipmentDate: new Date().toISOString().split('T')[0],
+      certificates: []
+    };
+    setEvProducts(prev => [...prev, newProduct]);
+  };
+
+  const removeProduct = (id: string) => {
+    setEvProducts(prev => prev.filter(p => p.id !== id));
+    setCalculations(prev => {
+      const newCalcs = { ...prev };
+      delete newCalcs[id];
+      return newCalcs;
+    });
+  };
+
+  const updateProduct = (id: string, field: keyof EVProduct, value: any) => {
+    setEvProducts(prev => prev.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+    
+    // Clear calculation for this product when data changes
+    if (calculations[id]) {
+      setCalculations(prev => {
+        const newCalcs = { ...prev };
+        delete newCalcs[id];
+        return newCalcs;
+      });
     }
+  };
+
+  // Calculate single EV
+  const calculateSingle = async (productId: string) => {
+    const product = evProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    setIsCalculating(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const baseValue = product.unitValue * product.quantity;
+      const tariffRate = getEVTariffRate(product);
+      const tariffAmount = baseValue * tariffRate;
+      const evIncentive = getEVIncentive(product);
+      const carbonTax = getCarbonTax(product);
+      const vat = (baseValue + tariffAmount) * 0.20; // 20% VAT
+      const processingFee = Math.min(baseValue * 0.005, 500);
+      
+      const totalCost = baseValue + tariffAmount - evIncentive + carbonTax + vat + processingFee;
+      
+      const calculation: EVTariffCalculation = {
+        id: `calc_${productId}_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        product,
+        results: {
+          baseValue,
+          tariffRate,
+          tariffAmount,
+          evIncentive,
+          carbonTax,
+          vat,
+          processingFee,
+          totalCost,
+          effectiveRate: ((totalCost - baseValue) / baseValue),
+          breakdown: [
+            {
+              type: 'Import Duty',
+              rate: tariffRate,
+              amount: tariffAmount,
+              description: `${product.evType} tariff rate`
+            },
+            {
+              type: 'EV Incentive',
+              rate: evIncentive / baseValue,
+              amount: -evIncentive,
+              description: 'Green vehicle incentive'
+            },
+            {
+              type: 'Carbon Tax',
+              rate: carbonTax / baseValue,
+              amount: carbonTax,
+              description: 'Environmental impact tax'
+            },
+            {
+              type: 'VAT',
+              rate: 0.20,
+              amount: vat,
+              description: 'Value Added Tax'
+            }
+          ],
+          appliedRules: [
+            {
+              ruleId: `EV-${product.hsCode}-2024`,
+              description: `Electric vehicle classification for ${product.evType}`,
+              source: 'EV Tariff Schedule',
+              tradeAgreement: product.originCountry === 'MX' ? 'USMCA' : undefined
+            }
+          ],
+          alternativeRoutes: []
+        }
+      };
+      
+      setCalculations(prev => ({ ...prev, [productId]: calculation }));
+      
+    } catch (error) {
+      console.error('Calculation failed:', error);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // Calculate all EVs
+  const calculateAll = async () => {
+    setIsCalculating(true);
+    
+    for (const product of evProducts) {
+      if (product.description && product.unitValue && product.originCountry && product.destinationCountry) {
+        await calculateSingle(product.id);
+      }
+    }
+    
+    setIsCalculating(false);
+  };
+
+  // EV-specific tariff logic
+  const getEVTariffRate = (product: EVProduct): number => {
+    // Simplified EV tariff logic
+    const baseRates = {
+      'BEV': 0.10,  // 10% for Battery Electric
+      'PHEV': 0.12, // 12% for Plug-in Hybrid
+      'HEV': 0.15,  // 15% for Hybrid
+      'FCEV': 0.08  // 8% for Fuel Cell
+    };
+    
+    let rate = baseRates[product.evType];
+    
+    // Trade agreement adjustments
+    if (product.originCountry === 'MX' || product.originCountry === 'CA') {
+      rate *= 0.7; // 30% reduction for USMCA
+    }
+    
+    // Battery capacity incentives
+    if (product.batteryCapacity > 75) {
+      rate *= 0.9; // 10% reduction for large batteries
+    }
+    
+    return rate;
+  };
+
+  const getEVIncentive = (product: EVProduct): number => {
+    // EV incentives based on type and battery capacity
+    const baseIncentives = {
+      'BEV': 2500,
+      'PHEV': 1500,
+      'HEV': 500,
+      'FCEV': 3000
+    };
+    
+    let incentive = baseIncentives[product.evType];
+    
+    // Battery capacity bonus
+    if (product.batteryCapacity > 50) {
+      incentive += 1000;
+    }
+    
+    return incentive * product.quantity;
+  };
+
+  const getCarbonTax = (product: EVProduct): number => {
+    // Carbon tax (lower for EVs)
+    const carbonRates = {
+      'BEV': 0,     // No carbon tax for pure electric
+      'PHEV': 200,  // Low carbon tax for plug-in hybrid
+      'HEV': 500,   // Medium carbon tax for hybrid
+      'FCEV': 0     // No carbon tax for fuel cell
+    };
+    
+    return carbonRates[product.evType] * product.quantity;
   };
 
   return (
@@ -491,11 +658,11 @@ export function Calculator() {
       >
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <CalculatorIcon className="w-8 h-8 text-brand-600" />
-            Professional Tariff Calculator
+            <Zap className="w-8 h-8 text-brand-600" />
+            EV Tariff Calculator
           </h1>
           <p className="text-muted-foreground">
-            Industry-standard import duty and tax calculations with compliance insights
+            Professional import duty calculations for Electric Vehicles with EV-specific incentives and classifications
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -561,31 +728,210 @@ export function Calculator() {
         >
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Product & Shipment Details
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={showAdvanced}
-                    onCheckedChange={setShowAdvanced}
-                  />
-                  <span className="text-sm text-muted-foreground">Advanced</span>
-                </div>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                EV Tariff Calculator
               </CardTitle>
               <CardDescription>
-                Enter comprehensive product and shipment information for accurate calculations
+                Calculate import tariffs for electric vehicles with industry-specific classifications
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="classification">Classification</TabsTrigger>
-                  <TabsTrigger value="logistics">Logistics</TabsTrigger>
-                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                </TabsList>
+              {/* EV Tariff Calculation Table */}
+              <div className="space-y-6">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">EV Model</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Type</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">HS Code</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Battery (kWh)</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Range (km)</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Qty</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Unit Value</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Origin</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Destination</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Tariff Rate</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Total Cost</th>
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evProducts.map((product, index) => (
+                        <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              placeholder="Tesla Model Y"
+                              value={product.description}
+                              onChange={(e) => updateProduct(product.id, 'description', e.target.value)}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <select
+                              className="w-full px-2 py-1 border-0 bg-transparent text-sm"
+                              value={product.evType}
+                              onChange={(e) => updateProduct(product.id, 'evType', e.target.value)}
+                            >
+                              <option value="BEV">BEV</option>
+                              <option value="PHEV">PHEV</option>
+                              <option value="HEV">HEV</option>
+                              <option value="FCEV">FCEV</option>
+                            </select>
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <select
+                              className="w-full px-2 py-1 border-0 bg-transparent text-sm"
+                              value={product.hsCode}
+                              onChange={(e) => updateProduct(product.id, 'hsCode', e.target.value)}
+                            >
+                              <option value="8703.80.10">8703.80.10 - BEV</option>
+                              <option value="8703.80.20">8703.80.20 - PHEV</option>
+                              <option value="8703.80.30">8703.80.30 - HEV</option>
+                              <option value="8703.80.40">8703.80.40 - FCEV</option>
+                            </select>
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              placeholder="75"
+                              value={product.batteryCapacity || ''}
+                              onChange={(e) => updateProduct(product.id, 'batteryCapacity', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-20"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              placeholder="500"
+                              value={product.range || ''}
+                              onChange={(e) => updateProduct(product.id, 'range', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-20"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={product.quantity || ''}
+                              onChange={(e) => updateProduct(product.id, 'quantity', parseInt(e.target.value) || 1)}
+                              className="border-0 bg-transparent w-16"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <Input
+                              type="number"
+                              placeholder="45000"
+                              value={product.unitValue || ''}
+                              onChange={(e) => updateProduct(product.id, 'unitValue', parseFloat(e.target.value) || 0)}
+                              className="border-0 bg-transparent w-24"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <CountrySelect
+                              placeholder="Origin"
+                              value={product.originCountry}
+                              onChange={(code) => {
+                                const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                                updateProduct(product.id, 'originCountry', String(single));
+                              }}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <CountrySelect
+                              placeholder="Destination"
+                              value={product.destinationCountry}
+                              onChange={(code) => {
+                                const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                                updateProduct(product.id, 'destinationCountry', String(single));
+                              }}
+                              className="border-0 bg-transparent"
+                            />
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-center">
+                            {calculations[product.id] ? (
+                              <Badge variant="secondary">
+                                {formatPercentage(calculations[product.id].results.tariffRate)}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-center">
+                            {calculations[product.id] ? (
+                              <span className="font-medium">
+                                {formatCurrency(calculations[product.id].results.totalCost, product.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </td>
+                          <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => calculateSingle(product.id)}
+                                disabled={!product.description || !product.unitValue || !product.originCountry || !product.destinationCountry}
+                              >
+                                <CalculatorIcon className="w-3 h-3" />
+                              </Button>
+                              {evProducts.length > 1 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeProduct(product.id)}
+                                >
+                                  ×
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Actions */}
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    onClick={addProduct}
+                  >
+                    + Add EV Model
+                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={calculateAll}
+                      disabled={evProducts.length === 0 || isCalculating}
+                    >
+                      Calculate All
+                    </Button>
+                    <Button
+                      variant="gradient"
+                      onClick={calculateAll}
+                      disabled={evProducts.length === 0 || isCalculating}
+                    >
+                      {isCalculating ? (
+                        <div className="flex items-center space-x-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Calculating...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Zap className="w-4 h-4" />
+                          <span>Calculate EV Tariffs</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
                 {/* Basic Information Tab */}
                 <TabsContent value="basic" className="space-y-4">
@@ -987,11 +1333,11 @@ export function Calculator() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!calculation ? (
+              {Object.keys(calculations).length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <CalculatorIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <h3 className="text-lg font-medium mb-2">Ready for Calculation</h3>
-                  <p className="text-sm">Complete the product information to generate a professional tariff analysis</p>
+                  <h3 className="text-lg font-medium mb-2">Ready for EV Calculations</h3>
+                  <p className="text-sm">Add EV models to the table and calculate import tariffs with EV-specific rates and incentives</p>
                 </div>
               ) : (
                 <motion.div
@@ -1070,8 +1416,8 @@ export function Calculator() {
                         <div
                           key={index}
                           className={`p-3 rounded-lg border ${warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
-                              warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                                'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                            warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                              'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
                             }`}
                         >
                           <div className="flex items-start gap-2">
@@ -1140,8 +1486,8 @@ export function Calculator() {
                             <Badge
                               variant="outline"
                               className={`text-xs ${item.category === 'duty' ? 'border-orange-200 text-orange-700' :
-                                  item.category === 'tax' ? 'border-blue-200 text-blue-700' :
-                                    'border-gray-200 text-gray-700'
+                                item.category === 'tax' ? 'border-blue-200 text-blue-700' :
+                                  'border-gray-200 text-gray-700'
                                 }`}
                             >
                               {item.category}
