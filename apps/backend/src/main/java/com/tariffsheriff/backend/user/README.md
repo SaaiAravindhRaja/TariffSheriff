@@ -20,7 +20,6 @@ docker run -d \
   -e POSTGRES_DB=tariffsheriff \
   -p 5432:5432 \
   postgres:16
-````
 
 ---
 
