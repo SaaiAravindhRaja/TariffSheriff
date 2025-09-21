@@ -92,21 +92,41 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
   }, []);
 
   const updateSettings = (path: string, value: any) => {
+    // Defensive: prevent prototype pollution by rejecting dangerous path segments
+    const denylist = new Set(['__proto__', 'prototype', 'constructor']);
+    if (!path || typeof path !== 'string') {
+      console.warn('updateSettings called with invalid path:', path);
+      return;
+    }
+
+    const keys = path.split('.');
+    if (keys.some(k => denylist.has(k))) {
+      console.warn('Ignored updateSettings path containing unsafe segment:', path);
+      return;
+    }
+
     setSettings(prev => {
-      const keys = path.split('.');
-      const newSettings = { ...prev };
+      const newSettings = { ...prev } as any;
       let current: any = newSettings;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
+        const key = keys[i];
+        const next = current[key];
+        // Only copy plain objects; if something unexpected is encountered, replace with an object
+        current[key] = (next && typeof next === 'object' && !Array.isArray(next)) ? { ...next } : {};
+        current = current[key];
       }
-      
-      current[keys[keys.length - 1]] = value;
-      
+
+      const lastKey = keys[keys.length - 1];
+      current[lastKey] = value;
+
       // Save to localStorage
-      safeLocalStorage.set('userSettings', newSettings);
-      
+      try {
+        safeLocalStorage.set('userSettings', newSettings);
+      } catch (err) {
+        console.error('Failed to persist settings:', err);
+      }
+
       return newSettings;
     });
   };
