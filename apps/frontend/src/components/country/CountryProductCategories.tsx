@@ -73,6 +73,7 @@ const treemapData = [
 export const CountryProductCategories: React.FC<CountryProductCategoriesProps> = ({ countryCode }) => {
   const productData = generateProductData(countryCode);
   const totalVolume = productData.reduce((sum, product) => sum + product.volume, 0);
+  const avgGrowth = (productData.reduce((sum, p) => sum + parseFloat(p.change.replace('%', '').replace('+', '')), 0) / productData.length).toFixed(1)
 
   return (
     <div className="space-y-6">
@@ -238,9 +239,9 @@ export const CountryProductCategories: React.FC<CountryProductCategoriesProps> =
               <div className="text-sm text-muted-foreground">Avg Tariff</div>
             </div>
             <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                +{(productData.reduce((sum, p) => sum + parseFloat(p.change.replace('%', '').replace('+', '')), 0) / productData.length).toFixed(1)}%
-              </div>
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  {`+${avgGrowth}%`}
+                </div>
               <div className="text-sm text-muted-foreground">Avg Growth</div>
             </div>
           </div>
