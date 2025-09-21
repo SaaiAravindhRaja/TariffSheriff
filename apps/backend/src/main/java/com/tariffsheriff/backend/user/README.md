@@ -26,7 +26,7 @@ docker run -d \
 
 ##  Database Migration
 
-Inside `src/main/resources/db/migration`, create a file:
+Inside `src/main/resources/db/migration`, is a basic file created to pass test cases:
 
 **`V4__create_users.sql`**
 
