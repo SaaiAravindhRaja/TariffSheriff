@@ -73,7 +73,16 @@ const treemapData = [
 export const CountryProductCategories: React.FC<CountryProductCategoriesProps> = ({ countryCode }) => {
   const productData = generateProductData(countryCode);
   const totalVolume = productData.reduce((sum, product) => sum + product.volume, 0);
-  const avgGrowth = (productData.reduce((sum, p) => sum + parseFloat(p.change.replace('%', '').replace('+', '')), 0) / productData.length).toFixed(1)
+  const avgGrowth = (
+    productData.reduce(
+      (sum, p) =>
+        sum +
+        parseFloat(
+          p.change.replace(/%/g, '').replace(/\+/g, '')
+        ),
+      0
+    ) / productData.length
+  ).toFixed(1);
 
   return (
     <div className="space-y-6">
