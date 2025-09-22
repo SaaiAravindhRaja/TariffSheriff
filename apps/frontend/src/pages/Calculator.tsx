@@ -44,6 +44,19 @@ import { ComparisonChart } from '@/components/calculator/ComparisonChart';
 import { HistoricalRatesChart } from '@/components/calculator/HistoricalRatesChart';
 import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 
+// Small helper for deep-cloning snapshots (uses structuredClone when available)
+const deepClone = <T,>(obj: T): T => {
+  try {
+    // structuredClone is available in modern browsers and Node 17+
+    if (typeof (globalThis as any).structuredClone === 'function') {
+      return (globalThis as any).structuredClone(obj);
+    }
+  } catch (e) {
+    // fallthrough to JSON method
+  }
+  return JSON.parse(JSON.stringify(obj));
+};
+
 // Enhanced interfaces for professional calculator
 interface ProductInfo {
   description: string;
@@ -307,7 +320,8 @@ export function Calculator() {
       const newCalculation: TariffCalculation = {
         id: `calc_${Date.now()}`,
         timestamp: new Date().toISOString(),
-        productInfo: { ...productInfo },
+        // snapshot of product info at calculation time
+        productInfo: deepClone(productInfo),
         results: {
           baseValue,
           dutiableValue,
@@ -427,8 +441,10 @@ export function Calculator() {
         }
       };
 
-      setCalculation(newCalculation);
-      setCalculationHistory(prev => [newCalculation, ...prev.slice(0, 9)]); // Keep last 10
+  // store deep-cloned snapshots to avoid future mutations affecting history
+  const calcSnapshot = deepClone(newCalculation);
+  setCalculation(calcSnapshot);
+  setCalculationHistory(prev => [calcSnapshot, ...prev.slice(0, 9)]); // Keep last 10
 
     } catch (error) {
       console.error('Calculation failed:', error);
@@ -460,16 +476,21 @@ export function Calculator() {
   // Save calculation
   const saveCalculation = () => {
     if (calculation) {
-      const saved = JSON.parse(localStorage.getItem('saved-calculations') || '[]');
-      saved.unshift(calculation);
-      localStorage.setItem('saved-calculations', JSON.stringify(saved.slice(0, 50))); // Keep last 50
+      try {
+        const saved = JSON.parse(localStorage.getItem('saved-calculations') || '[]');
+        const snapshot = deepClone(calculation);
+        saved.unshift(snapshot);
+        localStorage.setItem('saved-calculations', JSON.stringify(saved.slice(0, 50))); // Keep last 50
+      } catch (err) {
+        console.error('Failed to save calculation:', err);
+      }
     }
   };
 
   // Export calculation
   const exportCalculation = () => {
     if (calculation) {
-      const dataStr = JSON.stringify(calculation, null, 2);
+      const dataStr = JSON.stringify(deepClone(calculation), null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
