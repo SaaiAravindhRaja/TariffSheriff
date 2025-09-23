@@ -116,7 +116,7 @@ export function Sidebar({ className }: SidebarProps) {
             >
               <NavLink
                 to={item.href}
-                className={({ isActive }) =>
+                className={({ isActive }: { isActive: boolean }) =>
                   cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative",
                     isActive
