@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator2, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { Calculator, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
@@ -50,7 +50,7 @@ export function RVCCalculator({
     <Card className="border-2 border-dashed border-brand-200 dark:border-brand-800">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Calculator2 className="w-5 h-5" />
+          <Calculator className="w-5 h-5" />
           AANZFTA Regional Value Content (RVC)
         </CardTitle>
         <CardDescription>
