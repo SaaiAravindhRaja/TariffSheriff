@@ -397,8 +397,11 @@ export function Calculator() {
       // Update FOB value in product info
       updateProductInfo('fobValue', fobValue);
 
+      const baseValue = fobValue; // Base value for calculations
       const dutiableValue = fobValue; // FOB value is the dutiable value
       const actualRate = selectedAgreement.rate / 100; // Convert percentage to decimal
+      const baseTariffRate = 0.125; // 12.5% base MFN rate
+      const preferentialRate = 0.065; // 6.5% preferential rate
 
       const tariffAmount = dutiableValue * actualRate;
       const vatRate = 0.20; // 20% VAT
