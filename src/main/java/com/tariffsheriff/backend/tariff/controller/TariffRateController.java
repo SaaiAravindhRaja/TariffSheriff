@@ -14,7 +14,7 @@ import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
 import com.tariffsheriff.backend.tariff.service.TariffRateService;
 @RestController
-@RequestMapping("/api/tariffs")
+@RequestMapping("/api/tariff-rate")
 public class TariffRateController {
     private TariffRateService tariffRateService;
 
@@ -22,12 +22,12 @@ public class TariffRateController {
         this.tariffRateService = trs;
     }
 
-    @GetMapping("/tariff-rate")
+    @GetMapping("/")
     public List<TariffRate> getTariffRates() {
         return tariffRateService.listTariffRates();
     }
 
-    @GetMapping("/tariff-rate/{id}")
+    @GetMapping("/{id}")
     public TariffRate getTariffRate(@PathVariable Long id) {
         return tariffRateService.getTariffRateById(id);
     }
