@@ -838,32 +838,26 @@ export function Calculator() {
                                   </div>
                                   <p className="text-sm text-muted-foreground mt-1">{agreement.description}</p>
                                   {agreement.requirements && (
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                      Requirements: {agreement.requirements.join(', ')}
-                                    </p>
+                                    <div className="mt-2">
+                                      <p className="text-xs text-muted-foreground">Requirements:</p>
+                                      <ul className="text-xs text-muted-foreground list-disc list-inside">
+                                        {agreement.requirements.map((req, idx) => (
+                                          <li key={idx}>{req}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
                                   )}
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-2xl font-bold text-brand-600">{agreement.rate}%</div>
+                                  <div className="text-lg font-bold text-brand-600">
+                                    {agreement.rate}%
+                                  </div>
                                   <div className="text-xs text-muted-foreground">Tariff Rate</div>
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
-                        {selectedAgreement && (
-                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <span className="font-medium text-green-800 dark:text-green-200">
-                                Selected: {selectedAgreement.name} ({selectedAgreement.rate}% rate)
-                              </span>
-                            </div>
-                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                              You can now proceed to the Calculate tab to determine your exact tariff costs.
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -871,806 +865,284 @@ export function Calculator() {
 
                 {/* Calculate Tab */}
                 <TabsContent value="calculate" className="space-y-4">
-                  {!basicInfoComplete ? (
-                    <div className="text-center py-8">
-                      <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">Complete Basic Info First</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Please complete the Basic Info tab and select a trade agreement before proceeding with calculations.
-                      </p>
-                      <Button onClick={() => setActiveTab('basic')}>
-                        Go to Basic Info
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {selectedAgreement && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Info className="w-5 h-5 text-blue-600" />
-                            <span className="font-medium text-blue-800 dark:text-blue-200">
-                              Using {selectedAgreement.name} - {selectedAgreement.rate}% tariff rate
-                            </span>
-                          </div>
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {selectedAgreement.description}
-                          </p>
-                        </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Quantity *</label>
+                      <Input
+                        type="number"
+                        placeholder="1"
+                        value={productInfo.quantity}
+                        onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
+                        className={validationErrors.quantity ? 'border-red-500' : ''}
+                      />
+                      {validationErrors.quantity && (
+                        <p className="text-sm text-red-600">{validationErrors.quantity}</p>
                       )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Currency</label>
+                      <select
+                        value={productInfo.currency}
+                        onChange={(e) => updateProductInfo('currency', e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CAD">CAD</option>
+                      </select>
+                    </div>
+                  </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Currency</label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                            value={productInfo.currency}
-                            onChange={(e) => updateProductInfo('currency', e.target.value)}
-                          >
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="JPY">JPY - Japanese Yen</option>
-                            <option value="CAD">CAD - Canadian Dollar</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Quantity / Units *</label>
-                          <Input
-                            type="number"
-                            min="1"
-                            placeholder="1"
-                            value={productInfo.quantity || ''}
-                            onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
-                            className={validationErrors.quantity ? 'border-red-500' : ''}
-                          />
-                          {validationErrors.quantity && (
-                            <p className="text-sm text-red-600">{validationErrors.quantity}</p>
-                          )}
-                        </div>
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Cost Breakdown</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Material Cost</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={productInfo.materialCost}
+                          onChange={(e) => updateProductInfo('materialCost', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.materialCost ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.materialCost && (
+                          <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
+                        )}
                       </div>
-
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <DollarSign className="w-5 h-5" />
-                          Cost Breakdown (per unit)
-                        </h3>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Material Cost</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={productInfo.materialCost || ''}
-                              onChange={(e) => updateProductInfo('materialCost', parseFloat(e.target.value) || 0)}
-                              className={validationErrors.materialCost ? 'border-red-500' : ''}
-                            />
-                            {validationErrors.materialCost && (
-                              <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Labour Cost</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={productInfo.labourCost || ''}
-                              onChange={(e) => updateProductInfo('labourCost', parseFloat(e.target.value) || 0)}
-                              className={validationErrors.labourCost ? 'border-red-500' : ''}
-                            />
-                            {validationErrors.labourCost && (
-                              <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Overhead Cost</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={productInfo.overheadCost || ''}
-                              onChange={(e) => updateProductInfo('overheadCost', parseFloat(e.target.value) || 0)}
-                              className={validationErrors.overheadCost ? 'border-red-500' : ''}
-                            />
-                            {validationErrors.overheadCost && (
-                              <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Profit</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={productInfo.profit || ''}
-                              onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
-                              className={validationErrors.profit ? 'border-red-500' : ''}
-                            />
-                            {validationErrors.profit && (
-                              <p className="text-sm text-red-600">{validationErrors.profit}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Other Costs</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={productInfo.otherCosts || ''}
-                              onChange={(e) => updateProductInfo('otherCosts', parseFloat(e.target.value) || 0)}
-                              className={validationErrors.otherCosts ? 'border-red-500' : ''}
-                            />
-                            {validationErrors.otherCosts && (
-                              <p className="text-sm text-red-600">{validationErrors.otherCosts}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">FOB Value (Calculated)</label>
-                            <Input
-                              type="number"
-                              value={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
-                              disabled
-                              className="bg-gray-50 dark:bg-gray-800"
-                            />
-                          </div>
-                        </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Labour Cost</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={productInfo.labourCost}
+                          onChange={(e) => updateProductInfo('labourCost', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.labourCost ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.labourCost && (
+                          <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
+                        )}
                       </div>
-
-                      <div className="flex justify-end pt-4">
-                        <Button 
-                          onClick={handleCalculate}
-                          disabled={isCalculating}
-                          className="min-w-[200px]"
-                          variant="gradient"
-                        >
-                          {isCalculating ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Calculating...
-                            </>
-                          ) : (
-                            <>
-                              <CalculatorIcon className="w-4 h-4 mr-2" />
-                              Calculate Tariff
-                            </>
-                          )}
-                        </Button>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Overhead Cost</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={productInfo.overheadCost}
+                          onChange={(e) => updateProductInfo('overheadCost', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.overheadCost ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.overheadCost && (
+                          <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Profit</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={productInfo.profit}
+                          onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.profit ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.profit && (
+                          <p className="text-sm text-red-600">{validationErrors.profit}</p>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button 
+                      onClick={handleCalculate}
+                      disabled={isCalculating}
+                      className="min-w-[200px]"
+                      variant="gradient"
+                    >
+                      {isCalculating ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Calculating...
+                        </>
+                      ) : (
+                        <>
+                          <CalculatorIcon className="w-4 h-4 mr-2" />
+                          Calculate Tariffs
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 {/* Logistics Tab */}
                 <TabsContent value="logistics" className="space-y-4">
-                  {showAdvanced && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Weight</label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              placeholder="1500"
-                              value={productInfo.weight || ''}
-                              onChange={(e) => updateProductInfo('weight', parseFloat(e.target.value) || 0)}
-                            />
-                            <select
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                              value={productInfo.weightUnit}
-                              onChange={(e) => updateProductInfo('weightUnit', e.target.value)}
-                            >
-                              <option value="kg">kg</option>
-                              <option value="lbs">lbs</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Incoterms</label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                            value={productInfo.incoterms}
-                            onChange={(e) => updateProductInfo('incoterms', e.target.value)}
-                          >
-                            <option value="CIF">CIF - Cost, Insurance & Freight</option>
-                            <option value="FOB">FOB - Free on Board</option>
-                            <option value="EXW">EXW - Ex Works</option>
-                            <option value="DDP">DDP - Delivered Duty Paid</option>
-                            <option value="DDU">DDU - Delivered Duty Unpaid</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Dimensions (L × W × H)</label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            placeholder="Length"
-                            value={productInfo.dimensions.length || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              length: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Width"
-                            value={productInfo.dimensions.width || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              width: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Height"
-                            value={productInfo.dimensions.height || ''}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              height: parseFloat(e.target.value) || 0
-                            })}
-                          />
-                          <select
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                            value={productInfo.dimensions.unit}
-                            onChange={(e) => updateProductInfo('dimensions', {
-                              ...productInfo.dimensions,
-                              unit: e.target.value as 'cm' | 'in'
-                            })}
-                          >
-                            <option value="cm">cm</option>
-                            <option value="in">in</option>
-                          </select>
-                        </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Weight</label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0"
+                          value={productInfo.weight}
+                          onChange={(e) => updateProductInfo('weight', parseFloat(e.target.value) || 0)}
+                          className="flex-1"
+                        />
+                        <select
+                          value={productInfo.weightUnit}
+                          onChange={(e) => updateProductInfo('weightUnit', e.target.value)}
+                          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="kg">kg</option>
+                          <option value="lbs">lbs</option>
+                        </select>
                       </div>
                     </div>
-                  )}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Shipment Date</label>
+                      <Input
+                        type="date"
+                        value={productInfo.shipmentDate}
+                        onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* Compliance Tab */}
                 <TabsContent value="compliance" className="space-y-4">
-                  {showAdvanced && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Certificates & Licenses</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            'Certificate of Origin',
-                            'CE Marking',
-                            'FDA Approval',
-                            'FCC Certification',
-                            'ISO Certificate',
-                            'Safety Certificate'
-                          ].map((cert) => (
-                            <label key={cert} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={productInfo.certificates.includes(cert)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    updateProductInfo('certificates', [...productInfo.certificates, cert]);
-                                  } else {
-                                    updateProductInfo('certificates', productInfo.certificates.filter(c => c !== cert));
-                                  }
-                                }}
-                                className="rounded"
-                              />
-                              <span className="text-sm">{cert}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Special Conditions</label>
-                        <div className="grid grid-cols-1 gap-2">
-                          {[
-                            'Temporary Import',
-                            'Re-export',
-                            'Duty Drawback',
-                            'Bonded Warehouse',
-                            'Free Trade Zone'
-                          ].map((condition) => (
-                            <label key={condition} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={productInfo.specialConditions.includes(condition)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    updateProductInfo('specialConditions', [...productInfo.specialConditions, condition]);
-                                  } else {
-                                    updateProductInfo('specialConditions', productInfo.specialConditions.filter(c => c !== condition));
-                                  }
-                                }}
-                                className="rounded"
-                              />
-                              <span className="text-sm">{condition}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Incoterms</label>
+                    <select
+                      value={productInfo.incoterms}
+                      onChange={(e) => updateProductInfo('incoterms', e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="CIF">CIF - Cost, Insurance, and Freight</option>
+                      <option value="FOB">FOB - Free on Board</option>
+                      <option value="EXW">EXW - Ex Works</option>
+                      <option value="DDP">DDP - Delivered Duty Paid</option>
+                    </select>
+                  </div>
                 </TabsContent>
               </Tabs>
-
-              {/* Calculate Button */}
-              <div className="pt-6 border-t">
-                <Button
-                  onClick={handleCalculate}
-                  disabled={Object.keys(validateForm()).length > 0 || isCalculating}
-                  className="w-full"
-                  variant="gradient"
-                  size="lg"
-                >
-                  {isCalculating ? (
-                    <div className="flex items-center space-x-2">
-                      <RefreshCw className="w-5 h-5 animate-spin" />
-                      <span>Calculating Comprehensive Tariff Analysis...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-5 h-5" />
-                      <span>Calculate Professional Tariff Analysis</span>
-                    </div>
-                  )}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Enhanced Results Panel */}
+        {/* Results Panel */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           className="space-y-6"
         >
-          {/* Main Results Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  Calculation Results
-                </div>
-                {calculation && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(calculation.id)}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Badge variant="outline" className="text-xs">
-                      ID: {calculation.id.slice(-6)}
-                    </Badge>
-                  </div>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Professional tariff analysis with compliance insights
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!calculation ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <CalculatorIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <h3 className="text-lg font-medium mb-2">Ready for Calculation</h3>
-                  <p className="text-sm">Complete the product information to generate a professional tariff analysis</p>
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  {/* Cost Summary */}
-                  <div className="p-6 bg-gradient-to-br from-brand-50 via-brand-100 to-brand-50 dark:from-brand-900/20 dark:via-brand-800/30 dark:to-brand-900/20 rounded-xl border border-brand-200 dark:border-brand-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-brand-700 dark:text-brand-300">
-                        Total Import Cost
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          Effective Rate: {formatPercentage(calculation.results.effectiveRate)}
-                        </Badge>
-                        <Badge
-                          variant={calculation.results.tariffRate < 0.1 ? 'success' : calculation.results.tariffRate < 0.2 ? 'warning' : 'destructive'}
-                        >
-                          {formatPercentage(calculation.results.tariffRate)} Duty
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="text-3xl font-bold text-brand-600 dark:text-brand-400 mb-4">
-                      {formatCurrency(calculation.results.totalCost, productInfo.currency)}
-                    </div>
-
+          {calculation ? (
+            <>
+              {/* Summary Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Calculation Results
+                  </CardTitle>
+                  <CardDescription>
+                    Total import costs and breakdown
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dutiable Value:</span>
-                          <span className="font-medium">{formatCurrency(calculation.results.dutiableValue, productInfo.currency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Import Duty:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.tariffAmount, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">VAT/GST:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.taxes.vat, productInfo.currency)}
-                          </span>
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Base Value:</span>
+                        <span className="font-medium">{formatCurrency(calculation.results.baseValue)}</span>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Processing Fees:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.fees.processing, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Other Fees:</span>
-                          <span className="font-medium text-orange-600">
-                            {formatCurrency(calculation.results.fees.inspection + calculation.results.fees.other, productInfo.currency)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2">
-                          <span className="font-medium">Total Charges:</span>
-                          <span className="font-bold text-orange-600">
-                            {formatCurrency(calculation.results.totalCost - calculation.results.dutiableValue, productInfo.currency)}
-                          </span>
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Tariff Amount:</span>
+                        <span className="font-medium">{formatCurrency(calculation.results.tariffAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">VAT:</span>
+                        <span className="font-medium">{formatCurrency(calculation.results.taxes.vat)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Processing Fees:</span>
+                        <span className="font-medium">{formatCurrency(calculation.results.fees.processing)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Total Cost:</span>
+                        <span className="text-brand-600">{formatCurrency(calculation.results.totalCost)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Effective Rate:</span>
+                        <span>{formatPercentage(calculation.results.effectiveRate)}</span>
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  {/* Warnings & Alerts */}
-                  {calculation.results.warnings.length > 0 && (
-                    <div className="space-y-2">
-                      {calculation.results.warnings.map((warning, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border ${warning.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
-                              warning.type === 'warning' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                                'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                            }`}
-                        >
-                          <div className="flex items-start gap-2">
-                            {warning.type === 'error' ? (
-                              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
-                            ) : warning.type === 'warning' ? (
-                              <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                            ) : (
-                              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
-                            )}
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{warning.message}</p>
-                              {warning.recommendation && (
-                                <p className="text-xs text-muted-foreground mt-1">{warning.recommendation}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Quick Actions */}
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={saveCalculation}>
-                      <Bookmark className="w-4 h-4 mr-1" />
-                      Save
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={exportCalculation}>
-                      <Download className="w-4 h-4 mr-1" />
-                      Export
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
-                      <BarChart3 className="w-4 h-4 mr-1" />
-                      Compare
-                    </Button>
-                  </div>
-                </motion.div>
+              {/* Charts */}
+              {showComparison && calculation.results.alternativeRoutes.length > 0 && (
+                <ComparisonChart
+                  baseResult={{
+                    baseValue: calculation.results.baseValue,
+                    tariffRate: calculation.results.tariffRate,
+                    totalCost: calculation.results.totalCost
+                  }}
+                  alternatives={calculation.results.alternativeRoutes.map(route => ({
+                    country: route.countryName,
+                    tariffRate: route.tariffRate,
+                    savings: route.savings
+                  }))}
+                />
               )}
-            </CardContent>
-          </Card>
 
-          {/* Detailed Breakdown Card */}
-          {calculation && (
+              <TariffBreakdownChart
+                data={{
+                  baseValue: calculation.results.baseValue,
+                  tariffAmount: calculation.results.tariffAmount,
+                  additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection,
+                  totalCost: calculation.results.totalCost,
+                  breakdown: calculation.results.breakdown
+                }}
+              />
+
+              <HistoricalRatesChart
+                hsCode={calculation.productInfo.hsCode}
+                originCountry={calculation.productInfo.originCountry}
+                destinationCountry={calculation.productInfo.destinationCountry}
+              />
+
+              <CostAnalysisChart
+                data={{
+                  baseValue: calculation.results.baseValue,
+                  tariffAmount: calculation.results.tariffAmount,
+                  additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection,
+                  totalCost: calculation.results.totalCost
+                }}
+              />
+            </>
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Percent className="w-5 h-5" />
-                  Detailed Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="breakdown" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="breakdown">Charges</TabsTrigger>
-                    <TabsTrigger value="rules">Rules</TabsTrigger>
-                    <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="breakdown" className="space-y-3">
-                    {calculation.results.breakdown.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-medium">{item.type}</div>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${item.category === 'duty' ? 'border-orange-200 text-orange-700' :
-                                  item.category === 'tax' ? 'border-blue-200 text-blue-700' :
-                                    'border-gray-200 text-gray-700'
-                                }`}
-                            >
-                              {item.category}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {item.rate > 0 ? `${formatPercentage(item.rate)} rate` : 'Fixed fee'}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {formatCurrency(item.amount, productInfo.currency)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="rules" className="space-y-3">
-                    {calculation.results.appliedRules.map((rule, index) => (
-                      <div key={index} className="p-3 rounded-lg border">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <div className="text-sm font-medium">{rule.ruleId}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {rule.tradeAgreement && (
-                              <Badge variant="success" className="text-xs">
-                                {rule.tradeAgreement}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(rule.confidence * 100)}% confidence
-                            </Badge>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">{rule.description}</p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Source: {rule.source}</span>
-                          <span>Valid: {formatDate(rule.validFrom)} - {formatDate(rule.validTo)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="compliance" className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                          <FileText className="w-4 h-4" />
-                          Required Documents
-                        </h4>
-                        <div className="space-y-1">
-                          {calculation.results.compliance.requiredDocuments.map((doc, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <CheckCircle className="w-3 h-3 text-green-600" />
-                              <span>{doc}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                          <Shield className="w-4 h-4" />
-                          Certificates Required
-                        </h4>
-                        <div className="space-y-1">
-                          {calculation.results.compliance.certificates.map((cert, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <CheckCircle className="w-3 h-3 text-blue-600" />
-                              <span>{cert}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {calculation.results.compliance.restrictions.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                            <AlertTriangle className="w-4 h-4" />
-                            Import Restrictions
-                          </h4>
-                          <div className="space-y-1">
-                            {calculation.results.compliance.restrictions.map((restriction, index) => (
-                              <div key={index} className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-300">
-                                <AlertTriangle className="w-3 h-3" />
-                                <span>{restriction}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <CalculatorIcon className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Ready to Calculate</h3>
+                <p className="text-muted-foreground text-center">
+                  Complete the form and click calculate to see your tariff breakdown
+                </p>
               </CardContent>
             </Card>
           )}
         </motion.div>
       </div>
-
-      {/* Enhanced Analytics Section */}
-      {calculation && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="space-y-6"
-        >
-          {/* Route Comparison */}
-          {showComparison && calculation.results.alternativeRoutes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
-                  Alternative Trade Routes
-                </CardTitle>
-                <CardDescription>
-                  Compare costs and savings across different routing options
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {calculation.results.alternativeRoutes.map((route, index) => (
-                    <div key={index} className="p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <CountryFlag countryCode={route.country} size="md" />
-                          <div>
-                            <div className="font-medium">{route.countryName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {route.tradeAgreement && `${route.tradeAgreement} Member`}
-                              {route.transitTime && ` • ${route.transitTime} days transit`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">
-                            {formatCurrency(route.totalCost, productInfo.currency)}
-                          </div>
-                          {route.savings > 0 && (
-                            <div className="text-sm text-green-600 dark:text-green-400">
-                              Save {formatCurrency(route.savings, productInfo.currency)} ({route.savingsPercentage.toFixed(1)}%)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Tariff Rate:</span>
-                          <div className="font-medium">{formatPercentage(route.tariffRate)}</div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Cost:</span>
-                          <div className="font-medium">{formatCurrency(route.totalCost, productInfo.currency)}</div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Savings:</span>
-                          <div className={`font-medium ${route.savings > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                            {route.savings > 0 ? `${formatCurrency(route.savings, productInfo.currency)}` : 'None'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Charts Grid */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TariffBreakdownChart data={{
-              ...calculation.results,
-              additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other,
-              breakdown: calculation.results.breakdown.map(item => ({
-                type: item.type,
-                rate: item.rate,
-                amount: item.amount,
-                description: item.description
-              }))
-            }} />
-            <HistoricalRatesChart
-              hsCode={productInfo.hsCode}
-              originCountry={productInfo.originCountry}
-              destinationCountry={productInfo.destinationCountry}
-            />
-          </div>
-
-          {/* Additional Analysis */}
-          {showComparison && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ComparisonChart
-                baseResult={calculation.results}
-                alternatives={calculation.results.alternativeRoutes}
-              />
-              <CostAnalysisChart data={{
-                ...calculation.results,
-                additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection + calculation.results.fees.other
-              }} />
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* Calculation History */}
-      {calculationHistory.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Recent Calculations
-              </CardTitle>
-              <CardDescription>
-                Your calculation history for quick reference
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {calculationHistory.slice(0, 5).map((calc, index) => (
-                  <div key={calc.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{calc.productInfo.description}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {calc.productInfo.hsCode} •
-                        <CountryFlag countryCode={calc.productInfo.originCountry} size="sm" /> →
-                        <CountryFlag countryCode={calc.productInfo.destinationCountry} size="sm" />
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(calc.timestamp)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {formatCurrency(calc.results.totalCost, calc.productInfo.currency)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatPercentage(calc.results.effectiveRate)} effective
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
     </div>
   );
 }
