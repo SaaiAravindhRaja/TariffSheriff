@@ -318,6 +318,57 @@ export function Calculator() {
     setHsCodeSuggestions(mockSuggestions);
   }, []);
 
+  // Fetch trade agreements based on basic info
+  const fetchTradeAgreements = useCallback(async () => {
+    const errors = validateBasicInfo();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setIsCalculating(true);
+
+    try {
+      // Simulate API call to get trade agreements
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const mockAgreements: TradeAgreement[] = [
+        {
+          type: 'MFN',
+          name: 'Most Favoured Nation',
+          rate: 12.5,
+          description: 'Standard WTO tariff rate',
+          requirements: ['Commercial Invoice', 'Packing List']
+        },
+        {
+          type: 'RVC',
+          name: 'Regional Value Content (USMCA)',
+          rate: 8.0,
+          description: 'Preferential rate under USMCA agreement',
+          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents']
+        },
+        {
+          type: 'ROOS',
+          name: 'Rules of Origin Specific (USMCA)',
+          rate: 6.5,
+          description: 'Specific rules of origin qualification',
+          requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
+        }
+      ];
+
+      setTradeAgreements(mockAgreements);
+      setBasicInfoComplete(true);
+      setSelectedAgreement(mockAgreements[0]); // Default to MFN
+
+    } catch (error) {
+      console.error('Failed to fetch trade agreements:', error);
+      setValidationErrors({ general: 'Failed to fetch trade agreements. Please try again.' });
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [productInfo.hsCode, productInfo.originCountry, productInfo.destinationCountry, validateBasicInfo]);
+
   // Enhanced calculation logic
   const handleCalculate = async () => {
     const errors = validateForm();
