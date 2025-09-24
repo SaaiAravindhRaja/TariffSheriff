@@ -33,26 +33,33 @@ A full-stack web application that helps businesses calculate and analyze import 
 # 1. Install dependencies (from repo root)
 npm ci
 
-# 2. Start the backend (Flyway will auto-run migrations and seed data)
-export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"  # only required for Colima/rootless Docker
-cd apps/backend
-mvn spring-boot:run
+# 2. Start PostgreSQL once (reuse this container for future runs)
+docker run -d --name tariffsheriff-postgres \
+  -e POSTGRES_USER=tariff_sheriff \
+  -e POSTGRES_PASSWORD=tariff_sheriff \
+  -e POSTGRES_DB=tariffsheriff \
+  -p 5432:5432 \
+  postgres:16
 
-# 3. In another terminal (from repo root), start the frontend dev server
+# 3. Start the backend (Flyway will auto-run migrations and seed data)
+# export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"  # only required for Colima/rootless Docker
+(cd apps/backend && mvn spring-boot:run)
+
+# 4. In another terminal (from repo root), start the frontend dev server
 npm run dev --workspace=frontend
 
 # Dev servers
 #   Frontend: http://localhost:3000
 #   Backend : http://localhost:8080
 
-# 4. Automated checks before committing
+# 5. Automated checks before committing
 mvn test                     # backend (Testcontainers)
 npm run test --workspace=frontend
 
-# 5. Production deployment is handled by GitHub Actions (.github/workflows/ci.yml)
+# 6. Production deployment is handled by GitHub Actions (.github/workflows/ci.yml)
 ```
 
-> Need a clean database? Stop the backend, remove any local Postgres container (e.g. `docker rm -f tariffsheriff-pg`), then rerun `mvn spring-boot:run` to replay Flyway migrations and the mock seed.
+> Need a clean database? Stop the backend, remove any local Postgres container (e.g. `docker rm -f tariffsheriff-postgres`), then rerun `mvn spring-boot:run` to replay Flyway migrations and the mock seed.
 
 ---
 
