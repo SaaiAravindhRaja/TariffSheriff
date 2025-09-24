@@ -180,7 +180,14 @@ export function Calculator() {
     shipmentDate: new Date().toISOString().split('T')[0],
     incoterms: 'CIF',
     certificates: [],
-    specialConditions: []
+    specialConditions: [],
+    // Cost breakdown fields
+    materialCost: 0,
+    labourCost: 0,
+    overheadCost: 0,
+    profit: 0,
+    otherCosts: 0,
+    fobValue: 0
   });
 
   // Calculation state
@@ -194,6 +201,9 @@ export function Calculator() {
   const [showComparison, setShowComparison] = useState(false);
   const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [tradeAgreements, setTradeAgreements] = useState<TradeAgreement[]>([]);
+  const [selectedAgreement, setSelectedAgreement] = useState<TradeAgreement | null>(null);
+  const [basicInfoComplete, setBasicInfoComplete] = useState(false);
 
   // Auto-save to localStorage
   useEffect(() => {
