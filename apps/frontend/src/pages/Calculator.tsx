@@ -67,6 +67,21 @@ interface ProductInfo {
   incoterms: string;
   certificates: string[];
   specialConditions: string[];
+  // Cost breakdown fields
+  materialCost: number;
+  labourCost: number;
+  overheadCost: number;
+  profit: number;
+  otherCosts: number;
+  fobValue: number;
+}
+
+interface TradeAgreement {
+  type: 'MFN' | 'RVC' | 'ROOS';
+  name: string;
+  rate: number;
+  description: string;
+  requirements?: string[];
 }
 
 interface TariffCalculation {
@@ -165,7 +180,14 @@ export function Calculator() {
     shipmentDate: new Date().toISOString().split('T')[0],
     incoterms: 'CIF',
     certificates: [],
-    specialConditions: []
+    specialConditions: [],
+    // Cost breakdown fields
+    materialCost: 0,
+    labourCost: 0,
+    overheadCost: 0,
+    profit: 0,
+    otherCosts: 0,
+    fobValue: 0
   });
 
   // Calculation state
@@ -179,6 +201,9 @@ export function Calculator() {
   const [showComparison, setShowComparison] = useState(false);
   const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [tradeAgreements, setTradeAgreements] = useState<TradeAgreement[]>([]);
+  const [selectedAgreement, setSelectedAgreement] = useState<TradeAgreement | null>(null);
+  const [basicInfoComplete, setBasicInfoComplete] = useState(false);
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -201,25 +226,13 @@ export function Calculator() {
   }, [productInfo]);
 
   // Validation logic
-  const validateForm = useCallback((): Record<string, string> => {
+  const validateBasicInfo = useCallback((): Record<string, string> => {
     const errors: Record<string, string> = {};
-
-    if (!productInfo.description.trim()) {
-      errors.description = 'Product description is required';
-    }
 
     if (!productInfo.hsCode.trim()) {
       errors.hsCode = 'HS Code is required';
     } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode)) {
       errors.hsCode = 'Invalid HS Code format (e.g., 8703.80.10)';
-    }
-
-    if (productInfo.quantity <= 0) {
-      errors.quantity = 'Quantity must be greater than 0';
-    }
-
-    if (productInfo.unitValue <= 0) {
-      errors.unitValue = 'Unit value must be greater than 0';
     }
 
     if (!productInfo.originCountry) {
@@ -236,6 +249,40 @@ export function Calculator() {
 
     return errors;
   }, [productInfo]);
+
+  const validateCalculateForm = useCallback((): Record<string, string> => {
+    const errors: Record<string, string> = {};
+
+    if (!basicInfoComplete) {
+      errors.basicInfo = 'Please complete Basic Info first';
+    }
+
+    if (productInfo.quantity <= 0) {
+      errors.quantity = 'Quantity must be greater than 0';
+    }
+
+    if (productInfo.materialCost < 0) {
+      errors.materialCost = 'Material cost cannot be negative';
+    }
+
+    if (productInfo.labourCost < 0) {
+      errors.labourCost = 'Labour cost cannot be negative';
+    }
+
+    if (productInfo.overheadCost < 0) {
+      errors.overheadCost = 'Overhead cost cannot be negative';
+    }
+
+    if (productInfo.profit < 0) {
+      errors.profit = 'Profit cannot be negative';
+    }
+
+    if (productInfo.otherCosts < 0) {
+      errors.otherCosts = 'Other costs cannot be negative';
+    }
+
+    return errors;
+  }, [productInfo, basicInfoComplete]);
 
   // HS Code lookup simulation
   const searchHSCode = useCallback(async (query: string) => {
@@ -271,9 +318,9 @@ export function Calculator() {
     setHsCodeSuggestions(mockSuggestions);
   }, []);
 
-  // Enhanced calculation logic
-  const handleCalculate = async () => {
-    const errors = validateForm();
+  // Fetch trade agreements based on basic info
+  const fetchTradeAgreements = useCallback(async () => {
+    const errors = validateBasicInfo();
     setValidationErrors(errors);
 
     if (Object.keys(errors).length > 0) {
@@ -283,16 +330,75 @@ export function Calculator() {
     setIsCalculating(true);
 
     try {
+      // Simulate API call to get trade agreements
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const mockAgreements: TradeAgreement[] = [
+        {
+          type: 'MFN',
+          name: 'Most Favoured Nation',
+          rate: 12.5,
+          description: 'Standard WTO tariff rate',
+          requirements: ['Commercial Invoice', 'Packing List']
+        },
+        {
+          type: 'RVC',
+          name: 'Regional Value Content (USMCA)',
+          rate: 8.0,
+          description: 'Preferential rate under USMCA agreement',
+          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents']
+        },
+        {
+          type: 'ROOS',
+          name: 'Rules of Origin Specific (USMCA)',
+          rate: 6.5,
+          description: 'Specific rules of origin qualification',
+          requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
+        }
+      ];
+
+      setTradeAgreements(mockAgreements);
+      setBasicInfoComplete(true);
+      setSelectedAgreement(mockAgreements[0]); // Default to MFN
+
+    } catch (error) {
+      console.error('Failed to fetch trade agreements:', error);
+      setValidationErrors({ general: 'Failed to fetch trade agreements. Please try again.' });
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [productInfo.hsCode, productInfo.originCountry, productInfo.destinationCountry, validateBasicInfo]);
+
+  // Enhanced calculation logic
+  const handleCalculate = async () => {
+    const errors = validateCalculateForm();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    if (!selectedAgreement) {
+      setValidationErrors({ agreement: 'Please select a trade agreement first' });
+      return;
+    }
+
+    setIsCalculating(true);
+
+    try {
       // Simulate comprehensive API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const baseValue = productInfo.unitValue * productInfo.quantity;
-      const dutiableValue = baseValue; // Could be adjusted based on incoterms
+      // Calculate FOB value from cost components
+      const totalCosts = productInfo.materialCost + productInfo.labourCost + 
+                        productInfo.overheadCost + productInfo.profit + productInfo.otherCosts;
+      const fobValue = totalCosts * productInfo.quantity;
+      
+      // Update FOB value in product info
+      updateProductInfo('fobValue', fobValue);
 
-      // Complex tariff calculation
-      const baseTariffRate = 0.125; // 12.5%
-      const preferentialRate = 0.08; // 8% with trade agreement
-      const actualRate = productInfo.originCountry === 'MX' ? preferentialRate : baseTariffRate;
+      const dutiableValue = fobValue; // FOB value is the dutiable value
+      const actualRate = selectedAgreement.rate / 100; // Convert percentage to decimal
 
       const tariffAmount = dutiableValue * actualRate;
       const vatRate = 0.20; // 20% VAT
@@ -582,7 +688,7 @@ export function Calculator() {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="classification">Classification</TabsTrigger>
+                  <TabsTrigger value="calculate" disabled={!basicInfoComplete}>Calculate</TabsTrigger>
                   <TabsTrigger value="logistics">Logistics</TabsTrigger>
                   <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 </TabsList>
@@ -590,109 +696,6 @@ export function Calculator() {
                 {/* Basic Information Tab */}
                 <TabsContent value="basic" className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Description *</label>
-                      <Input
-                        placeholder="e.g., Tesla Model Y Long Range Electric Vehicle"
-                        value={productInfo.description}
-                        onChange={(e) => updateProductInfo('description', e.target.value)}
-                        className={validationErrors.description ? 'border-red-500' : ''}
-                      />
-                      {validationErrors.description && (
-                        <p className="text-sm text-red-600">{validationErrors.description}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Quantity *</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="1"
-                          value={productInfo.quantity || ''}
-                          onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
-                          className={validationErrors.quantity ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Unit Value *</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="45000.00"
-                          value={productInfo.unitValue || ''}
-                          onChange={(e) => updateProductInfo('unitValue', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.unitValue ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Currency</label>
-                        <select
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                          value={productInfo.currency}
-                          onChange={(e) => updateProductInfo('currency', e.target.value)}
-                        >
-                          <option value="USD">USD - US Dollar</option>
-                          <option value="EUR">EUR - Euro</option>
-                          <option value="GBP">GBP - British Pound</option>
-                          <option value="JPY">JPY - Japanese Yen</option>
-                          <option value="CAD">CAD - Canadian Dollar</option>
-                          <option value="AUD">AUD - Australian Dollar</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Origin Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select origin country"
-                          value={productInfo.originCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('originCountry', String(single));
-                          }}
-                          className={validationErrors.originCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Destination Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select destination country"
-                          value={productInfo.destinationCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('destinationCountry', String(single));
-                          }}
-                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Shipment Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={productInfo.shipmentDate}
-                          onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Classification Tab */}
-                <TabsContent value="classification" className="space-y-4">
-                  <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">HS Code *</label>
                       <div className="relative">
@@ -745,33 +748,301 @@ export function Calculator() {
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">HS Code Description</label>
-                      <Input
-                        placeholder="Auto-filled from HS code lookup"
-                        value={productInfo.hsCodeDescription}
-                        onChange={(e) => updateProductInfo('hsCodeDescription', e.target.value)}
-                        disabled
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Origin Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select origin country"
+                          value={productInfo.originCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('originCountry', String(single));
+                          }}
+                          className={validationErrors.originCountry ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.originCountry && (
+                          <p className="text-sm text-red-600">{validationErrors.originCountry}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Destination Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select destination country"
+                          value={productInfo.destinationCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('destinationCountry', String(single));
+                          }}
+                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.destinationCountry && (
+                          <p className="text-sm text-red-600">{validationErrors.destinationCountry}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Category</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                        value={productInfo.category}
-                        onChange={(e) => updateProductInfo('category', e.target.value)}
+                    <div className="flex justify-end pt-4">
+                      <Button 
+                        onClick={fetchTradeAgreements}
+                        disabled={isCalculating}
+                        className="min-w-[200px]"
                       >
-                        <option value="">Select category</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Automotive">Automotive</option>
-                        <option value="Textiles">Textiles</option>
-                        <option value="Machinery">Machinery</option>
-                        <option value="Chemicals">Chemicals</option>
-                        <option value="Food & Beverages">Food & Beverages</option>
-                      </select>
+                        {isCalculating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Fetching Agreements...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-4 h-4 mr-2" />
+                            Get Trade Agreements
+                          </>
+                        )}
+                      </Button>
                     </div>
+
+                    {/* Trade Agreements Results */}
+                    {tradeAgreements.length > 0 && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <Globe className="w-5 h-5" />
+                          Available Trade Agreements
+                        </h3>
+                        <div className="grid gap-3">
+                          {tradeAgreements.map((agreement, index) => (
+                            <div
+                              key={index}
+                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                selectedAgreement?.type === agreement.type
+                                  ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                              }`}
+                              onClick={() => setSelectedAgreement(agreement)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={agreement.type === 'MFN' ? 'secondary' : 'default'}>
+                                      {agreement.type}
+                                    </Badge>
+                                    <span className="font-medium">{agreement.name}</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{agreement.description}</p>
+                                  {agreement.requirements && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Requirements: {agreement.requirements.join(', ')}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-brand-600">{agreement.rate}%</div>
+                                  <div className="text-xs text-muted-foreground">Tariff Rate</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedAgreement && (
+                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              <span className="font-medium text-green-800 dark:text-green-200">
+                                Selected: {selectedAgreement.name} ({selectedAgreement.rate}% rate)
+                              </span>
+                            </div>
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                              You can now proceed to the Calculate tab to determine your exact tariff costs.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                </TabsContent>
+
+                {/* Calculate Tab */}
+                <TabsContent value="calculate" className="space-y-4">
+                  {!basicInfoComplete ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Complete Basic Info First</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Please complete the Basic Info tab and select a trade agreement before proceeding with calculations.
+                      </p>
+                      <Button onClick={() => setActiveTab('basic')}>
+                        Go to Basic Info
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {selectedAgreement && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Info className="w-5 h-5 text-blue-600" />
+                            <span className="font-medium text-blue-800 dark:text-blue-200">
+                              Using {selectedAgreement.name} - {selectedAgreement.rate}% tariff rate
+                            </span>
+                          </div>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            {selectedAgreement.description}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Currency</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                            value={productInfo.currency}
+                            onChange={(e) => updateProductInfo('currency', e.target.value)}
+                          >
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="JPY">JPY - Japanese Yen</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Quantity / Units *</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="1"
+                            value={productInfo.quantity || ''}
+                            onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
+                            className={validationErrors.quantity ? 'border-red-500' : ''}
+                          />
+                          {validationErrors.quantity && (
+                            <p className="text-sm text-red-600">{validationErrors.quantity}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <DollarSign className="w-5 h-5" />
+                          Cost Breakdown (per unit)
+                        </h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Material Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.materialCost || ''}
+                              onChange={(e) => updateProductInfo('materialCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.materialCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.materialCost && (
+                              <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Labour Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.labourCost || ''}
+                              onChange={(e) => updateProductInfo('labourCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.labourCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.labourCost && (
+                              <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Overhead Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.overheadCost || ''}
+                              onChange={(e) => updateProductInfo('overheadCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.overheadCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.overheadCost && (
+                              <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Profit</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.profit || ''}
+                              onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.profit ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.profit && (
+                              <p className="text-sm text-red-600">{validationErrors.profit}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Other Costs</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.otherCosts || ''}
+                              onChange={(e) => updateProductInfo('otherCosts', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.otherCosts ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.otherCosts && (
+                              <p className="text-sm text-red-600">{validationErrors.otherCosts}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">FOB Value (Calculated)</label>
+                            <Input
+                              type="number"
+                              value={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
+                              disabled
+                              className="bg-gray-50 dark:bg-gray-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <Button 
+                          onClick={handleCalculate}
+                          disabled={isCalculating}
+                          className="min-w-[200px]"
+                          variant="gradient"
+                        >
+                          {isCalculating ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Calculating...
+                            </>
+                          ) : (
+                            <>
+                              <CalculatorIcon className="w-4 h-4 mr-2" />
+                              Calculate Tariff
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Logistics Tab */}
