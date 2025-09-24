@@ -1,72 +1,76 @@
-import { useState, useEffect } from 'react';
-import safeLocalStorage from '@/lib/safeLocalStorage';
+import { useEffect, useState } from 'react'
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'dark' | 'light' | 'system'
 
-export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+export function useTheme() {
+  const [theme, setTheme] = useState<Theme>('system')
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('light')
 
-  // Get system preference
-  const getSystemTheme = (): 'light' | 'dark' => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return 'light';
-  };
-
-  // Apply theme to document
-  const applyTheme = (newTheme: 'light' | 'dark') => {
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(newTheme);
-    setResolvedTheme(newTheme);
-  };
-
-  // Initialize theme
   useEffect(() => {
-    const savedTheme = safeLocalStorage.get<Theme>('theme') || 'system';
-    setTheme(savedTheme);
+    // Get theme from localStorage or default to system
+    const savedTheme = localStorage.getItem('theme') as Theme || 'system'
+    setTheme(savedTheme)
+    
+    // Function to get system theme
+    const getSystemTheme = () => {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
 
-    const resolveTheme = (themeValue: Theme): 'light' | 'dark' => {
-      if (themeValue === 'system') {
-        return getSystemTheme();
+    // Resolve the actual theme
+    const resolveTheme = (currentTheme: Theme) => {
+      if (currentTheme === 'system') {
+        return getSystemTheme()
       }
-      return themeValue;
-    };
+      return currentTheme
+    }
 
-    applyTheme(resolveTheme(savedTheme));
+    const resolved = resolveTheme(savedTheme)
+    setResolvedTheme(resolved)
+
+    // Apply theme to document
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
+    root.classList.add(resolved)
 
     // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = () => {
-      if (savedTheme === 'system') {
-        applyTheme(getSystemTheme());
+      if (theme === 'system') {
+        const newResolved = getSystemTheme()
+        setResolvedTheme(newResolved)
+        root.classList.remove('light', 'dark')
+        root.classList.add(newResolved)
       }
-    };
+    }
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [theme])
 
-  // Update theme
-  const updateTheme = (newTheme: Theme) => {
-    setTheme(newTheme);
-    safeLocalStorage.set('theme', newTheme);
+  const setThemeAndSave = (newTheme: Theme) => {
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
     
-    const resolvedNewTheme = newTheme === 'system' ? getSystemTheme() : newTheme;
-    applyTheme(resolvedNewTheme);
-  };
+    const resolved = newTheme === 'system' 
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : newTheme
+    
+    setResolvedTheme(resolved)
+    
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
+    root.classList.add(resolved)
+  }
 
   const toggleTheme = () => {
-    const newTheme = resolvedTheme === 'light' ? 'dark' : 'light';
-    updateTheme(newTheme);
-  };
+    const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
+    setThemeAndSave(newTheme)
+  }
 
   return {
     theme,
     resolvedTheme,
-    setTheme: updateTheme,
+    setTheme: setThemeAndSave,
     toggleTheme,
-  };
-};
+  }
+}
