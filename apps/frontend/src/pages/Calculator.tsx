@@ -697,109 +697,6 @@ export function Calculator() {
                 <TabsContent value="basic" className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Description *</label>
-                      <Input
-                        placeholder="e.g., Tesla Model Y Long Range Electric Vehicle"
-                        value={productInfo.description}
-                        onChange={(e) => updateProductInfo('description', e.target.value)}
-                        className={validationErrors.description ? 'border-red-500' : ''}
-                      />
-                      {validationErrors.description && (
-                        <p className="text-sm text-red-600">{validationErrors.description}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Quantity *</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="1"
-                          value={productInfo.quantity || ''}
-                          onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
-                          className={validationErrors.quantity ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Unit Value *</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="45000.00"
-                          value={productInfo.unitValue || ''}
-                          onChange={(e) => updateProductInfo('unitValue', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.unitValue ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Currency</label>
-                        <select
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                          value={productInfo.currency}
-                          onChange={(e) => updateProductInfo('currency', e.target.value)}
-                        >
-                          <option value="USD">USD - US Dollar</option>
-                          <option value="EUR">EUR - Euro</option>
-                          <option value="GBP">GBP - British Pound</option>
-                          <option value="JPY">JPY - Japanese Yen</option>
-                          <option value="CAD">CAD - Canadian Dollar</option>
-                          <option value="AUD">AUD - Australian Dollar</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Origin Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select origin country"
-                          value={productInfo.originCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('originCountry', String(single));
-                          }}
-                          className={validationErrors.originCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Destination Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select destination country"
-                          value={productInfo.destinationCountry}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('destinationCountry', String(single));
-                          }}
-                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Shipment Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={productInfo.shipmentDate}
-                          onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Classification Tab */}
-                <TabsContent value="classification" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
                       <label className="text-sm font-medium">HS Code *</label>
                       <div className="relative">
                         <Input
@@ -851,33 +748,301 @@ export function Calculator() {
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">HS Code Description</label>
-                      <Input
-                        placeholder="Auto-filled from HS code lookup"
-                        value={productInfo.hsCodeDescription}
-                        onChange={(e) => updateProductInfo('hsCodeDescription', e.target.value)}
-                        disabled
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Origin Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select origin country"
+                          value={productInfo.originCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('originCountry', String(single));
+                          }}
+                          className={validationErrors.originCountry ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.originCountry && (
+                          <p className="text-sm text-red-600">{validationErrors.originCountry}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          Destination Country *
+                        </label>
+                        <CountrySelect
+                          placeholder="Select destination country"
+                          value={productInfo.destinationCountry}
+                          onChange={(code) => {
+                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
+                            updateProductInfo('destinationCountry', String(single));
+                          }}
+                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.destinationCountry && (
+                          <p className="text-sm text-red-600">{validationErrors.destinationCountry}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product Category</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                        value={productInfo.category}
-                        onChange={(e) => updateProductInfo('category', e.target.value)}
+                    <div className="flex justify-end pt-4">
+                      <Button 
+                        onClick={fetchTradeAgreements}
+                        disabled={isCalculating}
+                        className="min-w-[200px]"
                       >
-                        <option value="">Select category</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Automotive">Automotive</option>
-                        <option value="Textiles">Textiles</option>
-                        <option value="Machinery">Machinery</option>
-                        <option value="Chemicals">Chemicals</option>
-                        <option value="Food & Beverages">Food & Beverages</option>
-                      </select>
+                        {isCalculating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Fetching Agreements...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-4 h-4 mr-2" />
+                            Get Trade Agreements
+                          </>
+                        )}
+                      </Button>
                     </div>
+
+                    {/* Trade Agreements Results */}
+                    {tradeAgreements.length > 0 && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <Globe className="w-5 h-5" />
+                          Available Trade Agreements
+                        </h3>
+                        <div className="grid gap-3">
+                          {tradeAgreements.map((agreement, index) => (
+                            <div
+                              key={index}
+                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                selectedAgreement?.type === agreement.type
+                                  ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                              }`}
+                              onClick={() => setSelectedAgreement(agreement)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={agreement.type === 'MFN' ? 'secondary' : 'default'}>
+                                      {agreement.type}
+                                    </Badge>
+                                    <span className="font-medium">{agreement.name}</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{agreement.description}</p>
+                                  {agreement.requirements && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Requirements: {agreement.requirements.join(', ')}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-brand-600">{agreement.rate}%</div>
+                                  <div className="text-xs text-muted-foreground">Tariff Rate</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedAgreement && (
+                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              <span className="font-medium text-green-800 dark:text-green-200">
+                                Selected: {selectedAgreement.name} ({selectedAgreement.rate}% rate)
+                              </span>
+                            </div>
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                              You can now proceed to the Calculate tab to determine your exact tariff costs.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                </TabsContent>
+
+                {/* Calculate Tab */}
+                <TabsContent value="calculate" className="space-y-4">
+                  {!basicInfoComplete ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Complete Basic Info First</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Please complete the Basic Info tab and select a trade agreement before proceeding with calculations.
+                      </p>
+                      <Button onClick={() => setActiveTab('basic')}>
+                        Go to Basic Info
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {selectedAgreement && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Info className="w-5 h-5 text-blue-600" />
+                            <span className="font-medium text-blue-800 dark:text-blue-200">
+                              Using {selectedAgreement.name} - {selectedAgreement.rate}% tariff rate
+                            </span>
+                          </div>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            {selectedAgreement.description}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Currency</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                            value={productInfo.currency}
+                            onChange={(e) => updateProductInfo('currency', e.target.value)}
+                          >
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="JPY">JPY - Japanese Yen</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Quantity / Units *</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="1"
+                            value={productInfo.quantity || ''}
+                            onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 0)}
+                            className={validationErrors.quantity ? 'border-red-500' : ''}
+                          />
+                          {validationErrors.quantity && (
+                            <p className="text-sm text-red-600">{validationErrors.quantity}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <DollarSign className="w-5 h-5" />
+                          Cost Breakdown (per unit)
+                        </h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Material Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.materialCost || ''}
+                              onChange={(e) => updateProductInfo('materialCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.materialCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.materialCost && (
+                              <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Labour Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.labourCost || ''}
+                              onChange={(e) => updateProductInfo('labourCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.labourCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.labourCost && (
+                              <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Overhead Cost</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.overheadCost || ''}
+                              onChange={(e) => updateProductInfo('overheadCost', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.overheadCost ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.overheadCost && (
+                              <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Profit</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.profit || ''}
+                              onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.profit ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.profit && (
+                              <p className="text-sm text-red-600">{validationErrors.profit}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Other Costs</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={productInfo.otherCosts || ''}
+                              onChange={(e) => updateProductInfo('otherCosts', parseFloat(e.target.value) || 0)}
+                              className={validationErrors.otherCosts ? 'border-red-500' : ''}
+                            />
+                            {validationErrors.otherCosts && (
+                              <p className="text-sm text-red-600">{validationErrors.otherCosts}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">FOB Value (Calculated)</label>
+                            <Input
+                              type="number"
+                              value={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
+                              disabled
+                              className="bg-gray-50 dark:bg-gray-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <Button 
+                          onClick={handleCalculate}
+                          disabled={isCalculating}
+                          className="min-w-[200px]"
+                          variant="gradient"
+                        >
+                          {isCalculating ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Calculating...
+                            </>
+                          ) : (
+                            <>
+                              <CalculatorIcon className="w-4 h-4 mr-2" />
+                              Calculate Tariff
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Logistics Tab */}
