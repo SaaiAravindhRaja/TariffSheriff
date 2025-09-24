@@ -226,25 +226,13 @@ export function Calculator() {
   }, [productInfo]);
 
   // Validation logic
-  const validateForm = useCallback((): Record<string, string> => {
+  const validateBasicInfo = useCallback((): Record<string, string> => {
     const errors: Record<string, string> = {};
-
-    if (!productInfo.description.trim()) {
-      errors.description = 'Product description is required';
-    }
 
     if (!productInfo.hsCode.trim()) {
       errors.hsCode = 'HS Code is required';
     } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode)) {
       errors.hsCode = 'Invalid HS Code format (e.g., 8703.80.10)';
-    }
-
-    if (productInfo.quantity <= 0) {
-      errors.quantity = 'Quantity must be greater than 0';
-    }
-
-    if (productInfo.unitValue <= 0) {
-      errors.unitValue = 'Unit value must be greater than 0';
     }
 
     if (!productInfo.originCountry) {
@@ -261,6 +249,40 @@ export function Calculator() {
 
     return errors;
   }, [productInfo]);
+
+  const validateCalculateForm = useCallback((): Record<string, string> => {
+    const errors: Record<string, string> = {};
+
+    if (!basicInfoComplete) {
+      errors.basicInfo = 'Please complete Basic Info first';
+    }
+
+    if (productInfo.quantity <= 0) {
+      errors.quantity = 'Quantity must be greater than 0';
+    }
+
+    if (productInfo.materialCost < 0) {
+      errors.materialCost = 'Material cost cannot be negative';
+    }
+
+    if (productInfo.labourCost < 0) {
+      errors.labourCost = 'Labour cost cannot be negative';
+    }
+
+    if (productInfo.overheadCost < 0) {
+      errors.overheadCost = 'Overhead cost cannot be negative';
+    }
+
+    if (productInfo.profit < 0) {
+      errors.profit = 'Profit cannot be negative';
+    }
+
+    if (productInfo.otherCosts < 0) {
+      errors.otherCosts = 'Other costs cannot be negative';
+    }
+
+    return errors;
+  }, [productInfo, basicInfoComplete]);
 
   // HS Code lookup simulation
   const searchHSCode = useCallback(async (query: string) => {
