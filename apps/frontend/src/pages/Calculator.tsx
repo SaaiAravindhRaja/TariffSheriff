@@ -29,7 +29,7 @@ import {
   Bookmark,
   History,
   HelpCircle,
-  Calculator2
+
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,11 @@ import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownCha
 import { ComparisonChart } from '@/components/calculator/ComparisonChart';
 import { HistoricalRatesChart } from '@/components/calculator/HistoricalRatesChart';
 import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
+import { RVCCalculator } from '@/components/calculator/RVCCalculator';
+import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
+import { FieldLabel } from '@/components/calculator/FieldLabel';
 
-// Enhanced interfaces for professional calculator
+// Enhanced interfaces for professional calculator with AANZFTA RVC
 interface ProductInfo {
   description: string;
   hsCode: string;
@@ -69,13 +72,18 @@ interface ProductInfo {
   incoterms: string;
   certificates: string[];
   specialConditions: string[];
-  // Cost breakdown fields
-  materialCost: number;
-  labourCost: number;
-  overheadCost: number;
+  // AANZFTA Cost breakdown fields
+  materialCost: number; // AANZFTA Material Cost (originating materials)
+  labourCost: number; // Labour Cost (wages, remuneration, employee benefits)
+  overheadCost: number; // Overhead Cost (total overhead expense)
   profit: number;
-  otherCosts: number;
-  fobValue: number;
+  otherCosts: number; // Other Costs (transport, storage, port handling, etc.)
+  fobValue: number; // Free-on-Board value
+  // RVC Calculation fields
+  nonOriginatingMaterialsValue: number; // CIF value of non-originating materials
+  rvcMethod: 'direct' | 'indirect'; // Direct or Build-Down formula
+  rvcPercentage: number; // Calculated RVC percentage
+  rvcThreshold: number; // Required RVC threshold for qualification
 }
 
 interface TradeAgreement {
@@ -84,6 +92,8 @@ interface TradeAgreement {
   rate: number;
   description: string;
   requirements?: string[];
+  rvcThreshold?: number; // Required RVC percentage for preferential rate
+  rvcMethod?: 'direct' | 'indirect' | 'both'; // Allowed RVC calculation methods
 }
 
 interface TariffCalculation {
@@ -183,13 +193,18 @@ export function Calculator() {
     incoterms: 'CIF',
     certificates: [],
     specialConditions: [],
-    // Cost breakdown fields
+    // AANZFTA Cost breakdown fields
     materialCost: 0,
     labourCost: 0,
     overheadCost: 0,
     profit: 0,
     otherCosts: 0,
-    fobValue: 0
+    fobValue: 0,
+    // RVC Calculation fields
+    nonOriginatingMaterialsValue: 0,
+    rvcMethod: 'direct',
+    rvcPercentage: 0,
+    rvcThreshold: 40
   });
 
   // Calculation state
@@ -344,15 +359,26 @@ export function Calculator() {
         },
         {
           type: 'RVC',
-          name: 'Regional Value Content (USMCA)',
+          name: 'AANZFTA Regional Value Content',
+          rate: 6.0,
+          description: 'Preferential rate under AANZFTA agreement (40% RVC required)',
+          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
+          rvcThreshold: 40,
+          rvcMethod: 'both'
+        },
+        {
+          type: 'RVC',
+          name: 'USMCA Regional Value Content',
           rate: 8.0,
-          description: 'Preferential rate under USMCA agreement',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents']
+          description: 'Preferential rate under USMCA agreement (75% RVC required)',
+          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
+          rvcThreshold: 75,
+          rvcMethod: 'both'
         },
         {
           type: 'ROOS',
-          name: 'Rules of Origin Specific (USMCA)',
-          rate: 6.5,
+          name: 'Rules of Origin Specific',
+          rate: 4.5,
           description: 'Specific rules of origin qualification',
           requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
         }
@@ -391,18 +417,40 @@ export function Calculator() {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Calculate FOB value from cost components
-      const totalCosts = productInfo.materialCost + productInfo.labourCost + 
-                        productInfo.overheadCost + productInfo.profit + productInfo.otherCosts;
+      const totalCosts = productInfo.materialCost + productInfo.labourCost +
+        productInfo.overheadCost + productInfo.profit + productInfo.otherCosts;
       const fobValue = totalCosts * productInfo.quantity;
-      
+
       // Update FOB value in product info
       updateProductInfo('fobValue', fobValue);
 
       const baseValue = fobValue; // Base value for calculations
       const dutiableValue = fobValue; // FOB value is the dutiable value
-      const actualRate = selectedAgreement.rate / 100; // Convert percentage to decimal
+
+      // Calculate RVC if applicable
+      let rvcPercentage = 0;
+      let qualifiesForPreferential = true;
+
+      if (selectedAgreement.type === 'RVC' && selectedAgreement.rvcThreshold) {
+        if (productInfo.rvcMethod === 'direct') {
+          // Direct Formula: (Material + Labour + Overhead + Profit + Other) / FOB × 100%
+          rvcPercentage = fobValue > 0 ? ((productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) / fobValue) * 100 : 0;
+        } else {
+          // Indirect Formula: (FOB - Non-Originating Materials) / FOB × 100%
+          rvcPercentage = fobValue > 0 ? ((fobValue - productInfo.nonOriginatingMaterialsValue) / fobValue) * 100 : 0;
+        }
+
+        qualifiesForPreferential = rvcPercentage >= selectedAgreement.rvcThreshold;
+        updateProductInfo('rvcPercentage', rvcPercentage);
+      }
+
+      // Determine actual tariff rate based on qualification
+      const actualRate = (selectedAgreement.type === 'RVC' && !qualifiesForPreferential)
+        ? 0.125 // Fall back to MFN rate if RVC not met
+        : selectedAgreement.rate / 100; // Convert percentage to decimal
+
       const baseTariffRate = 0.125; // 12.5% base MFN rate
-      const preferentialRate = 0.065; // 6.5% preferential rate
+      const preferentialRate = selectedAgreement.rate / 100;
 
       const tariffAmount = dutiableValue * actualRate;
       const vatRate = 0.20; // 20% VAT
@@ -492,6 +540,16 @@ export function Calculator() {
               type: 'info' as const,
               message: 'High-value shipment detected',
               recommendation: 'Additional documentation may be required'
+            }] : []),
+            ...(selectedAgreement.type === 'RVC' && !qualifiesForPreferential ? [{
+              type: 'warning' as const,
+              message: `RVC requirement not met (${rvcPercentage.toFixed(1)}% vs ${selectedAgreement.rvcThreshold}% required)`,
+              recommendation: 'Falling back to MFN rate. Consider increasing originating content or reducing non-originating materials.'
+            }] : []),
+            ...(selectedAgreement.type === 'RVC' && qualifiesForPreferential ? [{
+              type: 'info' as const,
+              message: `RVC requirement satisfied (${rvcPercentage.toFixed(1)}% vs ${selectedAgreement.rvcThreshold}% required)`,
+              recommendation: 'Eligible for preferential tariff treatment under AANZFTA.'
             }] : [])
           ],
           alternativeRoutes: [
@@ -606,8 +664,19 @@ export function Calculator() {
             Professional Tariff Calculator
           </h1>
           <p className="text-muted-foreground">
-            Industry-standard import duty and tax calculations with compliance insights
+            Industry-standard import duty and tax calculations with AANZFTA RVC compliance
           </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="text-xs">
+              AANZFTA Article 4 Compliant
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              GATT 1994 Valuation
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Professional Grade
+            </Badge>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -691,9 +760,10 @@ export function Calculator() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
                   <TabsTrigger value="calculate" disabled={!basicInfoComplete}>Calculate</TabsTrigger>
+                  <TabsTrigger value="rvc" disabled={!selectedAgreement || selectedAgreement.type !== 'RVC'}>RVC</TabsTrigger>
                   <TabsTrigger value="logistics">Logistics</TabsTrigger>
                   <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 </TabsList>
@@ -793,7 +863,7 @@ export function Calculator() {
                     </div>
 
                     <div className="flex justify-end pt-4">
-                      <Button 
+                      <Button
                         onClick={fetchTradeAgreements}
                         disabled={isCalculating}
                         className="min-w-[200px]"
@@ -823,11 +893,10 @@ export function Calculator() {
                           {tradeAgreements.map((agreement, index) => (
                             <div
                               key={index}
-                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                selectedAgreement?.type === agreement.type
+                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAgreement?.type === agreement.type
                                   ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
                                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                              }`}
+                                }`}
                               onClick={() => setSelectedAgreement(agreement)}
                             >
                               <div className="flex items-center justify-between">
@@ -855,6 +924,11 @@ export function Calculator() {
                                     {agreement.rate}%
                                   </div>
                                   <div className="text-xs text-muted-foreground">Tariff Rate</div>
+                                  {agreement.rvcThreshold && (
+                                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                      {agreement.rvcThreshold}% RVC Required
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -866,7 +940,7 @@ export function Calculator() {
                 </TabsContent>
 
                 {/* Calculate Tab */}
-                <TabsContent value="calculate" className="space-y-4">
+                <TabsContent value="calculate" className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Quantity *</label>
@@ -897,11 +971,22 @@ export function Calculator() {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Cost Breakdown</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-lg">AANZFTA Cost Breakdown</h4>
+                      <Badge variant="outline" className="text-xs">
+                        Article 4 - RVC Calculation
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* 1. Material Cost */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Material Cost</label>
+                        <FieldLabel
+                          label="Material Cost"
+                          required
+                          tooltip="Value of originating materials, parts or produce that are acquired or self-produced by the producer in the production of the good"
+                        />
                         <Input
                           type="number"
                           step="0.01"
@@ -914,8 +999,14 @@ export function Calculator() {
                           <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
                         )}
                       </div>
+
+                      {/* 2. Labour Cost */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Labour Cost</label>
+                        <FieldLabel
+                          label="Labour Cost"
+                          required
+                          tooltip="Includes wages, remuneration and other employee benefits"
+                        />
                         <Input
                           type="number"
                           step="0.01"
@@ -928,8 +1019,14 @@ export function Calculator() {
                           <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
                         )}
                       </div>
+
+                      {/* 3. Overhead Cost */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Overhead Cost</label>
+                        <FieldLabel
+                          label="Overhead Cost"
+                          required
+                          tooltip="The total overhead expense"
+                        />
                         <Input
                           type="number"
                           step="0.01"
@@ -942,25 +1039,59 @@ export function Calculator() {
                           <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
                         )}
                       </div>
+
+                      {/* 4. Other Costs */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Profit</label>
+                        <FieldLabel
+                          label="Other Costs"
+                          tooltip="Costs incurred in placing the good in the ship or other means of transport for export including, but not limited to, domestic transport costs, storage and warehousing, port handling, brokerage fees and service charges"
+                        />
                         <Input
                           type="number"
                           step="0.01"
                           placeholder="0.00"
-                          value={productInfo.profit}
-                          onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.profit ? 'border-red-500' : ''}
+                          value={productInfo.otherCosts}
+                          onChange={(e) => updateProductInfo('otherCosts', parseFloat(e.target.value) || 0)}
+                          className={validationErrors.otherCosts ? 'border-red-500' : ''}
                         />
-                        {validationErrors.profit && (
-                          <p className="text-sm text-red-600">{validationErrors.profit}</p>
+                        {validationErrors.otherCosts && (
+                          <p className="text-sm text-red-600">{validationErrors.otherCosts}</p>
                         )}
+                      </div>
+
+                      {/* 5. Free-on-Board Value */}
+                      <div className="space-y-2">
+                        <FieldLabel
+                          label="Free-on-Board Value"
+                          tooltip="The free-on-board value of the goods as defined in Article 1 (Definitions)"
+                        />
+                        <Input
+                          type="number"
+                          value={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.otherCosts) * productInfo.quantity}
+                          disabled
+                          className="bg-gray-50 dark:bg-gray-800 font-medium"
+                        />
+                      </div>
+
+                      {/* 6. Value of Non-Originating Materials */}
+                      <div className="space-y-2">
+                        <FieldLabel
+                          label="Value of Non-Originating Materials"
+                          tooltip="The CIF value at the time of importation or the earliest ascertained price paid for all non-originating materials, parts or produce that are acquired by the producer in the production of the good. Non-originating materials include materials of undetermined origin but do not include a material that is self-produced"
+                        />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={productInfo.nonOriginatingMaterialsValue}
+                          onChange={(e) => updateProductInfo('nonOriginatingMaterialsValue', parseFloat(e.target.value) || 0)}
+                        />
                       </div>
                     </div>
                   </div>
 
                   <div className="flex justify-end pt-4">
-                    <Button 
+                    <Button
                       onClick={handleCalculate}
                       disabled={isCalculating}
                       className="min-w-[200px]"
@@ -979,6 +1110,39 @@ export function Calculator() {
                       )}
                     </Button>
                   </div>
+                </TabsContent>
+
+                {/* RVC Tab */}
+                <TabsContent value="rvc" className="space-y-6">
+                  {selectedAgreement?.type === 'RVC' ? (
+                    <>
+                      <RVCInfoPanel />
+
+                      {/* Live RVC Calculator */}
+                      {productInfo.fobValue > 0 && (
+                        <RVCCalculator
+                          materialCost={productInfo.materialCost}
+                          labourCost={productInfo.labourCost}
+                          overheadCost={productInfo.overheadCost}
+                          profit={productInfo.profit}
+                          otherCosts={productInfo.otherCosts}
+                          fobValue={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
+                          nonOriginatingMaterialsValue={productInfo.nonOriginatingMaterialsValue}
+                          method={productInfo.rvcMethod}
+                          threshold={selectedAgreement.rvcThreshold || 40}
+                          currency={productInfo.currency}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calculator className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">RVC Calculation Not Available</h3>
+                      <p className="text-muted-foreground">
+                        Please select an RVC-based trade agreement to access Regional Value Content calculations.
+                      </p>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Logistics Tab */}
@@ -1131,6 +1295,22 @@ export function Calculator() {
                   totalCost: calculation.results.totalCost
                 }}
               />
+
+              {/* RVC Calculator - Show if RVC agreement is selected */}
+              {selectedAgreement?.type === 'RVC' && selectedAgreement.rvcThreshold && (
+                <RVCCalculator
+                  materialCost={calculation.productInfo.materialCost}
+                  labourCost={calculation.productInfo.labourCost}
+                  overheadCost={calculation.productInfo.overheadCost}
+                  profit={calculation.productInfo.profit}
+                  otherCosts={calculation.productInfo.otherCosts}
+                  fobValue={calculation.productInfo.fobValue}
+                  nonOriginatingMaterialsValue={calculation.productInfo.nonOriginatingMaterialsValue}
+                  method={calculation.productInfo.rvcMethod}
+                  threshold={selectedAgreement.rvcThreshold}
+                  currency={calculation.productInfo.currency}
+                />
+              )}
             </>
           ) : (
             <Card>
