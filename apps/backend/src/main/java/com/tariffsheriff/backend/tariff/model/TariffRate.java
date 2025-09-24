@@ -13,7 +13,6 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.tariffsheriff.backend.tariff.model.Country;
 
 import lombok.*;
 
@@ -26,18 +25,15 @@ import lombok.*;
 @EqualsAndHashCode
 public class TariffRate {
     private @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
-@Column(name = "importer_id", nullable = false, unique = true)
-private BigInteger importerId;
-
-@Column(name = "origin_id", nullable = false, unique = true)
-private BigInteger originId;
-    private @Column(name = "hs_product_id") Long hscode;
+    private @Column(nullable = false, unique = true) Long importerId;
+    private @Column(nullable = false, unique = true) Long originId;
+    private @Column(name = "hs_product_id") Long hsCode;
     private @Column(nullable = false) String basis;
     private Long agreementId;
     private @Column(nullable = false) String rateType;
     private @Column(precision = 9, scale = 6) BigDecimal adValoremRate;
     private @Column(precision = 9, scale = 6) BigDecimal specificAmount;
-    private @Column(precision = 9, scale = 6) BigDecimal specificUnit;
+    private @Column(precision = 9, scale = 6) String specificUnit;
     private LocalDate validFrom;
     private LocalDate validTo;
     private String sourceRef;

@@ -10,5 +10,5 @@ import com.tariffsheriff.backend.tariff.model.TariffRate;
 
 @Repository
 public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
-    Optional<TariffRate> findByImporterIdAndOriginIdAndHscodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis);
+    Optional<TariffRate> findByImporterIdAndOriginIdAndHsCodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis);
 }
