@@ -207,11 +207,10 @@ export function Calculator() {
 
   // Auto-save to localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('tariff-calculator-draft');
+    const saved = safeLocalStorage.get('tariff-calculator-draft');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setProductInfo(prev => ({ ...prev, ...parsed }));
+        setProductInfo(prev => ({ ...prev, ...saved }));
       } catch (e) {
         console.error('Failed to load saved draft:', e);
       }
@@ -220,7 +219,7 @@ export function Calculator() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem('tariff-calculator-draft', JSON.stringify(productInfo));
+      safeLocalStorage.set('tariff-calculator-draft', productInfo);
     }, 1000);
     return () => clearTimeout(timer);
   }, [productInfo]);
@@ -569,9 +568,10 @@ export function Calculator() {
   // Save calculation
   const saveCalculation = () => {
     if (calculation) {
-      const saved = JSON.parse(localStorage.getItem('saved-calculations') || '[]');
-      saved.unshift(calculation);
-      localStorage.setItem('saved-calculations', JSON.stringify(saved.slice(0, 50))); // Keep last 50
+      const saved = safeLocalStorage.get('saved-calculations') || [];
+      const savedArray = Array.isArray(saved) ? saved : [];
+      savedArray.unshift(calculation);
+      safeLocalStorage.set('saved-calculations', savedArray.slice(0, 50)); // Keep last 50
     }
   };
 
