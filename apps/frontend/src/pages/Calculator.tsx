@@ -371,10 +371,15 @@ export function Calculator() {
 
   // Enhanced calculation logic
   const handleCalculate = async () => {
-    const errors = validateForm();
+    const errors = validateCalculateForm();
     setValidationErrors(errors);
 
     if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    if (!selectedAgreement) {
+      setValidationErrors({ agreement: 'Please select a trade agreement first' });
       return;
     }
 
@@ -382,15 +387,18 @@ export function Calculator() {
 
     try {
       // Simulate comprehensive API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const baseValue = productInfo.unitValue * productInfo.quantity;
-      const dutiableValue = baseValue; // Could be adjusted based on incoterms
+      // Calculate FOB value from cost components
+      const totalCosts = productInfo.materialCost + productInfo.labourCost + 
+                        productInfo.overheadCost + productInfo.profit + productInfo.otherCosts;
+      const fobValue = totalCosts * productInfo.quantity;
+      
+      // Update FOB value in product info
+      updateProductInfo('fobValue', fobValue);
 
-      // Complex tariff calculation
-      const baseTariffRate = 0.125; // 12.5%
-      const preferentialRate = 0.08; // 8% with trade agreement
-      const actualRate = productInfo.originCountry === 'MX' ? preferentialRate : baseTariffRate;
+      const dutiableValue = fobValue; // FOB value is the dutiable value
+      const actualRate = selectedAgreement.rate / 100; // Convert percentage to decimal
 
       const tariffAmount = dutiableValue * actualRate;
       const vatRate = 0.20; // 20% VAT
@@ -680,7 +688,7 @@ export function Calculator() {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="classification">Classification</TabsTrigger>
+                  <TabsTrigger value="calculate" disabled={!basicInfoComplete}>Calculate</TabsTrigger>
                   <TabsTrigger value="logistics">Logistics</TabsTrigger>
                   <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 </TabsList>
