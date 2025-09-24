@@ -67,6 +67,21 @@ interface ProductInfo {
   incoterms: string;
   certificates: string[];
   specialConditions: string[];
+  // Cost breakdown fields
+  materialCost: number;
+  labourCost: number;
+  overheadCost: number;
+  profit: number;
+  otherCosts: number;
+  fobValue: number;
+}
+
+interface TradeAgreement {
+  type: 'MFN' | 'RVC' | 'ROOS';
+  name: string;
+  rate: number;
+  description: string;
+  requirements?: string[];
 }
 
 interface TariffCalculation {
