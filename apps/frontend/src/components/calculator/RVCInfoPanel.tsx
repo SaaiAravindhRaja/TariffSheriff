@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Calculator2, Info, AlertCircle } from 'lucide-react';
+import { BookOpen, Calculator, Info, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,7 +19,7 @@ export function RVCInfoPanel() {
         {/* Formula Explanations */}
         <div className="space-y-4">
           <h4 className="font-semibold flex items-center gap-2">
-            <Calculator2 className="w-4 h-4" />
+            <Calculator className="w-4 h-4" />
             RVC Calculation Methods
           </h4>
           
