@@ -1136,7 +1136,7 @@ export function Calculator() {
                     </>
                   ) : (
                     <div className="text-center py-8">
-                      <Calculator className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <Calculator size={48} className="text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-medium mb-2">RVC Calculation Not Available</h3>
                       <p className="text-muted-foreground">
                         Please select an RVC-based trade agreement to access Regional Value Content calculations.
