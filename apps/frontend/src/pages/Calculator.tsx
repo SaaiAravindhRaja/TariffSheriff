@@ -894,8 +894,8 @@ export function Calculator() {
                             <div
                               key={index}
                               className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAgreement?.type === agreement.type
-                                  ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
-                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                 }`}
                               onClick={() => setSelectedAgreement(agreement)}
                             >
@@ -1136,7 +1136,7 @@ export function Calculator() {
                     </>
                   ) : (
                     <div className="text-center py-8">
-                      <Calculator className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <CalculatorIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-medium mb-2">RVC Calculation Not Available</h3>
                       <p className="text-muted-foreground">
                         Please select an RVC-based trade agreement to access Regional Value Content calculations.
