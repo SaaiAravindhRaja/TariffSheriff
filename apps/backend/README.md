@@ -97,7 +97,7 @@ Secrets (GitHub Actions)
   ```
 
 Local development
-- Create a private env file (not committed), e.g., `apps/backend/.env.local`, with:
+- Copy this into `apps/backend/.env.example` (commit this file; placeholders only):
   ```properties
   DATABASE_URL=jdbc:postgresql://<dev-host>:5432/tariffsheriff?sslmode=require
   DATABASE_USERNAME=app_dev
