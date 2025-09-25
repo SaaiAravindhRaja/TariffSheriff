@@ -56,3 +56,61 @@ mvn test
 ```
 
 The Maven build disables Ryuk cleanup (via `TESTCONTAINERS_RYUK_DISABLED=true`) so Testcontainers works with rootless Docker setups such as Colima. Containers are still stopped at the end of the test run.
+
+### Database topology and ownership
+
+This project uses Neon Postgres with two environments: dev and prod.
+
+Branch → Database → Role mapping
+- dev → `tariffsheriff` → `app_dev` (application), owner: `neondbowner`
+- prod → `tariffsheriff` → `app_prod` (application), owner: `neondbowner`
+
+What the roles do
+- `app_*`: least-privilege LOGIN roles used by the running app. DML only (SELECT/INSERT/UPDATE/DELETE), can use sequences; no DDL.
+- `neondbowner`: Neon’s project owner role; avoid for app runtime.
+
+Note: If you later want stricter separation in prod, create a dedicated migration role (e.g., `migrate_prod`) for Flyway and keep `app_prod` DML-only.
+
+How to retrieve connection info (Neon)
+1. Open Neon Console → Project: TariffSheriff → choose branch (`dev` or `prod`).
+2. Copy the hostname from Connection details. Database name is `tariffsheriff`.
+3. Build the JDBC URL for Spring:
+   - `jdbc:postgresql://<host>:5432/tariffsheriff?sslmode=require`
+4. Use the appropriate role as username (`app_dev` or `app_prod`) and its password.
+
+Environment variables used by Spring (see `src/main/resources/application.properties`)
+- `DATABASE_URL` → JDBC URL
+- `DATABASE_USERNAME` → DB role (e.g., `app_dev`, `app_prod`)
+- `DATABASE_PASSWORD` → password for the role
+- Aliases also supported: `DB_URL`, `DB_USER`, `DB_PASSWORD`
+
+Secrets (GitHub Actions)
+- Create repo secrets with these names so workflows can target each env:
+  - `DATABASE_URL_DEV`, `DATABASE_USERNAME_DEV`, `DATABASE_PASSWORD_DEV`
+  - `DATABASE_URL_PROD`, `DATABASE_USERNAME_PROD`, `DATABASE_PASSWORD_PROD`
+- In your workflow job, map the per-env secrets to the env vars Spring expects:
+  ```yaml
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
+    DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME_DEV }}
+    DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD_DEV }}
+  ```
+
+Local development
+- Create a private env file (not committed), e.g., `apps/backend/.env.local`, with:
+  ```properties
+  DATABASE_URL=jdbc:postgresql://<dev-host>:5432/tariffsheriff?sslmode=require
+  DATABASE_USERNAME=app_dev
+  DATABASE_PASSWORD=CHANGE_ME
+  ```
+- Or export env vars before running. Real `.env*` files are ignored by git (see repo `.gitignore`).
+
+Owners and access
+- Product/DB owner: Nathan
+- Operational owner (rotating on-call): Nathan
+- To request access or changes: open a ticket and tag the owners above.
+
+Neon console links
+- Project: https://console.neon.tech/app/projects/bold-pond-35683769
+- Dev branch: https://console.neon.tech/app/projects/bold-pond-35683769/branches/br-lively-recipe-a11rpxzb
+- Prod branch: https://console.neon.tech/app/projects/bold-pond-35683769/branches/br-old-field-a1cdwcu3
