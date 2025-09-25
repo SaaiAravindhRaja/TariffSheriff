@@ -6,3 +6,7 @@ target/
 .DS_Store
 .vscode/
 .idea/
+# Environment files (ignore real secrets everywhere)
+**/.env
+**/.env.*
+*.env
