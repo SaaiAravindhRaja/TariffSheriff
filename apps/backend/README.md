@@ -57,6 +57,64 @@ mvn test
 
 The Maven build disables Ryuk cleanup (via `TESTCONTAINERS_RYUK_DISABLED=true`) so Testcontainers works with rootless Docker setups such as Colima. Containers are still stopped at the end of the test run.
 
+### Migrations: how to run and troubleshoot
+
+Run migrations (Flyway runs on app startup)
+- Maven (dev profile):
+  ```powershell
+  # set env vars first (replace with your values)
+  $env:DATABASE_URL="jdbc:postgresql://<dev-host>:5432/tariffsheriff?sslmode=require"
+  $env:DATABASE_USERNAME="app_dev"
+  $env:DATABASE_PASSWORD="<dev-password>"
+  cd apps/backend
+  mvn spring-boot:run -Dspring-boot.run.profiles=dev
+  ```
+- Docker Compose (reads apps/backend/.env):
+  ```powershell
+  docker compose -f infrastructure/docker/docker-compose.yml up --build
+  ```
+
+Verify success
+- Look for log lines similar to:
+  - `Successfully validated X migrations`
+  - `Schema "public" is up to date. No migration necessary.`
+- Or run the smoke checks below (Flyway history, tables, indexes).
+
+Troubleshooting
+- Permission denied creating tables:
+  - Your role needs DDL during migration. Temporarily grant and then revoke:
+    ```sql
+    GRANT CREATE ON SCHEMA public TO app_dev;  -- run migration
+    REVOKE CREATE ON SCHEMA public FROM app_dev;  -- optional tighten afterwards
+    ```
+- SSL/TLS errors:
+  - Ensure the JDBC URL includes `?sslmode=require`.
+  - With Neon pooler hosts (`-pooler`), `\conninfo` shows SSL; `pg_stat_ssl` may be false (TLS terminates at the pooler).
+- Wrong host/user/db:
+  - Host should be your Neon branch endpoint, user `app_dev` (or `app_prod`), db `tariffsheriff`.
+- Idempotency:
+  - Restart and confirm logs show `No migration necessary.`
+
+### Migration smoke checks
+
+Use these quick queries to confirm Flyway ran and key objects exist (replace host/user/password as needed):
+
+```powershell
+$env:PGPASSWORD="<dev-password>"
+psql -h <dev-host> -p 5432 -U app_dev -d tariffsheriff -c "select version, description, success, installed_on from flyway_schema_history order by installed_on desc limit 5;"
+
+# Required tables
+psql -h <dev-host> -p 5432 -U app_dev -d tariffsheriff -c "select table_name from information_schema.tables where table_schema='public' and table_name in ('country','agreement','agreement_party','hs_product','tariff_rate','vat','roo_rule') order by table_name;"
+
+# Key indexes created by V1
+psql -h <dev-host> -p 5432 -U app_dev -d tariffsheriff -c "select indexname from pg_indexes where schemaname='public' and tablename in ('hs_product','tariff_rate','roo_rule') order by indexname;"
+```
+
+Expected
+- `flyway_schema_history` shows at least V1 applied successfully.
+- All listed tables are returned.
+- Index list includes: `uq_hs_product`, `idx_tariff_lookup`, `idx_pref_lookup`, `uq_roo_rule_agreement_product`.
+
 ### Database topology and ownership
 
 This project uses Neon Postgres with two environments: dev and prod.
