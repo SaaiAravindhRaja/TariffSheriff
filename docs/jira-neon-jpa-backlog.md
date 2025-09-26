@@ -58,7 +58,7 @@ Acceptance Criteria
 Sub-tasks
 - Add Spring profile configuration for `dev`, `prod`  
   Done when profiles map to different JDBC URLs.
-- Wire env vars in container/orchestrator manifests (`docker-compose`/K8s)  
+- Wire env vars in Docker Compose  
   Done when local run reads from env and connects.
 - Add SSL parameters to JDBC URL and verify  
   Done when JDBC handshake succeeds with SSL required.
