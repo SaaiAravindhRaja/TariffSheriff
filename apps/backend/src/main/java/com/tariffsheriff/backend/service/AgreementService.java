@@ -32,6 +32,7 @@ public class AgreementService {
         existing.setStatus(update.getStatus());
         existing.setEnteredIntoForce(update.getEnteredIntoForce());
         existing.setParties(update.getParties());
+        existing.setRvcThreshold(update.getRvcThreshold());
         return agreementRepository.save(existing);
     }
 
