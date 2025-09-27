@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
-import com.tariffsheriff.backend.tariff.model.TariffRate;
-import com.tariffsheriff.backend.tariff.service.TariffRateService;
+import com.tariffsheriff.backend.model.TariffRate;
+import com.tariffsheriff.backend.tariff.service.TariffCalculationService;
 @RestController
 @RequestMapping("/api/tariff-rate")
 public class TariffRateController {
-    private TariffRateService tariffRateService;
+    private TariffCalculationService tariffRateService;
 
-    public TariffRateController(TariffRateService trs) {
+    public TariffRateController(TariffCalculationService trs) {
         this.tariffRateService = trs;
     }
 
