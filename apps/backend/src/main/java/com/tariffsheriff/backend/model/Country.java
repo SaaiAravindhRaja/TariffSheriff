@@ -1,6 +1,8 @@
 package com.tariffsheriff.backend.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "country")
@@ -10,10 +12,12 @@ public class Country {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "iso2", nullable = false, unique = true, length = 2)
+    @Column(name = "iso2", nullable = false, unique = true, columnDefinition = "char(2)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String iso2;
 
-    @Column(name = "iso3", nullable = false, unique = true, length = 3)
+    @Column(name = "iso3", nullable = false, unique = true, columnDefinition = "char(3)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String iso3;
 
     @Column(name = "name", nullable = false, length = 120)

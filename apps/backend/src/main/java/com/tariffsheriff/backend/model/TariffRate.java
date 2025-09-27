@@ -7,6 +7,9 @@ import com.tariffsheriff.backend.model.enums.TariffRateType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import org.hibernate.annotations.Check;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @Entity
 @Table(name = "tariff_rate",
@@ -14,6 +17,7 @@ import java.time.LocalDate;
            @Index(name = "idx_tariff_lookup", columnList = "importer_id,hs_product_id,valid_from DESC"),
            @Index(name = "idx_pref_lookup", columnList = "importer_id,origin_id,hs_product_id,valid_from DESC")
        })
+@Check(constraints = "(valid_to IS NULL OR valid_to >= valid_from) AND ((basis = 'MFN' AND agreement_id IS NULL) OR (basis = 'PREF' AND agreement_id IS NOT NULL))")
 public class TariffRate {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,8 +62,19 @@ public class TariffRate {
     @Column(name = "valid_to")
     private LocalDate validTo;
 
-    @Column(name = "source_ref")
+    @Column(name = "source_ref", columnDefinition = "text")
     private String sourceRef;
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeScales() {
+        if (adValoremRate != null) {
+            adValoremRate = adValoremRate.setScale(6, java.math.RoundingMode.HALF_UP);
+        }
+        if (specificAmount != null) {
+            specificAmount = specificAmount.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

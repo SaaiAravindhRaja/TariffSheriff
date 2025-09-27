@@ -24,6 +24,7 @@ public class Agreement {
     @Column(nullable = false, length = 20)
     private AgreementStatus status;
 
+    @Column(name = "entered_into_force")
     private LocalDate enteredIntoForce;
 
     // Many-to-many with Country through agreement_party join table
