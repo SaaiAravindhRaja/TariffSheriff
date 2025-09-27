@@ -40,6 +40,17 @@ public class HsProductService {
 
     @Transactional
     public void delete(Long id) { hsProductRepository.deleteById(id); }
+
+    @Transactional
+    public void createThenFail(com.tariffsheriff.backend.model.Country destination) {
+        HsProduct p = new HsProduct();
+        p.setDestination(destination);
+        p.setHsVersion("2022");
+        p.setHsCode("ROLLBK");
+        p.setHsLabel("Rollback test");
+        hsProductRepository.save(p);
+        throw new RuntimeException("forcing rollback");
+    }
 }
 
 

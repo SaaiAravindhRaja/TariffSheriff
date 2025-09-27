@@ -11,6 +11,8 @@ public interface HsProductRepository extends JpaRepository<HsProduct, Long> {
     java.util.Optional<HsProduct> findByDestination_IdAndHsVersionAndHsCode(Long destinationId, String hsVersion, String hsCode);
 
     Page<HsProduct> findByDestination_Id(Long destinationId, Pageable pageable);
+
+    long countByDestination_Id(Long destinationId);
 }
 
 
