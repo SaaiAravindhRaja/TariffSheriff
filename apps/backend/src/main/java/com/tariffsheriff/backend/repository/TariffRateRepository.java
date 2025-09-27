@@ -2,6 +2,8 @@ package com.tariffsheriff.backend.repository;
 
 import com.tariffsheriff.backend.model.TariffRate;
 import com.tariffsheriff.backend.model.enums.TariffBasis;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +21,8 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
                                                           @Param("originId") Long originId,
                                                           @Param("hsProductId") Long hsProductId,
                                                           @Param("shipmentDate") java.time.LocalDate shipmentDate);
+
+    Page<TariffRate> findByImporter_Id(Long importerId, Pageable pageable);
 }
 
 
