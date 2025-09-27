@@ -36,6 +36,9 @@ public class Agreement {
     )
     private Set<Country> parties = new HashSet<>();
 
+    @Column(name = "rvc_threshold", precision = 5, scale = 2)
+    private java.math.BigDecimal rvcThreshold;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
@@ -48,6 +51,8 @@ public class Agreement {
     public void setEnteredIntoForce(LocalDate enteredIntoForce) { this.enteredIntoForce = enteredIntoForce; }
     public Set<Country> getParties() { return parties; }
     public void setParties(Set<Country> parties) { this.parties = parties; }
+    public java.math.BigDecimal getRvcThreshold() { return rvcThreshold; }
+    public void setRvcThreshold(java.math.BigDecimal rvcThreshold) { this.rvcThreshold = rvcThreshold; }
 }
 
 
