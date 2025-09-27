@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-8 flex flex-col md:flex-row items-start md:items-center justify-between">
         <div className="mb-4 md:mb-0">
           <a href="/" aria-label="TariffSheriff home" className="flex items-center space-x-3">
-              <img src="https://github.com/user-attachments/assets/f63f8f5b-6540-4f21-9f6f-508ea4254337" alt="TariffSheriff logo" className="w-8 h-8 object-contain" />
+            {/* App icon removed — keeps text branding only */}
             <span className="font-semibold">TariffSheriff</span>
           </a>
           <p className="text-xs text-muted-foreground mt-2">Trade intelligence platform helping teams reduce tariff risk and optimize costs.</p>
