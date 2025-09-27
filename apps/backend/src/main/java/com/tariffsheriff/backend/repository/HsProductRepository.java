@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface HsProductRepository extends JpaRepository<HsProduct, Long> {
+    java.util.Optional<HsProduct> findByDestination_IdAndHsVersionAndHsCode(Long destinationId, String hsVersion, String hsCode);
 }
 
 
