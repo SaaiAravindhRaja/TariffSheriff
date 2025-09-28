@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
 import com.tariffsheriff.backend.tariff.service.TariffRateService;
@@ -31,6 +33,12 @@ public class TariffRateController {
     @GetMapping("/{id}")
     public TariffRate getTariffRate(@PathVariable Long id) {
         return tariffRateService.getTariffRateById(id);
+    }
+
+    @GetMapping("/lookup")
+    public TariffRateLookupDto getTariffRate(@RequestParam Long importerId, @RequestParam Long originId,
+    @RequestParam Long hsCode, @RequestParam String basis) {
+        return tariffRateService.getTariffRateWithAgreement(importerId, originId, hsCode, basis);
     }
 
     @PostMapping("/calculate")
