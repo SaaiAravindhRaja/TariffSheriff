@@ -17,12 +17,30 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // TEMPORARY: Mock authenticated state - remove this block to re-enable auth
+  const [state, setState] = useState<AuthState>({
+    user: {
+      id: 'temp-user',
+      email: 'demo@example.com',
+      name: 'Demo User',
+      role: 'USER' as any,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+  });
+
+  /* COMMENTED OUT - ORIGINAL STATE (uncomment to re-enable)
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
     isLoading: true,
     error: null,
   });
+  */
 
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
@@ -130,11 +148,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [setLoading, setAuthenticated, setUnauthenticated, refreshToken]);
 
+  // TEMPORARY: Authentication check disabled
+  /* COMMENTED OUT - AUTH CHECK (uncomment to re-enable)
   // Check authentication status on mount
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
+  */
 
+  // TEMPORARY: Token refresh disabled
+  /* COMMENTED OUT - TOKEN REFRESH (uncomment to re-enable)
   // Set up automatic token refresh
   useEffect(() => {
     if (!state.isAuthenticated) return;
@@ -152,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => clearInterval(interval);
   }, [state.isAuthenticated, refreshToken]);
+  */
 
   // Listen for logout events from the API interceptor and other API errors
   useEffect(() => {
