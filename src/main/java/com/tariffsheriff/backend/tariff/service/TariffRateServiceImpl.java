@@ -60,6 +60,7 @@ public class TariffRateServiceImpl implements TariffRateService {
     }
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
+         // can just stash both lookups in frontend from first basic info request and get from payload
         TariffRateLookupDto mfnLookup = getTariffRateWithAgreement(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "MFN");
         TariffRateLookupDto prefLookup = getTariffRateWithAgreement(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "PREF");
         Agreement agreement = prefLookup.agreement();
