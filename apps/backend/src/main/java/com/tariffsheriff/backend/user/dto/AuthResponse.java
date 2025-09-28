@@ -1,32 +1,25 @@
 package com.tariffsheriff.backend.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * DTO for authentication responses
  * Requirement 2.3: Authentication response with token information
  */
-@Schema(description = "Authentication response with JWT tokens and user information")
 public class AuthResponse {
     
-    @Schema(description = "JWT access token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     @JsonProperty("access_token")
     private String accessToken;
     
-    @Schema(description = "JWT refresh token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     @JsonProperty("refresh_token")
     private String refreshToken;
     
-    @Schema(description = "Token type", example = "Bearer")
     @JsonProperty("token_type")
     private String tokenType = "Bearer";
     
-    @Schema(description = "Token expiration time in seconds", example = "900")
     @JsonProperty("expires_in")
     private Long expiresIn;
     
-    @Schema(description = "Authenticated user information")
     private UserDto user;
     
     // Default constructor
