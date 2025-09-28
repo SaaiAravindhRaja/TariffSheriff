@@ -17,12 +17,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 @Entity
-@Getter
-@Setter
-@ToString
-@AllArgsConstructor
+@Data
 @NoArgsConstructor
-@EqualsAndHashCode
+@AllArgsConstructor
 public class TariffRate {
     private @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
     private @Column(nullable = false, unique = true) Long importerId;
