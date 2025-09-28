@@ -129,7 +129,7 @@ public class SecurityMonitoringService {
         if (user.getFailedLoginAttempts() > MAX_FAILED_LOGIN_ATTEMPTS) {
             // Progressive lockout: double the time for each additional failure
             int extraAttempts = user.getFailedLoginAttempts() - MAX_FAILED_LOGIN_ATTEMPTS;
-            lockoutMinutes = (int) (lockoutMinutes * Math.pow(PROGRESSIVE_LOCKOUT_MULTIPLIER, extraAttempts));
+            lockoutMinutes *= Math.pow(PROGRESSIVE_LOCKOUT_MULTIPLIER, extraAttempts);
             lockoutMinutes = Math.min(lockoutMinutes, 24 * 60); // Max 24 hours
         }
 
