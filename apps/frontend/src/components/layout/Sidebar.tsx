@@ -15,8 +15,6 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
-import { UserRole } from '@/types/auth'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -28,83 +26,55 @@ const navigationItems = [
     title: 'Dashboard',
     href: '/',
     icon: LayoutDashboard,
-    description: 'Overview & Analytics',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Overview & Analytics'
   },
   {
     title: 'Tariff Calculator',
     href: '/calculator',
     icon: Calculator,
-    description: 'Calculate Import Costs',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Calculate Import Costs'
   },
   {
     title: 'Tariff Database',
     href: '/database',
     icon: Database,
-    description: 'Browse Tariff Rules',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Browse Tariff Rules'
   },
   {
     title: 'Trade Routes',
     href: '/routes',
     icon: Globe,
-    description: 'Optimize Trade Paths',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Optimize Trade Paths'
   },
   {
     title: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    description: 'Market Insights',
-    requiredRoles: [UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Market Insights'
   },
   {
     title: 'Simulator',
     href: '/simulator',
     icon: Zap,
-    description: 'Policy Scenarios',
-    requiredRoles: [UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Policy Scenarios'
   },
   {
     title: 'Reports',
     href: '/reports',
     icon: FileText,
-    description: 'Export & Documentation',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Export & Documentation'
   },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    description: 'Preferences & Config',
-    requiredRoles: [UserRole.USER, UserRole.ANALYST, UserRole.ADMIN]
+    description: 'Preferences & Config'
   }
 ]
 
 export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false)
   const location = useLocation()
-  const { user, isAuthenticated } = useAuth()
-
-  // Helper function to check if user has required role
-  const hasRequiredRole = (requiredRoles: UserRole[]): boolean => {
-    if (!isAuthenticated || !user) return false
-    
-    const roleHierarchy: Record<UserRole, number> = {
-      [UserRole.USER]: 1,
-      [UserRole.ANALYST]: 2,
-      [UserRole.ADMIN]: 3,
-    }
-
-    const userRoleLevel = roleHierarchy[user.role]
-    return requiredRoles.some(role => userRoleLevel >= roleHierarchy[role])
-  }
-
-  // Filter navigation items based on user role
-  const visibleNavigationItems = navigationItems.filter(item => 
-    hasRequiredRole(item.requiredRoles)
-  )
 
   return (
     <motion.aside
@@ -133,7 +103,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex flex-col gap-2 p-4">
-        {visibleNavigationItems.map((item, index) => {
+        {navigationItems.map((item, index) => {
           const isActive = location.pathname === item.href
           const Icon = item.icon
 
