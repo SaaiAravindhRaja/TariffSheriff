@@ -7,7 +7,6 @@ import lombok.Data;
 
 @Data
 public class TariffRateRequestDto {
-    // private Long agreementId;
     private Long importer_id;
     private Long origin_id;
     private Long hsCode;
@@ -18,6 +17,6 @@ public class TariffRateRequestDto {
     private BigDecimal overheadCost;
     private BigDecimal profit;
     private BigDecimal otherCosts;
-    private BigDecimal FOB;
+    private BigDecimal fob;
     private BigDecimal nonOriginValue;
 }
