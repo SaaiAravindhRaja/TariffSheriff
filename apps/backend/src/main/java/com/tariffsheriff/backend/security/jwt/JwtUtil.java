@@ -353,4 +353,46 @@ public class JwtUtil {
     public String extractPurpose(String token) {
         return extractClaim(token, claims -> claims.get("purpose", String.class));
     }
+
+    /**
+     * Generate a test token for health checks.
+     * This token is used internally to verify JWT functionality.
+     *
+     * @return JWT test token string
+     */
+    public String generateTestToken() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE_CLAIM, "test");
+        claims.put("purpose", "health_check");
+        
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + 60000); // 1 minute expiry
+        String tokenId = UUID.randomUUID().toString();
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject("health-check")
+                .claim(TOKEN_ID_CLAIM, tokenId)
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(jwtConfig.getSecretKey())
+                .compact();
+    }
+
+    /**
+     * Validate a token without requiring user context.
+     * Used for health checks and token structure validation.
+     *
+     * @param token JWT token
+     * @return true if token is valid, false otherwise
+     */
+    public boolean validateToken(String token) {
+        try {
+            extractAllClaims(token);
+            return !isTokenExpired(token);
+        } catch (JwtException e) {
+            log.debug("Token validation failed: {}", e.getMessage());
+            return false;
+        }
+    }
 }
