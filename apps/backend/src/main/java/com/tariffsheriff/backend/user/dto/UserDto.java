@@ -3,7 +3,6 @@ package com.tariffsheriff.backend.user.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tariffsheriff.backend.user.model.UserRole;
 import com.tariffsheriff.backend.user.model.UserStatus;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
@@ -11,41 +10,27 @@ import java.time.LocalDateTime;
  * DTO for user information in responses
  * Requirement 2.3: User data transfer without sensitive information
  */
-@Schema(description = "User information response")
 public class UserDto {
     
-    @Schema(description = "User ID", example = "1")
     private Long id;
-    
-    @Schema(description = "User's full name", example = "John Doe")
     private String name;
-    
-    @Schema(description = "User's email address", example = "john.doe@example.com")
     private String email;
     
-    @Schema(description = "User's bio/description", example = "Software developer with 5 years of experience")
     @JsonProperty("about_me")
     private String aboutMe;
     
-    @Schema(description = "User role", example = "USER")
     private UserRole role;
-    
-    @Schema(description = "User account status", example = "ACTIVE")
     private UserStatus status;
     
-    @Schema(description = "Whether email is verified", example = "true")
     @JsonProperty("email_verified")
     private boolean emailVerified;
     
-    @Schema(description = "Last login timestamp", example = "2024-01-15T10:30:00")
     @JsonProperty("last_login")
     private LocalDateTime lastLogin;
     
-    @Schema(description = "Account creation timestamp", example = "2024-01-01T09:00:00")
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
     
-    @Schema(description = "Last update timestamp", example = "2024-01-15T10:30:00")
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
     
