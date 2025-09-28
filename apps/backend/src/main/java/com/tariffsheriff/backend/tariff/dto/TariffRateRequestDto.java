@@ -8,8 +8,8 @@ import lombok.Data;
 @Data
 public class TariffRateRequestDto {
     // private Long agreementId;
-    private BigInteger importer_id;
-    private BigInteger origin_id;
+    private Long importer_id;
+    private Long origin_id;
     private Long hsCode;
     private Integer quantity;
     private BigDecimal totalValue;
