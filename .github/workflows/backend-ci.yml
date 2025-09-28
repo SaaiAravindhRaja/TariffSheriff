@@ -7,18 +7,64 @@ on:
     paths:
       - "apps/backend/**"
       - ".github/workflows/backend-ci.yml"
+      - "scripts/**"
   pull_request:
     paths:
       - "apps/backend/**"
+      - "scripts/**"
 
 jobs:
+  validate-configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration scripts
+        run: |
+          chmod +x scripts/*.sh
+          echo "Configuration validation scripts are executable"
+
   build-and-test-dev:
     runs-on: ubuntu-latest
+    needs: validate-configuration
     env:
-      # Map dev secrets to the env vars Spring expects
+      # Database Configuration
       DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
       DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME_DEV }}
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD_DEV }}
+      
+      # JWT Configuration
+      JWT_SECRET: ${{ secrets.JWT_SECRET_DEV }}
+      JWT_ACCESS_TOKEN_EXPIRATION: 900000
+      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+      
+      # Redis Configuration
+      REDIS_URL: ${{ secrets.REDIS_URL_DEV }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD_DEV }}
+      
+      # Email Configuration
+      EMAIL_HOST: ${{ secrets.EMAIL_HOST_DEV }}
+      EMAIL_PORT: ${{ secrets.EMAIL_PORT_DEV }}
+      EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME_DEV }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD_DEV }}
+      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS_DEV }}
+      EMAIL_FROM_NAME: "TariffSheriff Dev"
+      
+      # Application URLs
+      APP_BASE_URL: "http://localhost:8080"
+      FRONTEND_URL: "http://localhost:3000"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      
+      # Security Configuration
+      RATE_LIMIT_ENABLED: true
+      ACCOUNT_LOCKOUT_ENABLED: true
+      MAX_LOGIN_ATTEMPTS: 5
+      LOCKOUT_DURATION: 900000
+      
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: dev
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,9 +74,57 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: maven
+
+      - name: Validate environment configuration
+        run: |
+          chmod +x scripts/validate-config.sh
+          ./scripts/validate-config.sh
+
+      - name: Start Redis for testing
+        uses: supercharge/redis-github-action@1.7.0
+        with:
+          redis-version: 7
 
       - name: Build and run tests (dev profile)
         working-directory: apps/backend
-        run: mvn -B -Dspring.profiles.active=dev -DskipITs=true verify
+        run: mvn -B -Dspring.profiles.active=dev clean verify
+
+      - name: Run integration tests
+        working-directory: apps/backend
+        run: mvn -B -Dspring.profiles.active=dev failsafe:integration-test failsafe:verify
+
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Backend Tests (Dev)
+          path: apps/backend/target/surefire-reports/*.xml
+          reporter: java-junit
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: validate-configuration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run OWASP Dependency Check
+        working-directory: apps/backend
+        run: mvn org.owasp:dependency-check-maven:check
+
+      - name: Upload OWASP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owasp-report
+          path: apps/backend/target/dependency-check-report.html
 
 
