@@ -15,7 +15,7 @@ public interface TariffRateService {
 
     TariffRate getTariffRateById(Long id);
 
-    TariffRate getTariffRateByImporterAndOriginAndHscodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis);
+    TariffRate getTariffRateByImporterAndOriginAndHsCodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis);
 
     BigDecimal calculateTariffRate(TariffRateRequestDto tariffCalculationData);
 

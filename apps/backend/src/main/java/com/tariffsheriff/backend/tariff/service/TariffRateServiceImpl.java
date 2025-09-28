@@ -30,16 +30,16 @@ public class TariffRateServiceImpl implements TariffRateService {
         }).orElseThrow(() -> new TariffRateNotFoundException());
     }
 
-    public TariffRate getTariffRateByImporterAndOriginAndHscodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis) {
-        return tariffRates.findByImporterIdAndOriginIdAndHscodeAndBasis(importer_id, origin_id, hsCode, basis).map(tariffRate -> {
+    public TariffRate getTariffRateByImporterAndOriginAndHsCodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis) {
+        return tariffRates.findByImporterIdAndOriginIdAndHsCodeAndBasis(importer_id, origin_id, hsCode, basis).map(tariffRate -> {
             return tariffRate;
         }).orElseThrow(() -> new TariffRateNotFoundException());
     }
 
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
-        TariffRate tariffRateMFN = getTariffRateByImporterAndOriginAndHscodeAndBasis(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "MFN");
-        TariffRate tariffRatePref = getTariffRateByImporterAndOriginAndHscodeAndBasis(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "PREF");
+        TariffRate tariffRateMFN = getTariffRateByImporterAndOriginAndHsCodeAndBasis(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "MFN");
+        TariffRate tariffRatePref = getTariffRateByImporterAndOriginAndHsCodeAndBasis(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "PREF");
         // BigDecimal RVCdefined = findAgreementById(tariffRateMFN.getAgreementId()).getRVC(); // need to add to schema
         BigDecimal RVCdefined = new BigDecimal("40.0"); // temporarily default to 40
         BigDecimal RVC = rq.getMaterialCost()
@@ -58,13 +58,13 @@ public class TariffRateServiceImpl implements TariffRateService {
         }
         else if (appliedTariffRate.getRateType() == "specific") {
             BigDecimal specificAmount = appliedTariffRate.getSpecificAmount();
-            BigDecimal specificunit = appliedTariffRate.getSpecificUnit();
+            // BigDecimal specificunit = appliedTariffRate.getSpecificUnit();
             // tbc
         }
         else { // compound
             BigDecimal avRate = appliedTariffRate.getAdValoremRate();
             BigDecimal specificAmount = appliedTariffRate.getSpecificAmount();
-            BigDecimal specificunit = appliedTariffRate.getSpecificUnit();
+            // BigDecimal specificunit = appliedTariffRate.getSpecificUnit();
             totalTariff = totalValue.multiply(avRate);
             // tbc
         }
