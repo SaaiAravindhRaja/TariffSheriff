@@ -15,10 +15,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles = [],
   requireEmailVerification = false,
 }) => {
-  // TEMPORARY: Authentication disabled - remove this block to re-enable auth
-  return <>{children}</>;
-
-  /* COMMENTED OUT - AUTHENTICATION LOGIC (uncomment to re-enable)
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -65,7 +61,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   return <>{children}</>;
-  */
 };
 
 /**
