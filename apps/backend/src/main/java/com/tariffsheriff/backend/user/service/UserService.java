@@ -252,18 +252,14 @@ public class UserService {
      * Find user by verification token
      */
     private Optional<User> findByVerificationToken(String token) {
-        return userRepository.findAll().stream()
-                .filter(user -> token.equals(user.getVerificationToken()))
-                .findFirst();
+        return userRepository.findByVerificationToken(token);
     }
 
     /**
      * Find user by password reset token
      */
     private Optional<User> findByPasswordResetToken(String token) {
-        return userRepository.findAll().stream()
-                .filter(user -> token.equals(user.getPasswordResetToken()))
-                .findFirst();
+        return userRepository.findByPasswordResetToken(token);
     }
 
     /**
