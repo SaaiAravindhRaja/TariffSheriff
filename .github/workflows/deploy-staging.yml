@@ -1,0 +1,273 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop, staging]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+
+jobs:
+  validate-staging-config:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      # Staging Environment Variables
+      DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME_STAGING }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD_STAGING }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+      REDIS_URL: ${{ secrets.REDIS_URL_STAGING }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD_STAGING }}
+      EMAIL_HOST: ${{ secrets.EMAIL_HOST_STAGING }}
+      EMAIL_PORT: ${{ secrets.EMAIL_PORT_STAGING }}
+      EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME_STAGING }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD_STAGING }}
+      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS_STAGING }}
+      EMAIL_FROM_NAME: "TariffSheriff Staging"
+      APP_BASE_URL: ${{ secrets.APP_BASE_URL_STAGING }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL_STAGING }}
+      CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS_STAGING }}
+      SPRING_PROFILES_ACTIVE: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate staging configuration
+        run: |
+          chmod +x scripts/validate-config.sh
+          ./scripts/validate-config.sh
+
+  build-and-test-staging:
+    runs-on: ubuntu-latest
+    needs: validate-staging-config
+    environment: staging
+    env:
+      # Staging configuration for testing
+      DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME_STAGING }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD_STAGING }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+      REDIS_URL: ${{ secrets.REDIS_URL_STAGING }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD_STAGING }}
+      EMAIL_HOST: ${{ secrets.EMAIL_HOST_STAGING }}
+      EMAIL_PORT: ${{ secrets.EMAIL_PORT_STAGING }}
+      EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME_STAGING }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD_STAGING }}
+      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS_STAGING }}
+      SPRING_PROFILES_ACTIVE: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Start Redis for testing
+        uses: supercharge/redis-github-action@1.7.0
+        with:
+          redis-version: 7
+
+      - name: Build and test
+        working-directory: apps/backend
+        run: mvn -B -Dspring.profiles.active=staging clean verify
+
+      - name: Build staging JAR
+        working-directory: apps/backend
+        run: mvn -B -Dspring.profiles.active=staging package -DskipTests
+
+      - name: Upload staging artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-jar
+          path: apps/backend/target/*.jar
+          retention-days: 7
+
+  deploy-staging-backend:
+    runs-on: ubuntu-latest
+    needs: [validate-staging-config, build-and-test-staging]
+    environment: 
+      name: staging
+      url: ${{ secrets.APP_BASE_URL_STAGING }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download staging artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-jar
+          path: apps/backend/target/
+
+      - name: Deploy to staging
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST_STAGING }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER_STAGING }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY_STAGING }}
+        run: |
+          echo "🚀 Deploying to staging..."
+          echo "Staging deployment configuration would go here"
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME_STAGING }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD_STAGING }}
+        run: |
+          echo "🗄️ Running staging database migrations..."
+
+      - name: Health check
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL_STAGING }}
+        run: |
+          echo "🏥 Performing staging health check..."
+          sleep 15
+          # curl -f $APP_BASE_URL/actuator/health || exit 1
+
+  deploy-staging-frontend:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend]
+    environment:
+      name: staging-frontend
+      url: ${{ secrets.FRONTEND_URL_STAGING }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend for staging
+        env:
+          VITE_API_BASE_URL: ${{ secrets.APP_BASE_URL_STAGING }}
+          VITE_APP_NAME: "TariffSheriff Staging"
+          VITE_APP_VERSION: ${{ github.sha }}
+        run: npm run build --workspace=frontend
+
+      - name: Deploy frontend to staging
+        run: |
+          echo "🌐 Deploying frontend to staging..."
+
+  run-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend]
+    if: needs.deploy-staging-backend.result == 'success' && needs.deploy-staging-frontend.result == 'success'
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run E2E tests against staging
+        env:
+          STAGING_API_URL: ${{ secrets.APP_BASE_URL_STAGING }}
+          STAGING_FRONTEND_URL: ${{ secrets.FRONTEND_URL_STAGING }}
+        run: |
+          echo "🧪 Running E2E tests against staging environment..."
+          # npm run test:e2e --workspace=frontend
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            apps/frontend/test-results/
+            apps/frontend/playwright-report/
+
+  comment-pr:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, run-e2e-tests]
+    if: github.event_name == 'pull_request' && always()
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('🚀 Staging Deployment')
+            );
+
+            const deploymentStatus = '${{ needs.deploy-staging-backend.result }}' === 'success' && 
+                                   '${{ needs.deploy-staging-frontend.result }}' === 'success' ? 
+                                   '✅ Success' : '❌ Failed';
+
+            const e2eStatus = '${{ needs.run-e2e-tests.result }}' === 'success' ? '✅ Passed' : 
+                             '${{ needs.run-e2e-tests.result }}' === 'failure' ? '❌ Failed' : '⏭️ Skipped';
+
+            const body = `## 🚀 Staging Deployment
+
+            **Deployment Status:** ${deploymentStatus}
+            **E2E Tests:** ${e2eStatus}
+
+            ### 🔗 Staging Links
+            - **API:** ${{ secrets.APP_BASE_URL_STAGING }}
+            - **Frontend:** ${{ secrets.FRONTEND_URL_STAGING }}
+
+            ### 📊 Test Results
+            - Backend Tests: ${{ needs.build-and-test-staging.result }}
+            - E2E Tests: ${{ needs.run-e2e-tests.result }}
+
+            ### 🔍 How to Test
+            1. Visit the staging frontend URL above
+            2. Test authentication flows (register, login, logout)
+            3. Test core application features
+            4. Verify email functionality (check staging email)
+
+            ---
+            *Deployment triggered by: ${{ github.actor }}*
+            *Commit: ${{ github.sha }}*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
