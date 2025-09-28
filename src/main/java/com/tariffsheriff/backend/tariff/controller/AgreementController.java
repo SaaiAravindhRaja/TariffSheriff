@@ -28,7 +28,7 @@ public class AgreementController {
     }
 
     @GetMapping
-    public List<Agreement> listAgreements() {
+    public List<Agreement> getAgreements() {
         return agreementService.getAgreements();
     }
 
