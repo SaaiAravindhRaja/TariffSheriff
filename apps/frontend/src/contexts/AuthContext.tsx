@@ -177,6 +177,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [state.isAuthenticated, refreshToken]);
   */
 
+  // TEMPORARY: Event listeners disabled
+  /* COMMENTED OUT - EVENT LISTENERS (uncomment to re-enable)
   // Listen for logout events from the API interceptor and other API errors
   useEffect(() => {
     const handleLogout = () => {
@@ -218,6 +220,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.removeEventListener('api:serverError', handleServerError as EventListener);
     };
   }, [setUnauthenticated, state.user]);
+  */
 
   const contextValue: AuthContextType = {
     ...state,
