@@ -30,7 +30,7 @@ public class TariffRateServiceImpl implements TariffRateService {
         }).orElseThrow(() -> new TariffRateNotFoundException());
     }
 
-    public TariffRate getTariffRateByImporterAndOriginAndHsCodeAndBasis(BigInteger importer_id, BigInteger origin_id, Long hsCode, String basis) {
+    public TariffRate getTariffRateByImporterAndOriginAndHsCodeAndBasis(Long importer_id, Long origin_id, Long hsCode, String basis) {
         return tariffRates.findByImporterIdAndOriginIdAndHsCodeAndBasis(importer_id, origin_id, hsCode, basis).map(tariffRate -> {
             return tariffRate;
         }).orElseThrow(() -> new TariffRateNotFoundException());
