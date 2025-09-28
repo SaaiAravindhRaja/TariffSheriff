@@ -1,28 +1,22 @@
 package com.tariffsheriff.backend.user.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
 /**
  * DTO for user registration requests
  * Requirement 1.4: User registration with comprehensive validation
  */
-@Schema(description = "User registration request")
 public class RegisterRequest {
     
-    @Schema(description = "User's full name", example = "John Doe", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Name is required")
     @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
     private String name;
     
-    @Schema(description = "User's email address", example = "john.doe@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     @Size(max = 255, message = "Email must not exceed 255 characters")
     private String email;
     
-    @Schema(description = "User's password (must contain uppercase, lowercase, digit, and special character)", 
-            example = "SecurePass123!", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Password is required")
     @Size(min = 8, max = 128, message = "Password must be between 8 and 128 characters")
     @Pattern(
@@ -31,15 +25,12 @@ public class RegisterRequest {
     )
     private String password;
     
-    @Schema(description = "Password confirmation (must match password)", example = "SecurePass123!", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Password confirmation is required")
     private String confirmPassword;
     
-    @Schema(description = "Optional user bio/description", example = "Software developer with 5 years of experience")
     @Size(max = 500, message = "About me must not exceed 500 characters")
     private String aboutMe;
     
-    @Schema(description = "User role", example = "USER", allowableValues = {"USER", "ANALYST", "ADMIN"})
     @Pattern(regexp = "^(USER|ANALYST|ADMIN)$", message = "Role must be USER, ANALYST, or ADMIN")
     private String role = "USER";
     
