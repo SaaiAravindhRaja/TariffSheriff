@@ -22,6 +22,9 @@ public class ErrorResponse {
     @JsonProperty("validation_errors")
     private Map<String, String> validationErrors;
     
+    @JsonProperty("details")
+    private Map<String, Object> details;
+    
     // Default constructor
     public ErrorResponse() {
         this.timestamp = LocalDateTime.now();
@@ -40,6 +43,12 @@ public class ErrorResponse {
     public ErrorResponse(String error, String message, int status, String path, Map<String, String> validationErrors) {
         this(error, message, status, path);
         this.validationErrors = validationErrors;
+    }
+    
+    // Constructor with details
+    public ErrorResponse(String error, String message, int status, String path, Map<String, String> validationErrors, Map<String, Object> details) {
+        this(error, message, status, path, validationErrors);
+        this.details = details;
     }
     
     // Builder pattern for easier construction
@@ -70,8 +79,18 @@ public class ErrorResponse {
             return this;
         }
         
+        public Builder timestamp(LocalDateTime timestamp) {
+            errorResponse.timestamp = timestamp;
+            return this;
+        }
+        
         public Builder validationErrors(Map<String, String> validationErrors) {
             errorResponse.validationErrors = validationErrors;
+            return this;
+        }
+        
+        public Builder details(Map<String, Object> details) {
+            errorResponse.details = details;
             return this;
         }
         
@@ -127,5 +146,13 @@ public class ErrorResponse {
     
     public void setValidationErrors(Map<String, String> validationErrors) {
         this.validationErrors = validationErrors;
+    }
+    
+    public Map<String, Object> getDetails() {
+        return details;
+    }
+    
+    public void setDetails(Map<String, Object> details) {
+        this.details = details;
     }
 }
