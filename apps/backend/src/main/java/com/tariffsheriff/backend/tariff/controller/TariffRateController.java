@@ -36,7 +36,7 @@ public class TariffRateController {
     }
 
     @GetMapping("/lookup")
-    public TariffRateLookupDto getTariffRate(@RequestParam Long importerId, @RequestParam Long originId,
+    public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam Long importerId, @RequestParam Long originId,
     @RequestParam Long hsCode, @RequestParam String basis) {
         return tariffRateService.getTariffRateWithAgreement(importerId, originId, hsCode, basis);
     }
