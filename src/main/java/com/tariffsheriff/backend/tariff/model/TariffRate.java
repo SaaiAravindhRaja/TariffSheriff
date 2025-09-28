@@ -13,6 +13,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import lombok.*;
 
@@ -20,10 +21,11 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TariffRate {
     private @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
-    private @Column(nullable = false, unique = true) Long importerId;
-    private @Column(nullable = false, unique = true) Long originId;
+    private @Column(nullable = false) Long importerId;
+    private @Column(nullable = false) Long originId;
     private @Column(name = "hs_product_id") Long hsCode;
     private @Column(nullable = false) String basis;
     private Long agreementId;
