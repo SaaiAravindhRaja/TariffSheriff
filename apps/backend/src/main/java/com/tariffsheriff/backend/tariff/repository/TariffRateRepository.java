@@ -1,6 +1,5 @@
 package com.tariffsheriff.backend.tariff.repository;
 
-import java.math.BigInteger;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,5 +9,10 @@ import com.tariffsheriff.backend.tariff.model.TariffRate;
 
 @Repository
 public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
-    Optional<TariffRate> findByImporterIdAndOriginIdAndHsCodeAndBasis(Long importer_id, Long origin_id, Long hsCode, String basis);
+
+    Optional<TariffRate> findByImporterIdAndOriginIdAndHsCodeAndBasis(
+        Long importerId, Long originId, Long hsCode, String basis);
+
+    Optional<TariffRate> findByImporterIdAndHsCodeAndBasis(
+        Long importerId, Long hsCode, String basis);
 }
