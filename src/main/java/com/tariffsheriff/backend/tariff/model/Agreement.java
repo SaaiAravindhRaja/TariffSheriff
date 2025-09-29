@@ -1,5 +1,6 @@
 package com.tariffsheriff.backend.tariff.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import jakarta.persistence.Column;
@@ -28,8 +29,8 @@ public class Agreement {
     @Column(nullable = false)
     private String type;
 
-    @Column(nullable = false)
-    private Integer rvc;
+    @Column(precision = 5, scale = 2, nullable = false)
+    private BigDecimal rvc;
 
     @Column(nullable = false)
     private String status;
