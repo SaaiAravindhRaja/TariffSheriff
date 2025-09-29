@@ -2,9 +2,9 @@ package com.tariffsheriff.backend.user.service;
 
 import com.tariffsheriff.backend.user.model.User;
 import com.tariffsheriff.backend.user.repository.UserRepository;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +50,6 @@ public class UserService {
             if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
                 existingUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
             }
-
             return userRepository.save(existingUser);
         });
     }
