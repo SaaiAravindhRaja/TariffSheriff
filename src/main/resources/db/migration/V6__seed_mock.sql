@@ -1,9 +1,9 @@
 INSERT INTO country (id, iso2, iso3, name) VALUES
     (4, 'US', 'USA', 'United States of America'),
-    (5, 'CL', 'CHL', 'Chile'),
+    (5, 'CL', 'CHL', 'Chile');
 
-INSERT INTO agreement (id, name, type, status, entered_into_force) VALUES
-    (2, 'Chile-United States FTA', 'FTA', 'in_force', DATE '2004-01-01');
+INSERT INTO agreement (id, name, type, status, entered_into_force, rvc) VALUES
+    (2, 'Chile-United States FTA', 'FTA', 'in_force', DATE '2004-01-01', 40);
 
 INSERT INTO tariff_rate (
     id,
@@ -26,7 +26,7 @@ INSERT INTO tariff_rate (
         NULL,
         1,
         'MFN',
-        2,
+        NULL,
         'ad_valorem',
         0.06,
         NULL,
@@ -36,12 +36,12 @@ INSERT INTO tariff_rate (
         'Mock MFN baseline for EV passenger cars under Chile-United States FTA'
     ),
     (
-        3,
+        4,
         5,
         NULL,
         1,
         'MFN',
-        2,
+        NULL,
         'ad_valorem',
         0.06,
         NULL,
@@ -51,7 +51,7 @@ INSERT INTO tariff_rate (
         'Mock MFN baseline for EV passenger cars under Chile-United States FTA'
     ),
     (
-        3,
+        5,
         4,
         5,
         1,
@@ -66,7 +66,7 @@ INSERT INTO tariff_rate (
         'Mock preferential rate under Chile-United States FTA'
     ),
     (
-        3,
+        6,
         5,
         4,
         1,
