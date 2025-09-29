@@ -45,18 +45,25 @@ public class TariffRateServiceImpl implements TariffRateService {
 
     @Override
     public TariffRateLookupDto getTariffRateWithAgreement(Long importerId, Long originId, Long hsCode, String basis) {
-        TariffRate rate = tariffRates
-            .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, basis)
+        TariffRate tariffRateMfn = tariffRates
+            .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, "MFN")
             .orElseGet(() -> {
-                return tariffRates.findByImporterIdAndHsCodeAndBasis(importerId, hsCode, basis)
+                return tariffRates.findByImporterIdAndHsCodeAndBasis(importerId, hsCode, "MFN") // get mfn (exporter col will be null)
                     .orElseThrow(TariffRateNotFoundException::new);
             });
 
-        Agreement agreement = rate.getAgreementId() == null
-            ? null
-            : agreements.findById(rate.getAgreementId()).orElse(null);
+        TariffRate tariffRatePref = tariffRates
+            .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, "PREF")
+            .orElseGet(() -> {
+                return tariffRates.findByImporterIdAndHsCodeAndBasis(importerId, hsCode, "PREF") // get pref (some importer -> some exporter)
+                    .orElseThrow(TariffRateNotFoundException::new);
+            });
 
-        return new TariffRateLookupDto(rate, agreement);
+        Agreement agreement = tariffRatePref.getAgreementId() == null
+            ? null
+            : agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
+
+        return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
     }
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
