@@ -10,18 +10,27 @@ import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import com.tariffsheriff.backend.tariff.model.Agreement;
+import com.tariffsheriff.backend.tariff.model.Country;
+import com.tariffsheriff.backend.tariff.model.HsProduct;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
 import com.tariffsheriff.backend.tariff.repository.AgreementRepository;
+import com.tariffsheriff.backend.tariff.repository.CountryRepository;
+import com.tariffsheriff.backend.tariff.repository.HsProductRepository;
 import com.tariffsheriff.backend.tariff.repository.TariffRateRepository;
 
 @Service
 public class TariffRateServiceImpl implements TariffRateService {
     private final TariffRateRepository tariffRates;
     private final AgreementRepository agreements;
+    private final CountryRepository countries;
+    private final HsProductRepository hsProducts;
 
-    public TariffRateServiceImpl(TariffRateRepository tariffRates, AgreementRepository agreements) {
+    public TariffRateServiceImpl(TariffRateRepository tariffRates, AgreementRepository agreements,
+                                CountryRepository countries, HsProductRepository hsProducts) {
         this.tariffRates = tariffRates;
         this.agreements = agreements;
+        this.countries = countries;
+        this.hsProducts = hsProducts;
     }
 
     @Override
@@ -44,18 +53,31 @@ public class TariffRateServiceImpl implements TariffRateService {
     }
 
     @Override
-    public TariffRateLookupDto getTariffRateWithAgreement(Long importerId, Long originId, Long hsCode) {
+    public TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode) {
+        Country importer = countries.findByIso2IgnoreCase(importerIso2)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown importer ISO2: " + importerIso2));
+
+        Country origin = countries.findByIso2IgnoreCase(originIso2)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
+
+        HsProduct product = hsProducts.findByHsCode(hsCode)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product: " + hsCo));
+
+        Long importerId = importer.getId();
+        Long originId = origin.getId();
+        Long hsProductId = product.getId();
+
         TariffRate tariffRateMfn = tariffRates
-            .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, "MFN")
+            .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "MFN")
             .orElseGet(() -> {
-                return tariffRates.findByImporterIdAndHsCodeAndBasis(importerId, hsCode, "MFN") // get mfn (exporter col will be null)
+                return tariffRates.findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN") // get mfn (exporter col will be null)
                     .orElseThrow(TariffRateNotFoundException::new);
             });
 
         TariffRate tariffRatePref = tariffRates
-            .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, "PREF")
+            .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
             .orElseGet(() -> {
-                return tariffRates.findByImporterIdAndHsCodeAndBasis(importerId, hsCode, "PREF") // get pref (some importer -> some exporter)
+                return tariffRates.findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "PREF") // get pref (some importer -> some exporter)
                     .orElseThrow(TariffRateNotFoundException::new);
             });
 
@@ -67,11 +89,8 @@ public class TariffRateServiceImpl implements TariffRateService {
     }
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
-         // can just stash both lookups in frontend from first basic info request and get from payload
         BigDecimal mfnRate = rq.getMfnRate();
         BigDecimal prefRate = rq.getPrefRate();
-        // Agreement agreement = rq.agreement();
-        // BigDecimal RVCdefined = BigDecimal.valueOf(agreement.getRvc());
         BigDecimal rvcDefined = rq.getRvc(); 
         BigDecimal RVC = rq.getMaterialCost()
                         .add(rq.getLabourCost())
@@ -79,7 +98,7 @@ public class TariffRateServiceImpl implements TariffRateService {
                         .add(rq.getProfit())
                         .add(rq.getOtherCosts())
                         .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100)); // order of operations (a + b + c) / d
+                        .multiply(BigDecimal.valueOf(100));
     
         BigDecimal avRate = RVC.compareTo(rvcDefined) >= 0 ? prefRate : mfnRate; // apply pref if rvc >= defined
         BigDecimal totalValue = rq.getTotalValue();
