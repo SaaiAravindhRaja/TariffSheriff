@@ -59,7 +59,7 @@ class TariffCalculationIntegrationTest {
         rq.setOverheadCost(new BigDecimal("50.00"));
         rq.setProfit(new BigDecimal("50.00"));
         rq.setOtherCosts(new BigDecimal("0.00"));
-        rq.setFOB(new BigDecimal("1000.00"));
+        rq.setFob(new BigDecimal("1000.00"));
         rq.setNonOriginValue(new BigDecimal("400.00"));
 
         BigDecimal result = calculationService.calculateTariffRate(rq);
@@ -69,7 +69,7 @@ class TariffCalculationIntegrationTest {
             .add(rq.getOverheadCost())
             .add(rq.getProfit())
             .add(rq.getOtherCosts())
-            .divide(rq.getFOB(), 6, RoundingMode.HALF_UP);
+            .divide(rq.getFob(), 6, RoundingMode.HALF_UP);
 
         TariffRate mfnTop = mfn.get(0);
         TariffRate prefTop = pref.get(0);
@@ -83,7 +83,7 @@ class TariffCalculationIntegrationTest {
         System.out.println("importer_id=" + rq.getImporter_id() + ", origin_id=" + rq.getOrigin_id() + ", hs_product_id=" + rq.getHsCode());
         System.out.println("total_value=" + rq.getTotalValue().toPlainString() + ", quantity=" + rq.getQuantity());
         System.out.println("material=" + rq.getMaterialCost().toPlainString() + ", labour=" + rq.getLabourCost().toPlainString() + ", overhead=" + rq.getOverheadCost().toPlainString() + ", profit=" + rq.getProfit().toPlainString() + ", other=" + rq.getOtherCosts().toPlainString());
-        System.out.println("FOB=" + rq.getFOB().toPlainString() + ", RVC=" + rvc.setScale(6, RoundingMode.HALF_UP).toPlainString());
+        System.out.println("FOB=" + rq.getFob().toPlainString() + ", RVC=" + rvc.setScale(6, RoundingMode.HALF_UP).toPlainString());
         System.out.println("rvc_threshold_percent=" + (rvcThresholdPercent != null ? rvcThresholdPercent.toPlainString() : "<none>") +
             ", rvc_threshold_ratio=" + (rvcThresholdRatio != null ? rvcThresholdRatio.toPlainString() : "<none>"));
 
@@ -100,5 +100,4 @@ class TariffCalculationIntegrationTest {
         assertThat(result).isNotNull();
     }
 }
-
 

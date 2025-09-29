@@ -64,16 +64,20 @@ public class TariffRateServiceImpl implements TariffCalculationService {
         if (rvcThresholdPercent == null) {
             appliedTariffRate = tariffRateMFN; // fallback to MFN when threshold missing
         } else {
+            BigDecimal fobValue = rq.getFob();
+            if (fobValue == null || fobValue.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("fob must be provided and greater than zero");
+            }
             BigDecimal rvcThresholdRatio = rvcThresholdPercent.movePointLeft(2); // convert percent (e.g., 40.00) to ratio (0.40)
-            BigDecimal RVC = rq.getMaterialCost()
-                            .add(rq.getLabourCost())
-                            .add(rq.getOverheadCost())
-                            .add(rq.getProfit())
-                            .add(rq.getOtherCosts())
-                            .divide(rq.getFOB(), 6, RoundingMode.HALF_UP);
+            BigDecimal RVC = safe(rq.getMaterialCost())
+                            .add(safe(rq.getLabourCost()))
+                            .add(safe(rq.getOverheadCost()))
+                            .add(safe(rq.getProfit()))
+                            .add(safe(rq.getOtherCosts()))
+                            .divide(fobValue, 6, RoundingMode.HALF_UP);
             appliedTariffRate = RVC.compareTo(rvcThresholdRatio) >= 0 ? tariffRatePref : tariffRateMFN;
         }
-        BigDecimal totalValue = rq.getTotalValue();
+        BigDecimal totalValue = safe(rq.getTotalValue());
         BigDecimal totalTariff = BigDecimal.ZERO;
 
         TariffRateType type = appliedTariffRate.getRateType();
@@ -98,5 +102,9 @@ public class TariffRateServiceImpl implements TariffCalculationService {
             }
         }
         return totalTariff;
+    }
+
+    private static BigDecimal safe(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }
