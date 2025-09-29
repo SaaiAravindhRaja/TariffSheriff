@@ -1,16 +1,15 @@
 package com.tariffsheriff.backend.tariff.dto;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 
 import lombok.Data;
 
 @Data
 public class TariffRateRequestDto {
-    private Long importer_id; // should change to accept wtv is stashed on frontend and sent in payload
-                                // can be ids/code or just mfnrate and prefrate
-    private Long origin_id;
-    private Long hsCode;
+    private BigDecimal mfnRate;
+    private BigDecimal prefRate;
+    private BigDecimal rvc;
+    private Long agreementId;
     private Integer quantity;
     private BigDecimal totalValue;
     private BigDecimal materialCost;

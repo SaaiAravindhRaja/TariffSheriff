@@ -44,7 +44,7 @@ public class TariffRateServiceImpl implements TariffRateService {
     }
 
     @Override
-    public TariffRateLookupDto getTariffRateWithAgreement(Long importerId, Long originId, Long hsCode, String basis) {
+    public TariffRateLookupDto getTariffRateWithAgreement(Long importerId, Long originId, Long hsCode) {
         TariffRate tariffRateMfn = tariffRates
             .findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, "MFN")
             .orElseGet(() -> {
@@ -68,10 +68,11 @@ public class TariffRateServiceImpl implements TariffRateService {
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
          // can just stash both lookups in frontend from first basic info request and get from payload
-        TariffRateLookupDto mfnLookup = getTariffRateWithAgreement(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "MFN");
-        TariffRateLookupDto prefLookup = getTariffRateWithAgreement(rq.getImporter_id(), rq.getOrigin_id(), rq.getHsCode(), "PREF");
-        Agreement agreement = prefLookup.agreement();
-        BigDecimal RVCdefined = BigDecimal.valueOf(agreement.getRvc());
+        BigDecimal mfnRate = rq.getMfnRate();
+        BigDecimal prefRate = rq.getPrefRate();
+        // Agreement agreement = rq.agreement();
+        // BigDecimal RVCdefined = BigDecimal.valueOf(agreement.getRvc());
+        BigDecimal rvcDefined = rq.getRvc(); 
         BigDecimal RVC = rq.getMaterialCost()
                         .add(rq.getLabourCost())
                         .add(rq.getOverheadCost())
@@ -80,10 +81,9 @@ public class TariffRateServiceImpl implements TariffRateService {
                         .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100)); // order of operations (a + b + c) / d
     
-        TariffRate appliedTariffRate = RVC.compareTo(RVCdefined) >= 0 ? prefLookup.tariffRate() : mfnLookup.tariffRate(); // apply pref if rvc >= defined
+        BigDecimal avRate = RVC.compareTo(rvcDefined) >= 0 ? prefRate : mfnRate; // apply pref if rvc >= defined
         BigDecimal totalValue = rq.getTotalValue();
         BigDecimal totalTariff = BigDecimal.ZERO;
-        BigDecimal avRate = appliedTariffRate.getAdValoremRate();
         totalTariff = totalValue.multiply(avRate);
         return totalTariff;
     }
