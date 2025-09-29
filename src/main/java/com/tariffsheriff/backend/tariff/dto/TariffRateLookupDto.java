@@ -4,6 +4,7 @@ import com.tariffsheriff.backend.tariff.model.Agreement;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
 
 public record TariffRateLookupDto(
-    TariffRate tariffRate,
+    TariffRate tariffRateMfn,
+    TariffRate tariffRatePref,
     Agreement agreement
 ) {}
