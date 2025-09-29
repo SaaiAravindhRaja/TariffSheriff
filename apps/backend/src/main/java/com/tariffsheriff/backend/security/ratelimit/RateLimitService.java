@@ -290,6 +290,93 @@ public class RateLimitService {
     }
 
     /**
+     * Check rate limit and return status for a given key.
+     * This method is used by tests and provides detailed status information.
+     *
+     * @param key Redis key for the rate limit
+     * @param limit Maximum allowed attempts
+     * @param windowDuration Time window duration
+     * @return RateLimitStatus object with current status
+     */
+    public RateLimitStatus checkRateLimit(String key, int limit, Duration windowDuration) {
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            int currentCount = value != null ? Integer.parseInt(value) : 0;
+            
+            // Increment the counter
+            Long newCount = redisTemplate.opsForValue().increment(key);
+            if (newCount != null && newCount == 1) {
+                // First request, set expiration
+                redisTemplate.expire(key, windowDuration);
+            }
+            
+            currentCount = newCount != null ? newCount.intValue() : 1;
+            boolean allowed = currentCount <= limit;
+            int remaining = Math.max(0, limit - currentCount);
+            long resetTime = getRateLimitRemainingTime(key);
+            
+            return RateLimitStatus.builder()
+                    .allowed(allowed)
+                    .currentCount(currentCount)
+                    .limit(limit)
+                    .remainingAttempts(remaining)
+                    .resetTimeSeconds(resetTime)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error checking rate limit for key: {}", key, e);
+            // Return allowed status if Redis is unavailable
+            return RateLimitStatus.builder()
+                    .allowed(true)
+                    .currentCount(0)
+                    .limit(limit)
+                    .remainingAttempts(limit)
+                    .resetTimeSeconds(0)
+                    .build();
+        }
+    }
+
+    /**
+     * Reset rate limit for a given key.
+     *
+     * @param key Redis key to reset
+     */
+    public void resetRateLimit(String key) {
+        redisTemplate.delete(key);
+        log.debug("Reset rate limit for key: {}", key);
+    }
+
+    /**
+     * Create login rate limit key for IP address.
+     *
+     * @param ipAddress IP address
+     * @return Redis key for login rate limiting
+     */
+    public String createLoginRateLimitKey(String ipAddress) {
+        return LOGIN_ATTEMPTS_PREFIX + ipAddress;
+    }
+
+    /**
+     * Create user rate limit key for user ID.
+     *
+     * @param userId User ID
+     * @return Redis key for user rate limiting
+     */
+    public String createUserRateLimitKey(Long userId) {
+        return "rate_limit:user:" + userId;
+    }
+
+    /**
+     * Create API rate limit key for IP and endpoint.
+     *
+     * @param ipAddress IP address
+     * @param endpoint API endpoint
+     * @return Redis key for API rate limiting
+     */
+    public String createApiRateLimitKey(String ipAddress, String endpoint) {
+        return "rate_limit:api:" + ipAddress + ":" + endpoint;
+    }
+
+    /**
      * Get rate limit status for monitoring/debugging.
      *
      * @param ipAddress IP address to check

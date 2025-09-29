@@ -11,6 +11,11 @@ import lombok.Data;
 @Builder
 public class RateLimitStatus {
     private String ipAddress;
+    private boolean allowed;
+    private int currentCount;
+    private int limit;
+    private int remainingAttempts;
+    private long resetTimeSeconds;
     
     // Login rate limiting
     private int loginAttempts;

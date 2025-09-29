@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
-import com.tariffsheriff.backend.tariff.service.TariffRateService;
+import com.tariffsheriff.backend.tariff.service.TariffCalculationService;
 
 @RestController
 @RequestMapping("/api/tariff-rate")
