@@ -1,4 +1,43 @@
 # Usage: Agreement-Aware Lookup
+## Spring JPA CRUD against Neon (quick start)
+
+Prereqs
+- Set env vars to your Neon dev/prod (JDBC URL with `sslmode=require`, user, password).
+- Start the app or use tests that connect to Neon.
+
+Common repository calls
+```java
+// Resolve HS product id
+var productOpt = hsProductRepository.findByDestination_IdAndHsVersionAndHsCode(importerId, "2022", "870380");
+var product = productOpt.orElseThrow();
+
+// MFN rate for a date
+var mfn = tariffRateRepository.findApplicableMfn(importerId, product.getId(), shipmentDate).stream().findFirst();
+
+// Preferential rate for a date (if origin + agreement apply)
+var pref = tariffRateRepository.findApplicablePreferential(importerId, originId, product.getId(), shipmentDate).stream().findFirst();
+
+// VAT by importer
+var vat = vatRepository.findByImporter_Id(importerId);
+```
+
+Service-layer (recommended)
+```java
+var product = hsProductService.get(productId);
+var mfnList = tariffRateService.findApplicableMfn(importerId, product.getId(), shipmentDate);
+var prefList = tariffRateService.findApplicablePreferential(importerId, originId, product.getId(), shipmentDate);
+var vat = vatService.getForImporter(importerId);
+```
+
+Pagination & sorting
+```java
+var page = countryService.searchByName("uni", PageRequest.of(0, 20, Sort.by("name").ascending()));
+```
+
+Transactions
+- Reads are `@Transactional(readOnly = true)` by default in services.
+- Writes are wrapped in `@Transactional` so errors roll back the whole operation.
+
 
 Goal: decide which rate/agreement applies for importer I, origin O, HS (version/code) on date D, returning a single decision the backend can use.
 

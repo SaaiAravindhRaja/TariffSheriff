@@ -19,9 +19,9 @@ import com.tariffsheriff.backend.tariff.service.TariffRateService;
 @RestController
 @RequestMapping("/api/tariff-rate")
 public class TariffRateController {
-    private TariffRateService tariffRateService;
+    private TariffCalculationService tariffRateService;
 
-    public TariffRateController(TariffRateService trs) {
+    public TariffRateController(TariffCalculationService trs) {
         this.tariffRateService = trs;
     }
 
