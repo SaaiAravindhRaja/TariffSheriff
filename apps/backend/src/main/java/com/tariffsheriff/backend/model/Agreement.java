@@ -1,5 +1,6 @@
 package com.tariffsheriff.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tariffsheriff.backend.model.converter.AgreementStatusConverter;
 import com.tariffsheriff.backend.model.enums.AgreementStatus;
 import jakarta.persistence.*;
@@ -28,6 +29,7 @@ public class Agreement {
     private LocalDate enteredIntoForce;
 
     // Many-to-many with Country through agreement_party join table
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "agreement_party",
