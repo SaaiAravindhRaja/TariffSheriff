@@ -44,13 +44,13 @@ public class TariffRateServiceImpl implements TariffRateService {
             .orElseThrow(TariffRateNotFoundException::new);
     }
 
-    @Override
-    public TariffRate getTariffRateByImporterAndOriginAndHsCodeAndBasis(
-        Long importerId, Long originId, Long hsCode, String basis) {
+    // @Override
+    // public TariffRate getTariffRateByImporterAndOriginAndHsProductIdAndBasis(
+    //     Long importerId, Long originId, Long hsCode, String basis) {
 
-        return tariffRates.findByImporterIdAndOriginIdAndHsCodeAndBasis(importerId, originId, hsCode, basis)
-            .orElseThrow(TariffRateNotFoundException::new);
-    }
+    //     return tariffRates.findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, basis)
+    //         .orElseThrow(TariffRateNotFoundException::new);
+    // }
 
     @Override
     public TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode) {
@@ -61,7 +61,7 @@ public class TariffRateServiceImpl implements TariffRateService {
             .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
 
         HsProduct product = hsProducts.findByHsCode(hsCode)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product: " + hsCo));
+            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product: " + hsCode));
 
         Long importerId = importer.getId();
         Long originId = origin.getId();
