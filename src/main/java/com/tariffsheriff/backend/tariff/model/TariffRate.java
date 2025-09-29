@@ -10,13 +10,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "tariff_rate")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,7 +32,7 @@ public class TariffRate {
     private Long originId;
 
     @Column(name = "hs_product_id", nullable = false)
-    private Long hsCode;
+    private Long hsProductId;
 
     @Column(nullable = false)
     private String basis;
