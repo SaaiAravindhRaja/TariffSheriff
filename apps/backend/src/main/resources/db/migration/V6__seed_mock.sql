@@ -3,7 +3,7 @@ INSERT INTO country (id, iso2, iso3, name) VALUES
     (5, 'CL', 'CHL', 'Chile');
 
 INSERT INTO agreement (id, name, type, status, entered_into_force, rvc) VALUES
-    (2, 'Chile-United States FTA', 'FTA', 'in_force', DATE '2004-01-01', 40);
+    (2, 'Chile-United States FTA', 'FTA', 'in_force', DATE '2004-01-01', 30);
 
 INSERT INTO tariff_rate (
     id,
