@@ -1,4 +1,4 @@
-package com.tariffsheriff.backend.country.controller;
+package com.tariffsheriff.backend.tariff.controller;
 
 import com.tariffsheriff.backend.tariff.model.Country;
 import com.tariffsheriff.backend.tariff.service.CountryService;

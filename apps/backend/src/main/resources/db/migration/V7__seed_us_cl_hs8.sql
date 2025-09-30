@@ -82,10 +82,9 @@ SELECT importer, origin, product_id, 'MFN', NULL, 'ad_valorem', rate, NULL, NULL
        DATE '2019-01-01', NULL, source
 FROM (
     VALUES
-        (4, NULL, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076010' AND hs_version = '2022'), 0.025, 'MFN for US lithium-ion battery packs'),
-        (4, NULL, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076020' AND hs_version = '2022'), 0.030, 'MFN for US lithium-ion battery modules'),
-        (1, NULL, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076010' AND hs_version = '2022'), 0.020, 'MFN for EU lithium-ion battery packs'),
-        (1, NULL, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076020' AND hs_version = '2022'), 0.028, 'MFN for EU lithium-ion battery modules')
+        (4, NULL::BIGINT, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076010' AND hs_version = '2022'), 0.025, 'MFN for US lithium-ion battery packs'),
+        (4, NULL::BIGINT, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076020' AND hs_version = '2022'), 0.030, 'MFN for US lithium-ion battery modules'),
+        (1, NULL::BIGINT, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076010' AND hs_version = '2022'), 0.020, 'MFN for EU lithium-ion battery packs'),
+        (1, NULL::BIGINT, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076020' AND hs_version = '2022'), 0.028, 'MFN for EU lithium-ion battery modules')
 ) AS rates(importer, origin, product_id, rate, source)
 ON CONFLICT DO NOTHING;
-
