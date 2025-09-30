@@ -18,4 +18,6 @@ public interface AgreementService {
     Agreement updateAgreement(Long id, Agreement agreement);
 
     void deleteAgreement(Long id);
+
+    List<Agreement> getAgreementsByCountry(String countryIso2);
 }
