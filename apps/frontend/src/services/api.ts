@@ -61,7 +61,7 @@ export const tariffApi = {
     limit?: number
   }) => api.get('/tariffs/rules', { params }),
   
-  getCountries: () => api.get('/countries'),
+  getCountries: (params?: { q?: string; page?: number; size?: number }) => api.get('/countries', { params }),
   
   getHsCodes: (query?: string) => api.get('/hs-codes', { 
     params: { q: query } 

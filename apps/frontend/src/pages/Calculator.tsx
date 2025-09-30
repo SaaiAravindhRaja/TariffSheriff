@@ -48,6 +48,7 @@ import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 import { RVCCalculator } from '@/components/calculator/RVCCalculator';
 import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
 import { FieldLabel } from '@/components/calculator/FieldLabel';
+import { useDbCountries } from '@/hooks/useDbCountries';
 
 // Enhanced interfaces for professional calculator with AANZFTA RVC
 interface ProductInfo {
@@ -169,6 +170,7 @@ interface HSCodeSuggestion {
 
 export function Calculator() {
   const { settings } = useSettings();
+  const { countries: dbCountries, loading: dbCountriesLoading, error: dbCountriesError } = useDbCountries();
 
   // Enhanced form state
   const [productInfo, setProductInfo] = useState<ProductInfo>({
@@ -798,6 +800,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select origin country"
                           value={productInfo.originCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('originCountry', String(single));
@@ -816,6 +821,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select destination country"
                           value={productInfo.destinationCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('destinationCountry', String(single));

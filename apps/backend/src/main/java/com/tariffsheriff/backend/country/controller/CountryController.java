@@ -38,5 +38,3 @@ public class CountryController {
         return countryService.get(id);
     }
 }
-
-
