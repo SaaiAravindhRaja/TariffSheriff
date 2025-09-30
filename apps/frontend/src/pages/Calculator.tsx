@@ -48,6 +48,8 @@ import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 import { RVCCalculator } from '@/components/calculator/RVCCalculator';
 import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
 import { FieldLabel } from '@/components/calculator/FieldLabel';
+import { useDbCountries } from '@/hooks/useDbCountries';
+import { tariffApi } from '@/services/api';
 
 // Enhanced interfaces for professional calculator with AANZFTA RVC
 interface ProductInfo {
@@ -169,6 +171,7 @@ interface HSCodeSuggestion {
 
 export function Calculator() {
   const { settings } = useSettings();
+  const { countries: dbCountries, loading: dbCountriesLoading, error: dbCountriesError } = useDbCountries();
 
   // Enhanced form state
   const [productInfo, setProductInfo] = useState<ProductInfo>({
@@ -346,47 +349,68 @@ export function Calculator() {
     setIsCalculating(true);
 
     try {
-      // Simulate API call to get trade agreements
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch tariff rates from backend and derive agreements (MFN + PREF)
+      const response = await tariffApi.getTariffRates();
+      const rates: any[] = Array.isArray(response.data) ? response.data : response.data?.content ?? [];
 
-      const mockAgreements: TradeAgreement[] = [
-        {
+      const normalizeHs = (code: string) => String(code || '').replace(/\./g, '');
+      const inputHs = normalizeHs(productInfo.hsCode);
+
+      // Filter by importer (destination), HS code, and origin (for PREF)
+      const importerIso2 = productInfo.destinationCountry;
+      const originIso2 = productInfo.originCountry;
+
+      const byDestinationAndHs = rates.filter((r) => {
+        const importer = r.importer?.iso2 || r.importer?.iso2?.value;
+        const hsCodeStr = r.hsProduct?.hsCode || '';
+        const normalized = normalizeHs(String(hsCodeStr));
+        return (
+          importer && importer.toUpperCase() === (importerIso2 || '').toUpperCase() &&
+          (
+            normalized === inputHs ||
+            (normalized && inputHs && (normalized.startsWith(inputHs) || inputHs.startsWith(normalized)))
+          )
+        );
+      });
+
+      // Pick latest by validFrom for each basis
+      const sortByValidFromDesc = (a: any, b: any) => new Date(b.validFrom || b.validFromDate || 0).getTime() - new Date(a.validFrom || a.validFromDate || 0).getTime();
+      const mfnRates = byDestinationAndHs.filter((r) => (r.basis || '').toUpperCase() === 'MFN' && (r.origin == null || r.origin?.iso2 == null));
+      const prefRates = byDestinationAndHs.filter((r) => (r.basis || '').toUpperCase() === 'PREF' && (r.origin?.iso2 || '').toUpperCase() === (originIso2 || '').toUpperCase());
+
+      const topMfn = mfnRates.sort(sortByValidFromDesc)[0];
+      const topPref = prefRates.sort(sortByValidFromDesc)[0];
+
+      const agreementsFromBackend: TradeAgreement[] = [];
+
+      if (topMfn) {
+        const adValorem = Number(topMfn.adValoremRate ?? 0);
+        agreementsFromBackend.push({
           type: 'MFN',
           name: 'Most Favoured Nation',
-          rate: 12.5,
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
           description: 'Standard WTO tariff rate',
-          requirements: ['Commercial Invoice', 'Packing List']
-        },
-        {
-          type: 'RVC',
-          name: 'AANZFTA Regional Value Content',
-          rate: 6.0,
-          description: 'Preferential rate under AANZFTA agreement (40% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 40,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'RVC',
-          name: 'USMCA Regional Value Content',
-          rate: 8.0,
-          description: 'Preferential rate under USMCA agreement (75% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 75,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'ROOS',
-          name: 'Rules of Origin Specific',
-          rate: 4.5,
-          description: 'Specific rules of origin qualification',
-          requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
-        }
-      ];
+          requirements: ['Commercial Invoice', 'Packing List'],
+        });
+      }
 
-      setTradeAgreements(mockAgreements);
+      if (topPref) {
+        const adValorem = Number(topPref.adValoremRate ?? 0);
+        const rvc = topPref.agreement?.rvcThreshold != null ? Number(topPref.agreement.rvcThreshold) : undefined;
+        agreementsFromBackend.push({
+          type: rvc != null ? 'RVC' : 'ROOS',
+          name: topPref.agreement?.name || 'Preferential',
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
+          description: `Preferential rate${topPref.agreement?.name ? ` under ${topPref.agreement.name}` : ''}`,
+          requirements: ['Certificate of Origin'],
+          rvcThreshold: rvc,
+          rvcMethod: rvc != null ? 'both' : undefined,
+        });
+      }
+
+      setTradeAgreements(agreementsFromBackend);
       setBasicInfoComplete(true);
-      setSelectedAgreement(mockAgreements[0]); // Default to MFN
+      setSelectedAgreement(agreementsFromBackend[0] ?? null);
 
     } catch (error) {
       console.error('Failed to fetch trade agreements:', error);
@@ -832,6 +856,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select origin country"
                           value={productInfo.originCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('originCountry', String(single));
@@ -850,6 +877,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select destination country"
                           value={productInfo.destinationCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('destinationCountry', String(single));
@@ -883,12 +913,14 @@ export function Calculator() {
                     </div>
 
                     {/* Trade Agreements Results */}
-                    {tradeAgreements.length > 0 && (
-                      <div className="space-y-4 pt-4 border-t">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <Globe className="w-5 h-5" />
-                          Available Trade Agreements
-                        </h3>
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Globe className="w-5 h-5" />
+                        Available Trade Agreements
+                      </h3>
+                      {tradeAgreements.length === 0 ? (
+                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found</div>
+                      ) : (
                         <div className="grid gap-3">
                           {tradeAgreements.map((agreement, index) => (
                             <div
@@ -934,8 +966,8 @@ export function Calculator() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
 

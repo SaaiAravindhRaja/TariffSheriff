@@ -1,38 +1,15 @@
-import { useMemo } from 'react';
-import { 
-  countries, 
-  getCountryByCode, 
-  getCountriesByRegion, 
-  getActiveCountries,
-  searchCountries,
-  getRegions,
-  getCurrencies,
-  getCountryOptions,
-  type Country 
-} from '../data/countries';
+// Deprecated: hardcoded countries are removed. Keep a minimal placeholder to avoid import crashes.
+export const useCountries = () => ({
+  countries: [],
+  countryOptions: [],
+  regions: [],
+  currencies: [],
+  activeCountries: [],
+  getCountryByCode: (_code: string) => undefined,
+  getCountriesByRegion: (_region: string) => [],
+  searchCountries: (_q: string) => [],
+});
 
-export const useCountries = () => {
-  const countryOptions = useMemo(() => getCountryOptions(), []);
-  const regions = useMemo(() => getRegions(), []);
-  const currencies = useMemo(() => getCurrencies(), []);
-  const activeCountries = useMemo(() => getActiveCountries(), []);
-
-  return {
-    countries,
-    countryOptions,
-    regions,
-    currencies,
-    activeCountries,
-    getCountryByCode,
-    getCountriesByRegion,
-    searchCountries,
-  };
-};
-
-export const useCountry = (countryCode?: string): Country | undefined => {
-  return useMemo(() => {
-    return countryCode ? getCountryByCode(countryCode) : undefined;
-  }, [countryCode]);
-};
+export const useCountry = (_countryCode?: string) => undefined as undefined;
 
 export default useCountries;
