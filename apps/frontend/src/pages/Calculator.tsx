@@ -394,6 +394,7 @@ export function Calculator() {
         });
       }
 
+      console.log('Setting trade agreements:', agreementsFromBackend);
       setTradeAgreements(agreementsFromBackend);
       setBasicInfoComplete(true);
       setSelectedAgreement(agreementsFromBackend[0] ?? null);
