@@ -1,6 +1,6 @@
 package com.tariffsheriff.backend.user.config;
 
-import com.tariffsheriff.backend.user.service.CustomUserDetailsService;
+import com.tariffsheriff.backend.auth.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
