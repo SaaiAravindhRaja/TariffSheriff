@@ -48,6 +48,8 @@ import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
 import { RVCCalculator } from '@/components/calculator/RVCCalculator';
 import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
 import { FieldLabel } from '@/components/calculator/FieldLabel';
+import { useDbCountries } from '@/hooks/useDbCountries';
+import { tariffApi } from '@/services/api';
 
 // Enhanced interfaces for professional calculator with AANZFTA RVC
 interface ProductInfo {
@@ -169,6 +171,7 @@ interface HSCodeSuggestion {
 
 export function Calculator() {
   const { settings } = useSettings();
+  const { countries: dbCountries, loading: dbCountriesLoading, error: dbCountriesError } = useDbCountries();
 
   // Enhanced form state
   const [productInfo, setProductInfo] = useState<ProductInfo>({
@@ -247,19 +250,20 @@ export function Calculator() {
 
     if (!productInfo.hsCode.trim()) {
       errors.hsCode = 'HS Code is required';
-    } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode)) {
-      errors.hsCode = 'Invalid HS Code format (e.g., 8703.80.10)';
+    } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode) && !/^\d{4,10}$/.test(productInfo.hsCode)) {
+      errors.hsCode = 'Invalid HS Code format (e.g., 870380 or 8703.80.10)';
     }
 
-    if (!productInfo.originCountry) {
-      errors.originCountry = 'Origin country is required';
-    }
+    // Origin country is optional - if not provided, we'll only get MFN rates
+    // if (!productInfo.originCountry) {
+    //   errors.originCountry = 'Origin country is required';
+    // }
 
     if (!productInfo.destinationCountry) {
       errors.destinationCountry = 'Destination country is required';
     }
 
-    if (productInfo.originCountry === productInfo.destinationCountry) {
+    if (productInfo.originCountry && productInfo.originCountry === productInfo.destinationCountry) {
       errors.destinationCountry = 'Origin and destination must be different';
     }
 
@@ -346,51 +350,69 @@ export function Calculator() {
     setIsCalculating(true);
 
     try {
-      // Simulate API call to get trade agreements
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Normalize and validate inputs
+      const normalizedHsCode = productInfo.hsCode.replace(/\./g, '').trim();
+      const importerIso2 = productInfo.destinationCountry.trim();
+      const originIso2 = productInfo.originCountry?.trim() || undefined;
 
-      const mockAgreements: TradeAgreement[] = [
-        {
+      // Call the lookup API
+      const lookupResponse = await tariffApi.getTariffRateLookup({
+        importerIso2,
+        originIso2,
+        hsCode: normalizedHsCode
+      });
+
+
+      const lookupData = lookupResponse.data;
+      const agreementsFromBackend: TradeAgreement[] = [];
+
+      // Add MFN agreement if available
+      if (lookupData.tariffRateMfn) {
+        const adValorem = Number(lookupData.tariffRateMfn.adValoremRate ?? 0);
+        agreementsFromBackend.push({
           type: 'MFN',
           name: 'Most Favoured Nation',
-          rate: 12.5,
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
           description: 'Standard WTO tariff rate',
-          requirements: ['Commercial Invoice', 'Packing List']
-        },
-        {
-          type: 'RVC',
-          name: 'AANZFTA Regional Value Content',
-          rate: 6.0,
-          description: 'Preferential rate under AANZFTA agreement (40% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 40,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'RVC',
-          name: 'USMCA Regional Value Content',
-          rate: 8.0,
-          description: 'Preferential rate under USMCA agreement (75% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 75,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'ROOS',
-          name: 'Rules of Origin Specific',
-          rate: 4.5,
-          description: 'Specific rules of origin qualification',
-          requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
-        }
-      ];
+          requirements: ['Commercial Invoice', 'Packing List'],
+        });
+      }
 
-      setTradeAgreements(mockAgreements);
+      // Add preferential agreement if available
+      if (lookupData.tariffRatePref && lookupData.agreement) {
+        const adValorem = Number(lookupData.tariffRatePref.adValoremRate ?? 0);
+        const rvc = lookupData.agreement.rvc != null ? Number(lookupData.agreement.rvc) : undefined;
+        agreementsFromBackend.push({
+          type: rvc != null ? 'RVC' : 'ROOS',
+          name: lookupData.agreement.name || 'Preferential',
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
+          description: `Preferential rate under ${lookupData.agreement.name}`,
+          requirements: ['Certificate of Origin'],
+          rvcThreshold: rvc,
+          rvcMethod: rvc != null ? 'both' : undefined,
+        });
+      }
+
+
+      setTradeAgreements(agreementsFromBackend);
       setBasicInfoComplete(true);
-      setSelectedAgreement(mockAgreements[0]); // Default to MFN
+      setSelectedAgreement(agreementsFromBackend[0] ?? null);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch trade agreements:', error);
-      setValidationErrors({ general: 'Failed to fetch trade agreements. Please try again.' });
+      let errorMessage = 'Failed to fetch trade agreements. Please try again.';
+
+      if (error.response?.status === 404) {
+        errorMessage = `No tariff data found for HS Code "${normalizedHsCode}" with importer "${importerIso2}"${originIso2 ? ` and origin "${originIso2}"` : ''}. Try the test data: HS Code "870380", Origin "KR", Destination "EU".`;
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || `Invalid parameters: HS Code "${normalizedHsCode}", Importer "${importerIso2}", Origin "${originIso2 || 'none'}".`;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      setValidationErrors({ general: errorMessage });
+      setTradeAgreements([]);
+      setBasicInfoComplete(false);
     } finally {
       setIsCalculating(false);
     }
@@ -775,7 +797,7 @@ export function Calculator() {
                       <label className="text-sm font-medium">HS Code *</label>
                       <div className="relative">
                         <Input
-                          placeholder="e.g., 8703.80.10"
+                          placeholder="e.g., 870380 or 8703.80.10"
                           value={productInfo.hsCode}
                           onChange={(e) => {
                             updateProductInfo('hsCode', e.target.value);
@@ -788,6 +810,9 @@ export function Calculator() {
                       {validationErrors.hsCode && (
                         <p className="text-sm text-red-600">{validationErrors.hsCode}</p>
                       )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        💡 Try: HS Code "870380", Origin "Republic of Korea", Destination "European Union"
+                      </div>
                     </div>
 
                     {/* HS Code Suggestions */}
@@ -832,6 +857,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select origin country"
                           value={productInfo.originCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('originCountry', String(single));
@@ -850,6 +878,9 @@ export function Calculator() {
                         <CountrySelect
                           placeholder="Select destination country"
                           value={productInfo.destinationCountry}
+                          countries={dbCountries}
+                          loading={dbCountriesLoading}
+                          error={dbCountriesError}
                           onChange={(code) => {
                             const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
                             updateProductInfo('destinationCountry', String(single));
@@ -883,12 +914,21 @@ export function Calculator() {
                     </div>
 
                     {/* Trade Agreements Results */}
-                    {tradeAgreements.length > 0 && (
-                      <div className="space-y-4 pt-4 border-t">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <Globe className="w-5 h-5" />
-                          Available Trade Agreements
-                        </h3>
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Globe className="w-5 h-5" />
+                        Available Trade Agreements
+                      </h3>
+                      {validationErrors.general && (
+                        <div className="text-center py-6 text-sm text-red-600">{validationErrors.general}</div>
+                      )}
+                      {!validationErrors.general && tradeAgreements.length === 0 && basicInfoComplete && (
+                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found for this combination</div>
+                      )}
+                      {!validationErrors.general && tradeAgreements.length === 0 && !basicInfoComplete && (
+                        <div className="text-center py-6 text-sm text-muted-foreground">Click "Get Trade Agreements" to fetch available agreements</div>
+                      )}
+                      {tradeAgreements.length > 0 && (
                         <div className="grid gap-3">
                           {tradeAgreements.map((agreement, index) => (
                             <div
@@ -934,8 +974,8 @@ export function Calculator() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
 

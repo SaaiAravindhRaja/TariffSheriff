@@ -14,8 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCountry } from '@/hooks/useCountries';
-import { CountryFlag } from '@/components/ui/CountryFlag';
+// Removed hardcoded country lookup; show code directly for now
 import { CountryTradeChart } from '@/components/country/CountryTradeChart';
 import { CountryTariffRates } from '@/components/country/CountryTariffRates';
 import { CountryTradePartners } from '@/components/country/CountryTradePartners';
@@ -26,7 +25,7 @@ import { CountryEconomicIndicators } from '@/components/country/CountryEconomicI
 export function CountryDashboard() {
   const { countryCode } = useParams<{ countryCode: string }>();
   const navigate = useNavigate();
-  const country = useCountry(countryCode?.toUpperCase());
+  const country = { code: countryCode?.toUpperCase() || '', name: countryCode?.toUpperCase() || '' } as const;
 
   if (!countryCode) {
     navigate('/');
@@ -87,17 +86,13 @@ export function CountryDashboard() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center space-x-3">
-            <CountryFlag countryCode={country.code} size="lg" />
+            <div className="text-2xl">{country.code}</div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{country.name}</h1>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <span className="flex items-center">
                   <MapPin className="w-4 h-4 mr-1" />
-                  {country.region}
-                </span>
-                <span className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  {country.currency}
+                  {country.code}
                 </span>
                 <Badge variant="secondary">{country.code}</Badge>
               </div>

@@ -8,4 +8,8 @@ public class TariffRateNotFoundException extends RuntimeException {
     public TariffRateNotFoundException() {
         super("Could not find tariff rate information");
     }
+    
+    public TariffRateNotFoundException(String message) {
+        super(message);
+    }
 }

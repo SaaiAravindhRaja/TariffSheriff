@@ -1,17 +1,15 @@
 package com.tariffsheriff.backend.tariff.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
-import java.math.BigInteger;
+
 import lombok.Data;
 
 @Data
 public class TariffRateRequestDto {
-    // private Long agreementId;
-    private BigInteger importer_id;
-    private BigInteger origin_id;
-    private Long hsCode;
+    private BigDecimal mfnRate;
+    private BigDecimal prefRate;
+    private BigDecimal rvc;
+    private Long agreementId;
     private Integer quantity;
     private BigDecimal totalValue;
     private BigDecimal materialCost;
@@ -19,10 +17,6 @@ public class TariffRateRequestDto {
     private BigDecimal overheadCost;
     private BigDecimal profit;
     private BigDecimal otherCosts;
-
-    @JsonProperty("fob")
-    @JsonAlias("FOB")
     private BigDecimal fob;
-
     private BigDecimal nonOriginValue;
 }
