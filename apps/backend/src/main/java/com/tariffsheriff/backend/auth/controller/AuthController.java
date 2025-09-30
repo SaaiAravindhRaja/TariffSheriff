@@ -16,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -34,7 +36,7 @@ public class AuthController {
             // Check if user already exists
             if (userRepository.existsByEmail(request.getEmail())) {
                 return ResponseEntity.badRequest()
-                    .body("Error: Email is already taken!");
+                    .body(Map.of("message", "Email is already taken"));
             }
 
             // Create new user
@@ -63,7 +65,7 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Registration error: ", e);
             return ResponseEntity.badRequest()
-                .body("Error: Registration failed - " + e.getMessage());
+                .body(Map.of("message", "Registration failed: " + e.getMessage()));
         }
     }
 
@@ -100,7 +102,7 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Login error for {}: ", request.getEmail(), e);
             return ResponseEntity.badRequest()
-                .body("Error: Invalid credentials - " + e.getMessage());
+                .body(Map.of("message", "Invalid credentials"));
         }
     }
 
@@ -123,10 +125,10 @@ public class AuthController {
                     ));
                 }
             }
-            return ResponseEntity.badRequest().body("Invalid token");
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid token"));
         } catch (Exception e) {
             log.error("Token validation error: ", e);
-            return ResponseEntity.badRequest().body("Error: Token validation failed");
+            return ResponseEntity.badRequest().body(Map.of("message", "Token validation failed"));
         }
     }
 }

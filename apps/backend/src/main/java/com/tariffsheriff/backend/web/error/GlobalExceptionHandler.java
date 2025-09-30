@@ -23,19 +23,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class, IllegalArgumentException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+        log.error("Validation error on {}: {}", req.getRequestURI(), ex.getMessage());
+        StringBuilder message = new StringBuilder("Validation failed: ");
+        ex.getBindingResult().getFieldErrors().forEach(error -> 
+            message.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; "));
+        ErrorResponse body = build(HttpStatus.BAD_REQUEST, message.toString(), req.getRequestURI());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler({ConstraintViolationException.class, IllegalArgumentException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
-        log.debug("Bad request on {}: {}", req.getRequestURI(), ex.getMessage());
+        log.error("Bad request on {}: {}", req.getRequestURI(), ex.getMessage());
         ErrorResponse body = build(HttpStatus.BAD_REQUEST, extractMessage(ex), req.getRequestURI());
         return ResponseEntity.badRequest().body(body);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
-        log.error("Unexpected error on {}", req.getRequestURI(), ex);
-        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
-    }
+
 
     private static ErrorResponse build(HttpStatus status, String message, String path) {
         ErrorResponse body = new ErrorResponse();

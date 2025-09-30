@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -52,7 +52,11 @@ function AppContent() {
 
   // Show auth page if not authenticated
   if (!isAuthenticated) {
-    return <AuthPage />
+    return (
+      <Routes>
+        <Route path="/*" element={<AuthPage />} />
+      </Routes>
+    )
   }
 
   // Show main app if authenticated
@@ -66,7 +70,8 @@ function AppContent() {
         <main id="main-content" className="flex-1 ml-64 transition-all duration-300">
           <ProtectedRoute>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/database" element={<Database />} />
               <Route path="/routes" element={<TradeRoutes />} />

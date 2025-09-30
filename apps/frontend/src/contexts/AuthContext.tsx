@@ -75,8 +75,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Login failed')
+        try {
+          const errorData = await response.json()
+          console.error('Login error response:', errorData)
+          throw new Error(errorData.message || 'Login failed')
+        } catch (jsonError) {
+          // If response is not JSON, use status text
+          console.error('Login error - non-JSON response:', response.status, response.statusText)
+          throw new Error(`Login failed: ${response.status}`)
+        }
       }
 
       const data = await response.json()
@@ -111,12 +118,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, aboutMe }),
+        body: JSON.stringify({ 
+          name, 
+          email, 
+          password, 
+          aboutMe: aboutMe || '', 
+          role: 'USER',
+          isAdmin: false 
+        }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Registration failed')
+        try {
+          const errorData = await response.json()
+          console.error('Registration error response:', errorData)
+          throw new Error(errorData.message || 'Registration failed')
+        } catch (jsonError) {
+          // If response is not JSON, use status text
+          console.error('Registration error - non-JSON response:', response.status, response.statusText)
+          throw new Error(`Registration failed: ${response.status}`)
+        }
       }
 
       const data = await response.json()

@@ -27,26 +27,28 @@ export function Header({ className }: HeaderProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
+  const dropdownRef = React.useRef<HTMLDivElement>(null)
 
   const handleLogout = () => {
     logout()
     setShowUserMenu(false)
+    navigate('/', { replace: true })
   }
 
   // Close user menu when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showUserMenu) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
       }
     }
 
     if (showUserMenu) {
-      document.addEventListener('click', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showUserMenu])
 
@@ -123,7 +125,7 @@ export function Header({ className }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setShowUserMenu(!showUserMenu)}
               aria-haspopup="true" 
