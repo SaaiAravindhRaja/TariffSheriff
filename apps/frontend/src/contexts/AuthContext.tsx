@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:8081/api/auth/login', {
+      const response = await fetch('http://localhost:8080/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Register function
   const register = async (name: string, email: string, password: string, aboutMe?: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:8081/api/auth/register', {
+      const response = await fetch('http://localhost:8080/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
