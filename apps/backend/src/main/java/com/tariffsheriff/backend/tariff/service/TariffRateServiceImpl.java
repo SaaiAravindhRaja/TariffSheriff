@@ -2,109 +2,117 @@ package com.tariffsheriff.backend.tariff.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.tariffsheriff.backend.model.TariffRate;
-import com.tariffsheriff.backend.model.enums.TariffBasis;
-import com.tariffsheriff.backend.model.enums.TariffRateType;
-import com.tariffsheriff.backend.repository.TariffRateRepository;
+import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
+import com.tariffsheriff.backend.tariff.model.Agreement;
+import com.tariffsheriff.backend.tariff.model.Country;
+import com.tariffsheriff.backend.tariff.model.HsProduct;
+import com.tariffsheriff.backend.tariff.model.TariffRate;
+import com.tariffsheriff.backend.tariff.repository.AgreementRepository;
+import com.tariffsheriff.backend.tariff.repository.CountryRepository;
+import com.tariffsheriff.backend.tariff.repository.HsProductRepository;
+import com.tariffsheriff.backend.tariff.repository.TariffRateRepository;
 
 @Service
-public class TariffRateServiceImpl implements TariffCalculationService {
+public class TariffRateServiceImpl implements TariffRateService {
     private final TariffRateRepository tariffRates;
+    private final AgreementRepository agreements;
+    private final CountryRepository countries;
+    private final HsProductRepository hsProducts;
 
-    public TariffRateServiceImpl(TariffRateRepository tariffRates){
+    public TariffRateServiceImpl(TariffRateRepository tariffRates, AgreementRepository agreements,
+                                CountryRepository countries, HsProductRepository hsProducts) {
         this.tariffRates = tariffRates;
+        this.agreements = agreements;
+        this.countries = countries;
+        this.hsProducts = hsProducts;
     }
 
+    @Override
     public List<TariffRate> listTariffRates() {
         return tariffRates.findAll();
     }
 
+    @Override
     public TariffRate getTariffRateById(Long id) {
-        return tariffRates.findById(id).orElseThrow(TariffRateNotFoundException::new);
+        return tariffRates.findById(id)
+            .orElseThrow(TariffRateNotFoundException::new);
     }
 
-    private TariffRate resolveApplicableRate(Long importerId, Long originId, Long hsCode, String basis, LocalDate shipmentDate) {
-        if (TariffBasis.MFN.getDbValue().equalsIgnoreCase(basis)) {
-            return tariffRates.findApplicableMfn(importerId, hsCode, shipmentDate)
-                .stream()
-                .findFirst()
-                .orElseThrow(TariffRateNotFoundException::new);
-        } else if (TariffBasis.PREF.getDbValue().equalsIgnoreCase(basis)) {
-            if (originId == null) {
-                throw new TariffRateNotFoundException();
-            }
-            return tariffRates.findApplicablePreferential(importerId, originId, hsCode, shipmentDate)
-                .stream()
-                .findFirst()
-                .orElseThrow(TariffRateNotFoundException::new);
-        } else {
-            throw new TariffRateNotFoundException();
+    // @Override
+    // public TariffRate getTariffRateByImporterAndOriginAndHsProductIdAndBasis(
+    //     Long importerId, Long originId, Long hsCode, String basis) {
+
+    //     return tariffRates.findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, basis)
+    //         .orElseThrow(TariffRateNotFoundException::new);
+    // }
+
+    @Override
+    public TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode) {
+        if (hsCode == null || hsCode.isBlank()) {
+            throw new IllegalArgumentException("hsCode must be provided");
         }
+
+        Country importer = countries.findByIso2IgnoreCase(importerIso2)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown importer ISO2: " + importerIso2));
+
+        Country origin = null;
+        if (originIso2 != null && !originIso2.isBlank()) {
+            origin = countries.findByIso2IgnoreCase(originIso2)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
+        }
+
+        HsProduct product = hsProducts
+            .findByDestinationIdAndHsCode(importer.getId(), hsCode)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product for importer %s and code %s".formatted(importerIso2, hsCode)));
+
+        Long importerId = importer.getId();
+        Long hsProductId = product.getId();
+
+        TariffRate tariffRateMfn = tariffRates
+            .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN")
+            .orElseThrow(TariffRateNotFoundException::new);
+
+        TariffRate tariffRatePref = null;
+        if (origin != null) {
+            Long originId = origin.getId();
+            tariffRatePref = tariffRates
+                .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
+                .orElseGet(() -> tariffRates
+                    .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "PREF")
+                    .orElseThrow(TariffRateNotFoundException::new));
+        }
+
+        Agreement agreement = null;
+        if (tariffRatePref != null && tariffRatePref.getAgreementId() != null) {
+            agreement = agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
+        }
+
+        return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
     }
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
-        Long importerId = rq.getImporter_id() != null ? rq.getImporter_id().longValue() : null;
-        Long originId = rq.getOrigin_id() != null ? rq.getOrigin_id().longValue() : null;
-        Long hsCode = rq.getHsCode();
-        LocalDate shipmentDate = LocalDate.now();
-
-        TariffRate tariffRateMFN = resolveApplicableRate(importerId, null, hsCode, TariffBasis.MFN.getDbValue(), shipmentDate);
-        TariffRate tariffRatePref = resolveApplicableRate(importerId, originId, hsCode, TariffBasis.PREF.getDbValue(), shipmentDate);
-
-        java.math.BigDecimal rvcThresholdPercent = tariffRatePref.getAgreement() != null ? tariffRatePref.getAgreement().getRvcThreshold() : null;
-
-        TariffRate appliedTariffRate;
-        if (rvcThresholdPercent == null) {
-            appliedTariffRate = tariffRateMFN; // fallback to MFN when threshold missing
-        } else {
-            BigDecimal fobValue = rq.getFob();
-            if (fobValue == null || fobValue.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("fob must be provided and greater than zero");
-            }
-            BigDecimal rvcThresholdRatio = rvcThresholdPercent.movePointLeft(2); // convert percent (e.g., 40.00) to ratio (0.40)
-            BigDecimal RVC = safe(rq.getMaterialCost())
-                            .add(safe(rq.getLabourCost()))
-                            .add(safe(rq.getOverheadCost()))
-                            .add(safe(rq.getProfit()))
-                            .add(safe(rq.getOtherCosts()))
-                            .divide(fobValue, 6, RoundingMode.HALF_UP);
-            appliedTariffRate = RVC.compareTo(rvcThresholdRatio) >= 0 ? tariffRatePref : tariffRateMFN;
-        }
-        BigDecimal totalValue = safe(rq.getTotalValue());
+        BigDecimal mfnRate = rq.getMfnRate();
+        BigDecimal prefRate = rq.getPrefRate();
+        BigDecimal rvcDefined = rq.getRvc(); 
+        BigDecimal RVC = rq.getMaterialCost()
+                        .add(rq.getLabourCost())
+                        .add(rq.getOverheadCost())
+                        .add(rq.getProfit())
+                        .add(rq.getOtherCosts())
+                        .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+    
+        BigDecimal avRate = RVC.compareTo(rvcDefined) >= 0 ? prefRate : mfnRate; // apply pref if rvc >= defined
+        BigDecimal totalValue = rq.getTotalValue();
         BigDecimal totalTariff = BigDecimal.ZERO;
-
-        TariffRateType type = appliedTariffRate.getRateType();
-        if (type == TariffRateType.AD_VALOREM) {
-            BigDecimal avRate = appliedTariffRate.getAdValoremRate();
-            if (avRate != null) {
-                totalTariff = totalValue.multiply(avRate);
-            }
-        } else if (type == TariffRateType.SPECIFIC) {
-            BigDecimal specificAmount = appliedTariffRate.getSpecificAmount();
-            if (specificAmount != null && rq.getQuantity() != null) {
-                totalTariff = specificAmount.multiply(new BigDecimal(rq.getQuantity()));
-            }
-        } else if (type == TariffRateType.COMPOUND) {
-            BigDecimal avRate = appliedTariffRate.getAdValoremRate();
-            BigDecimal specificAmount = appliedTariffRate.getSpecificAmount();
-            if (avRate != null) {
-                totalTariff = totalValue.multiply(avRate);
-            }
-            if (specificAmount != null && rq.getQuantity() != null) {
-                totalTariff = totalTariff.add(specificAmount.multiply(new BigDecimal(rq.getQuantity())));
-            }
-        }
+        totalTariff = totalValue.multiply(avRate);
         return totalTariff;
     }
-
-    private static BigDecimal safe(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
-    }
+    
 }

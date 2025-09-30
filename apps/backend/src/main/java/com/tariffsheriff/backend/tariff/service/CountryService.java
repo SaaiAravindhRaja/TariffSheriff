@@ -1,36 +1,37 @@
-package com.tariffsheriff.backend.service;
+package com.tariffsheriff.backend.tariff.service;
 
-import com.tariffsheriff.backend.model.Country;
-import com.tariffsheriff.backend.repository.CountryRepository;
-import com.tariffsheriff.backend.service.exception.NotFoundException;
+import com.tariffsheriff.backend.tariff.model.Country;
+import com.tariffsheriff.backend.tariff.repository.CountryRepository;
+import jakarta.transaction.Transactional;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class CountryService {
+
     private final CountryRepository countryRepository;
 
     public CountryService(CountryRepository countryRepository) {
         this.countryRepository = countryRepository;
     }
 
-    public Page<Country> searchByName(String q, Pageable pageable) {
-        return countryRepository.findAllByNameContainingIgnoreCase(q == null ? "" : q, pageable);
+    public Page<Country> searchByName(String query, Pageable pageable) {
+        String value = query == null ? "" : query;
+        return countryRepository.findAllByNameContainingIgnoreCase(value, pageable);
     }
 
     public Country get(Long id) {
-        return countryRepository.findById(id).orElseThrow(() -> new NotFoundException("Country not found: " + id));
+        return countryRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Country not found: " + id));
     }
 
-    @Transactional
     public Country create(Country country) {
         return countryRepository.save(country);
     }
 
-    @Transactional
     public Country update(Long id, Country update) {
         Country existing = get(id);
         existing.setIso2(update.getIso2());
@@ -39,10 +40,11 @@ public class CountryService {
         return countryRepository.save(existing);
     }
 
-    @Transactional
     public void delete(Long id) {
         countryRepository.deleteById(id);
     }
+
+    public List<Country> findAll() {
+        return countryRepository.findAll();
+    }
 }
-
-

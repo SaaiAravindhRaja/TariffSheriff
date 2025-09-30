@@ -1,7 +1,7 @@
 package com.tariffsheriff.backend.agreement.controller;
 
-import com.tariffsheriff.backend.model.Agreement;
-import com.tariffsheriff.backend.service.AgreementService;
+import com.tariffsheriff.backend.tariff.model.Agreement;
+import com.tariffsheriff.backend.tariff.service.AgreementService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,8 +33,7 @@ public class AgreementController {
 
     @GetMapping("/{id}")
     public Agreement get(@PathVariable Long id) {
-        return agreementService.get(id);
+        return agreementService.getAgreement(id);
     }
 }
-
 
