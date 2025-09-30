@@ -10,5 +10,8 @@
     "install:all": "npm install",
     "build": "npm run build --workspace=frontend",
     "test": "npm run test --workspaces"
+  },
+  "dependencies": {
+    "jwt-decode": "^4.0.0"
   }
 }

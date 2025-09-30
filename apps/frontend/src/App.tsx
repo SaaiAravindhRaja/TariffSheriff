@@ -20,6 +20,7 @@ import { Contact } from '@/pages/Contact'
 import { CountryDashboard } from '@/pages/CountryDashboard'
 import '@/styles/globals.css'
 import Footer from '@/components/layout/Footer'
+import LoginPage from '@/components/layout/LoginPage'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -58,6 +59,7 @@ function App() {
                   <Route path="/team" element={<Team />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/country/:countryCode" element={<CountryDashboard />} />
+                  <Route path="/login" element={<LoginPage />} />
                 </Routes>
               </main>
             </div>

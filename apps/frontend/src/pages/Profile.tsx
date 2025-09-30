@@ -16,7 +16,12 @@ type ProfileType = {
 const STORAGE_KEY = 'app_profile'
 
 export default function Profile() {
-  const [profile, setProfile] = useState<ProfileType>({ name: 'John Doe', role: 'Trade Analyst', email: 'john.doe@example.com', location: 'New York, USA' })
+  const [profile, setProfile] = useState<ProfileType>({
+    name: 'John Doe',
+    role: 'Trade Analyst',
+    email: 'john.doe@example.com',
+    location: 'New York, USA'
+  })
 
   useEffect(() => {
     const raw = safeLocalStorage.get<string>(STORAGE_KEY)
@@ -59,7 +64,11 @@ export default function Profile() {
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-2xl overflow-hidden">
-                {profile.avatar ? <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" /> : <User className="w-8 h-8" />}
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-8 h-8" />
+                )}
               </div>
               <div>
                 <CardTitle className="text-2xl">{profile.name}</CardTitle>
@@ -70,7 +79,6 @@ export default function Profile() {
               <ProfileEditModal>
                 <Button variant="secondary">Edit Profile</Button>
               </ProfileEditModal>
-              <Button onClick={() => { safeLocalStorage.remove(STORAGE_KEY); try { if (typeof window !== 'undefined') window.location.reload() } catch {} }}>Sign Out</Button>
             </div>
           </div>
         </CardHeader>
@@ -102,7 +110,9 @@ export default function Profile() {
               </p>
               <div className="mt-4">
                 <h4 className="text-sm font-medium">Role</h4>
-                <div className="text-sm text-muted-foreground flex items-center gap-2"><Briefcase className="w-4 h-4" /> {profile.role}</div>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> {profile.role}
+                </div>
               </div>
             </div>
           </div>
