@@ -1,5 +1,4 @@
 import React from 'react';
-import { getCountryByCode } from '../../data/countries';
 
 interface CountryFlagProps {
   countryCode: string;
@@ -20,18 +19,14 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({
   showName = false,
   className = ''
 }) => {
-  const country = getCountryByCode(countryCode);
-
-  if (!country) {
-    return <span className={`${sizeClasses[size]} ${className}`}>{countryCode}</span>;
-  }
+  // Hardcoded country data removed. Fallback to showing the ISO code only.
+  const country = { code: countryCode, name: countryCode } as const;
 
   return (
     <span 
       className={`inline-flex items-center gap-1 ${sizeClasses[size]} ${className}`}
-      title={`${country.name} (${country.region})`}
+      title={country.name}
     >
-      <span className="flag-emoji">{country.emoji}</span>
       {showName && <span>{country.name}</span>}
     </span>
   );
