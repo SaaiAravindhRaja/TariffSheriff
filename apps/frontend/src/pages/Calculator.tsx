@@ -348,6 +348,10 @@ export function Calculator() {
     }
 
     setIsCalculating(true);
+    // Reset any previous results to avoid stale UI while fetching
+    setTradeAgreements([]);
+    setSelectedAgreement(null);
+    setBasicInfoComplete(false);
 
     try {
       // Normalize and validate inputs
@@ -644,6 +648,13 @@ export function Calculator() {
     // Clear calculation when inputs change
     if (calculation) {
       setCalculation(null);
+    }
+
+    // If core inputs change, clear agreements and selection to prevent stale buttons
+    if (field === 'hsCode' || field === 'originCountry' || field === 'destinationCountry') {
+      setTradeAgreements([]);
+      setSelectedAgreement(null);
+      setBasicInfoComplete(false);
     }
   };
 
