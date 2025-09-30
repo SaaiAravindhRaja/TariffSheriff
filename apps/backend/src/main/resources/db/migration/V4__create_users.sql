@@ -13,6 +13,6 @@ VALUES (
     'admin@example.com',
     'Administrator account',
     'ADMIN',
-    '$2a$12$0jS8DjLqfkBmxRonGT2vd.gWPYzyxnhbMoebvcWQsOLqGJ6ckqrYy',
+    '123',
     true
 );
