@@ -349,44 +349,10 @@ export function Calculator() {
       // Simulate API call to get trade agreements
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const mockAgreements: TradeAgreement[] = [
-        {
-          type: 'MFN',
-          name: 'Most Favoured Nation',
-          rate: 12.5,
-          description: 'Standard WTO tariff rate',
-          requirements: ['Commercial Invoice', 'Packing List']
-        },
-        {
-          type: 'RVC',
-          name: 'AANZFTA Regional Value Content',
-          rate: 6.0,
-          description: 'Preferential rate under AANZFTA agreement (40% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 40,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'RVC',
-          name: 'USMCA Regional Value Content',
-          rate: 8.0,
-          description: 'Preferential rate under USMCA agreement (75% RVC required)',
-          requirements: ['Certificate of Origin', 'RVC Calculation', 'Supporting Documents'],
-          rvcThreshold: 75,
-          rvcMethod: 'both'
-        },
-        {
-          type: 'ROOS',
-          name: 'Rules of Origin Specific',
-          rate: 4.5,
-          description: 'Specific rules of origin qualification',
-          requirements: ['Certificate of Origin', 'Production Records', 'Material Certificates']
-        }
-      ];
-
-      setTradeAgreements(mockAgreements);
+      // No hardcoded agreements. Will fetch from backend later.
+      setTradeAgreements([]);
       setBasicInfoComplete(true);
-      setSelectedAgreement(mockAgreements[0]); // Default to MFN
+      setSelectedAgreement(null);
 
     } catch (error) {
       console.error('Failed to fetch trade agreements:', error);
@@ -883,12 +849,14 @@ export function Calculator() {
                     </div>
 
                     {/* Trade Agreements Results */}
-                    {tradeAgreements.length > 0 && (
-                      <div className="space-y-4 pt-4 border-t">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <Globe className="w-5 h-5" />
-                          Available Trade Agreements
-                        </h3>
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Globe className="w-5 h-5" />
+                        Available Trade Agreements
+                      </h3>
+                      {tradeAgreements.length === 0 ? (
+                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found</div>
+                      ) : (
                         <div className="grid gap-3">
                           {tradeAgreements.map((agreement, index) => (
                             <div
@@ -934,8 +902,8 @@ export function Calculator() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
 
