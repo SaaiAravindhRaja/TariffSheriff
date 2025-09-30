@@ -69,14 +69,14 @@ public class TariffRateServiceImpl implements TariffRateService {
 
         HsProduct product = hsProducts
             .findByDestinationIdAndHsCode(importer.getId(), hsCode)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product for importer %s and code %s".formatted(importerIso2, hsCode)));
+            .orElseThrow(() -> new TariffRateNotFoundException("No HS product found for importer " + importerIso2 + " and code " + hsCode));
 
         Long importerId = importer.getId();
         Long hsProductId = product.getId();
 
         TariffRate tariffRateMfn = tariffRates
             .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN")
-            .orElseThrow(TariffRateNotFoundException::new);
+            .orElseThrow(() -> new TariffRateNotFoundException("No MFN tariff rate found for importer " + importerIso2 + " and HS code " + hsCode));
 
         TariffRate tariffRatePref = null;
         if (origin != null) {

@@ -250,8 +250,8 @@ export function Calculator() {
 
     if (!productInfo.hsCode.trim()) {
       errors.hsCode = 'HS Code is required';
-    } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode)) {
-      errors.hsCode = 'Invalid HS Code format (e.g., 8703.80.10)';
+    } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode) && !/^\d{4,10}$/.test(productInfo.hsCode)) {
+      errors.hsCode = 'Invalid HS Code format (e.g., 870380 or 8703.80.10)';
     }
 
     // Origin country is optional - if not provided, we'll only get MFN rates
@@ -350,20 +350,19 @@ export function Calculator() {
     setIsCalculating(true);
 
     try {
-      console.log('Fetching trade agreements with params:', {
-        importerIso2: productInfo.destinationCountry,
-        originIso2: productInfo.originCountry || undefined,
-        hsCode: productInfo.hsCode
-      });
+      // Normalize and validate inputs
+      const normalizedHsCode = productInfo.hsCode.replace(/\./g, '').trim();
+      const importerIso2 = productInfo.destinationCountry.trim();
+      const originIso2 = productInfo.originCountry?.trim() || undefined;
 
-      // Use the lookup API to get tariff rates and agreements for the specific combination
+      // Call the lookup API
       const lookupResponse = await tariffApi.getTariffRateLookup({
-        importerIso2: productInfo.destinationCountry,
-        originIso2: productInfo.originCountry || undefined,
-        hsCode: productInfo.hsCode
+        importerIso2,
+        originIso2,
+        hsCode: normalizedHsCode
       });
 
-      console.log('Lookup response:', lookupResponse.data);
+
       const lookupData = lookupResponse.data;
       const agreementsFromBackend: TradeAgreement[] = [];
 
@@ -394,14 +393,26 @@ export function Calculator() {
         });
       }
 
-      console.log('Setting trade agreements:', agreementsFromBackend);
+
       setTradeAgreements(agreementsFromBackend);
       setBasicInfoComplete(true);
       setSelectedAgreement(agreementsFromBackend[0] ?? null);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch trade agreements:', error);
-      setValidationErrors({ general: 'Failed to fetch trade agreements. Please try again.' });
+      let errorMessage = 'Failed to fetch trade agreements. Please try again.';
+
+      if (error.response?.status === 404) {
+        errorMessage = `No tariff data found for HS Code "${normalizedHsCode}" with importer "${importerIso2}"${originIso2 ? ` and origin "${originIso2}"` : ''}. Try the test data: HS Code "870380", Origin "KR", Destination "EU".`;
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || `Invalid parameters: HS Code "${normalizedHsCode}", Importer "${importerIso2}", Origin "${originIso2 || 'none'}".`;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      setValidationErrors({ general: errorMessage });
+      setTradeAgreements([]);
+      setBasicInfoComplete(false);
     } finally {
       setIsCalculating(false);
     }
@@ -786,7 +797,7 @@ export function Calculator() {
                       <label className="text-sm font-medium">HS Code *</label>
                       <div className="relative">
                         <Input
-                          placeholder="e.g., 8703.80.10"
+                          placeholder="e.g., 870380 or 8703.80.10"
                           value={productInfo.hsCode}
                           onChange={(e) => {
                             updateProductInfo('hsCode', e.target.value);
@@ -799,6 +810,9 @@ export function Calculator() {
                       {validationErrors.hsCode && (
                         <p className="text-sm text-red-600">{validationErrors.hsCode}</p>
                       )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        💡 Try: HS Code "870380", Origin "Republic of Korea", Destination "European Union"
+                      </div>
                     </div>
 
                     {/* HS Code Suggestions */}
