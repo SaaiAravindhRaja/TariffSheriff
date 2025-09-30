@@ -54,36 +54,44 @@ public class TariffRateServiceImpl implements TariffRateService {
 
     @Override
     public TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode) {
+        if (hsCode == null || hsCode.isBlank()) {
+            throw new IllegalArgumentException("hsCode must be provided");
+        }
+
         Country importer = countries.findByIso2IgnoreCase(importerIso2)
             .orElseThrow(() -> new IllegalArgumentException("Unknown importer ISO2: " + importerIso2));
 
-        Country origin = countries.findByIso2IgnoreCase(originIso2)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
+        Country origin = null;
+        if (originIso2 != null && !originIso2.isBlank()) {
+            origin = countries.findByIso2IgnoreCase(originIso2)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
+        }
 
-        HsProduct product = hsProducts.findByHsCode(hsCode)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product: " + hsCode));
+        HsProduct product = hsProducts
+            .findByDestinationIdAndHsCode(importer.getId(), hsCode)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown HS product for importer %s and code %s".formatted(importerIso2, hsCode)));
 
         Long importerId = importer.getId();
-        Long originId = origin.getId();
         Long hsProductId = product.getId();
 
         TariffRate tariffRateMfn = tariffRates
-            .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "MFN")
-            .orElseGet(() -> {
-                return tariffRates.findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN") // get mfn (exporter col will be null)
-                    .orElseThrow(TariffRateNotFoundException::new);
-            });
+            .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN")
+            .orElseThrow(TariffRateNotFoundException::new);
 
-        TariffRate tariffRatePref = tariffRates
-            .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
-            .orElseGet(() -> {
-                return tariffRates.findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "PREF") // get pref (some importer -> some exporter)
-                    .orElseThrow(TariffRateNotFoundException::new);
-            });
+        TariffRate tariffRatePref = null;
+        if (origin != null) {
+            Long originId = origin.getId();
+            tariffRatePref = tariffRates
+                .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
+                .orElseGet(() -> tariffRates
+                    .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "PREF")
+                    .orElseThrow(TariffRateNotFoundException::new));
+        }
 
-        Agreement agreement = tariffRatePref.getAgreementId() == null
-            ? null
-            : agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
+        Agreement agreement = null;
+        if (tariffRatePref != null && tariffRatePref.getAgreementId() != null) {
+            agreement = agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
+        }
 
         return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
     }
