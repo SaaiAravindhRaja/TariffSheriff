@@ -8,6 +8,9 @@ VALUES
     (5, 'CL', 'CHL', 'Republic of Chile')
 ON CONFLICT (id) DO NOTHING;
 
+-- Advance sequence to avoid collisions after explicit id inserts
+SELECT setval('country_id_seq', GREATEST((SELECT COALESCE(MAX(id),0) FROM country), nextval('country_id_seq')));
+
 INSERT INTO country (iso2, iso3, name)
 VALUES
     ('JP', 'JPN', 'Japan'),
@@ -78,14 +81,14 @@ INSERT INTO tariff_rate (
     importer_id, origin_id, hs_product_id, basis, agreement_id,
     rate_type, ad_valorem_rate, specific_amount, specific_unit,
     valid_from, valid_to, source_ref)
-SELECT importer, origin, product_id, 'MFN', NULL, 'ad_valorem', rate, NULL, NULL,
+SELECT importer::bigint, origin::bigint, product_id::bigint, 'MFN', NULL, 'ad_valorem', rate, NULL, NULL,
        DATE '2019-01-01', NULL, source
 FROM (
     VALUES
-        (4, NULL, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076010' AND hs_version = '2022'), 0.025, 'MFN for US lithium-ion battery packs'),
-        (4, NULL, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076020' AND hs_version = '2022'), 0.030, 'MFN for US lithium-ion battery modules'),
-        (1, NULL, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076010' AND hs_version = '2022'), 0.020, 'MFN for EU lithium-ion battery packs'),
-        (1, NULL, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076020' AND hs_version = '2022'), 0.028, 'MFN for EU lithium-ion battery modules')
+        (4, NULL::bigint, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076010' AND hs_version = '2022'), 0.025, 'MFN for US lithium-ion battery packs'),
+        (4, NULL::bigint, (SELECT id FROM hs_product WHERE destination_id = 4 AND hs_code = '85076020' AND hs_version = '2022'), 0.030, 'MFN for US lithium-ion battery modules'),
+        (1, NULL::bigint, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076010' AND hs_version = '2022'), 0.020, 'MFN for EU lithium-ion battery packs'),
+        (1, NULL::bigint, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076020' AND hs_version = '2022'), 0.028, 'MFN for EU lithium-ion battery modules')
 ) AS rates(importer, origin, product_id, rate, source)
 ON CONFLICT DO NOTHING;
 
