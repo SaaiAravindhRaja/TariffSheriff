@@ -12,10 +12,10 @@ import com.tariffsheriff.backend.tariff.model.Agreement;
 @Repository
 public interface AgreementRepository extends JpaRepository<Agreement, Long> {
 
-    @Query("SELECT DISTINCT a FROM Agreement a " +
+    @Query(value = "SELECT DISTINCT a.* FROM agreement a " +
            "JOIN agreement_party ap ON a.id = ap.agreement_id " +
-           "JOIN Country c ON ap.country_id = c.id " +
-           "WHERE UPPER(c.iso2) = UPPER(:countryIso2)")
+           "JOIN country c ON ap.country_id = c.id " +
+           "WHERE UPPER(c.iso2) = UPPER(:countryIso2)", nativeQuery = true)
     List<Agreement> findAgreementsByCountryIso2(@Param("countryIso2") String countryIso2);
 
 }
