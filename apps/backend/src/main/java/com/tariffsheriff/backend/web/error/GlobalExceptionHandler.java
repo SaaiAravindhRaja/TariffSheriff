@@ -1,6 +1,7 @@
 package com.tariffsheriff.backend.web.error;
 
 import com.tariffsheriff.backend.service.exception.NotFoundException;
+import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -19,6 +20,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex, HttpServletRequest req) {
+        ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(TariffRateNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTariffRateNotFound(TariffRateNotFoundException ex, HttpServletRequest req) {
         ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
