@@ -50,8 +50,8 @@ public class TariffRateServiceImpl implements TariffCalculationService {
     }
 
     public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
-        Long importerId = rq.getImporter_id() != null ? rq.getImporter_id().longValue() : null;
-        Long originId = rq.getOrigin_id() != null ? rq.getOrigin_id().longValue() : null;
+        Long importerId = rq.getImporterId() != null ? rq.getImporterId().longValue() : null;
+        Long originId = rq.getOriginId() != null ? rq.getOriginId().longValue() : null;
         Long hsCode = rq.getHsCode();
         LocalDate shipmentDate = LocalDate.now();
 

@@ -49,8 +49,8 @@ class TariffCalculationIntegrationTest {
         assertThat(pref).isNotEmpty();
 
         TariffRateRequestDto rq = new TariffRateRequestDto();
-        rq.setImporter_id(java.math.BigInteger.valueOf(1));
-        rq.setOrigin_id(java.math.BigInteger.valueOf(2));
+        rq.setImporterId(java.math.BigInteger.valueOf(1));
+        rq.setOriginId(java.math.BigInteger.valueOf(2));
         rq.setHsCode(1L);
         rq.setQuantity(100);
         rq.setTotalValue(new BigDecimal("1000.00"));
@@ -80,7 +80,7 @@ class TariffCalculationIntegrationTest {
         TariffRate applied = prefApplied ? prefTop : mfnTop;
 
         System.out.println("--- Tariff Calculation Inputs ---");
-        System.out.println("importer_id=" + rq.getImporter_id() + ", origin_id=" + rq.getOrigin_id() + ", hs_product_id=" + rq.getHsCode());
+        System.out.println("importer_id=" + rq.getImporterId() + ", origin_id=" + rq.getOriginId() + ", hs_product_id=" + rq.getHsCode());
         System.out.println("total_value=" + rq.getTotalValue().toPlainString() + ", quantity=" + rq.getQuantity());
         System.out.println("material=" + rq.getMaterialCost().toPlainString() + ", labour=" + rq.getLabourCost().toPlainString() + ", overhead=" + rq.getOverheadCost().toPlainString() + ", profit=" + rq.getProfit().toPlainString() + ", other=" + rq.getOtherCosts().toPlainString());
         System.out.println("FOB=" + rq.getFOB().toPlainString() + ", RVC=" + rvc.setScale(6, RoundingMode.HALF_UP).toPlainString());
