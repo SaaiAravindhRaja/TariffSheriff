@@ -63,7 +63,10 @@ export const tariffApi = {
   
   getCountries: (params?: { q?: string; page?: number; size?: number }) => api.get('/countries', { params }),
   getAgreements: (params?: { page?: number; size?: number }) => api.get('/agreements', { params }),
+  getAgreementsByCountry: (countryIso2: string) => api.get(`/agreements/by-country/${countryIso2}`),
   getTariffRates: () => api.get('/tariff-rate/'),
+  getTariffRateLookup: (params: { importerIso2: string; originIso2?: string; hsCode: string }) => 
+    api.get('/tariff-rate/lookup', { params }),
   
   getHsCodes: (query?: string) => api.get('/hs-codes', { 
     params: { q: query } 
