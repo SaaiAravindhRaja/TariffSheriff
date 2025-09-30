@@ -1,9 +1,0 @@
-ALTER TABLE agreement
-    ADD COLUMN rvc NUMERIC(5,2) NOT NULL DEFAULT 0;
-
-ALTER TABLE agreement
-    ALTER COLUMN rvc DROP DEFAULT;
-
-UPDATE agreement
-SET rvc = 40
-WHERE id = 1;

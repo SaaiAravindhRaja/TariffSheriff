@@ -41,7 +41,7 @@ public class AgreementServiceImpl implements AgreementService {
         Agreement existing = getAgreement(id);
         existing.setName(agreement.getName());
         existing.setType(agreement.getType());
-        existing.setRvc(agreement.getRvc());
+        existing.setRvcThreshold(agreement.getRvcThreshold());
         existing.setStatus(agreement.getStatus());
         existing.setEnteredIntoForce(agreement.getEnteredIntoForce());
         return agreementRepository.save(existing);

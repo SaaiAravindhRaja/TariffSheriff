@@ -3,6 +3,8 @@ package com.tariffsheriff.backend.tariff.model;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,8 +29,9 @@ public class Agreement {
     @Column(nullable = false)
     private String type;
 
-    @Column(precision = 5, scale = 2, nullable = false)
-    private BigDecimal rvc;
+    @JsonProperty("rvc")
+    @Column(name = "rvc_threshold", precision = 5, scale = 2, nullable = false)
+    private BigDecimal rvcThreshold;
 
     @Column(nullable = false)
     private String status;
