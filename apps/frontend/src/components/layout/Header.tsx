@@ -6,14 +6,17 @@ import {
   Sun, 
   User, 
   Bell,
-  Search
+  Search,
+  LogOut,
+  Settings,
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { CountrySearch } from '@/components/search/CountrySearch'
 import { useTheme } from '@/hooks/useTheme'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import safeLocalStorage from '@/lib/safeLocalStorage'
 
 interface HeaderProps {
   className?: string
@@ -21,29 +24,31 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const { resolvedTheme, toggleTheme } = useTheme()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [profile, setProfile] = React.useState<{ name: string; role: string; avatar?: string } | null>(null)
+  const [showUserMenu, setShowUserMenu] = React.useState(false)
 
+  const handleLogout = () => {
+    logout()
+    setShowUserMenu(false)
+  }
+
+  // Close user menu when clicking outside
   React.useEffect(() => {
-    const raw = safeLocalStorage.get<string>('app_profile')
-    if (raw) {
-      try {
-        setProfile(typeof raw === 'string' ? JSON.parse(raw) : raw)
-      } catch (e) {}
-    }
-    const handler = () => {
-      const updated = safeLocalStorage.get<string>('app_profile')
-      if (updated) {
-        try { setProfile(typeof updated === 'string' ? JSON.parse(updated) : updated) } catch {}
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUserMenu) {
+        setShowUserMenu(false)
       }
     }
-    try {
-      if (typeof window !== 'undefined') window.addEventListener('profile:updated', handler)
-    } catch {}
-    return () => {
-      try { if (typeof window !== 'undefined') window.removeEventListener('profile:updated', handler) } catch {}
+
+    if (showUserMenu) {
+      document.addEventListener('click', handleClickOutside)
     }
-  }, [])
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showUserMenu])
 
 
   return (
@@ -118,19 +123,71 @@ export function Header({ className }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          <button onClick={() => navigate('/profile')} aria-haspopup="true" aria-expanded="false" aria-label={`Open profile for ${profile?.name ?? 'user'}`} className="flex items-center space-x-2 pl-2 border-l focus:outline-none">
-            <div className="flex flex-col text-right">
-              <span className="text-sm font-medium">{profile?.name || 'John Doe'}</span>
-              <span className="text-xs text-muted-foreground">{profile?.role || 'Trade Analyst'}</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
-              {profile?.avatar ? (
-                <img src={profile.avatar} alt={profile?.name ? `${profile.name} avatar` : 'User avatar'} className="w-full h-full object-cover" />
-              ) : (
+          <div className="relative">
+            <button 
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-haspopup="true" 
+              aria-expanded={showUserMenu}
+              aria-label={`Open profile menu for ${user?.name ?? 'user'}`} 
+              className="flex items-center space-x-2 pl-2 border-l focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md px-2 py-1 transition-colors"
+            >
+              <div className="flex flex-col text-right">
+                <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                <span className="text-xs text-muted-foreground capitalize">{user?.role?.toLowerCase() || 'Member'}</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
                 <User className="w-4 h-4 text-white" />
-              )}
-            </div>
-          </button>
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* User Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                  {user?.admin && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 mt-1">
+                      Admin
+                    </span>
+                  )}
+                </div>
+                
+                <button
+                  onClick={() => {
+                    navigate('/profile')
+                    setShowUserMenu(false)
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <User className="w-4 h-4 mr-3" />
+                  Profile Settings
+                </button>
+                
+                <button
+                  onClick={() => {
+                    navigate('/settings')
+                    setShowUserMenu(false)
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Settings className="w-4 h-4 mr-3" />
+                  App Settings
+                </button>
+                
+                <div className="border-t border-gray-200 dark:border-gray-700 mt-1">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </motion.header>

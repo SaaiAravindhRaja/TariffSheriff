@@ -28,10 +28,14 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(UserDetails userDetails) {
+        log.debug("Generating token for user: {}", userDetails.getUsername());
         return generateToken(new HashMap<>(), userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        log.debug("JWT secret length: {}, expiration: {}", 
+            jwtProperties.getSecret() != null ? jwtProperties.getSecret().length() : "null", 
+            jwtProperties.getExpiration());
         return buildToken(extraClaims, userDetails, jwtProperties.getExpiration());
     }
 

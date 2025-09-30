@@ -70,6 +70,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
+            log.info("Login attempt for email: {}", request.getEmail());
+            
             // Authenticate user
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -78,10 +80,13 @@ public class AuthController {
                 )
             );
 
+            log.info("Authentication successful for: {}", request.getEmail());
             User user = (User) authentication.getPrincipal();
             
             // Generate JWT token
+            log.info("Generating JWT token for user: {}", user.getEmail());
             String token = jwtTokenProvider.generateToken(user);
+            log.info("JWT token generated successfully");
 
             return ResponseEntity.ok(new AuthResponse(
                 token,
@@ -93,9 +98,9 @@ public class AuthController {
             ));
 
         } catch (Exception e) {
-            log.error("Login error: ", e);
+            log.error("Login error for {}: ", request.getEmail(), e);
             return ResponseEntity.badRequest()
-                .body("Error: Invalid credentials");
+                .body("Error: Invalid credentials - " + e.getMessage());
         }
     }
 
