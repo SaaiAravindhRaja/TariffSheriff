@@ -905,9 +905,16 @@ export function Calculator() {
                         <Globe className="w-5 h-5" />
                         Available Trade Agreements
                       </h3>
-                      {tradeAgreements.length === 0 ? (
-                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found</div>
-                      ) : (
+                      {validationErrors.general && (
+                        <div className="text-center py-6 text-sm text-red-600">{validationErrors.general}</div>
+                      )}
+                      {!validationErrors.general && tradeAgreements.length === 0 && basicInfoComplete && (
+                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found for this combination</div>
+                      )}
+                      {!validationErrors.general && tradeAgreements.length === 0 && !basicInfoComplete && (
+                        <div className="text-center py-6 text-sm text-muted-foreground">Click "Get Trade Agreements" to fetch available agreements</div>
+                      )}
+                      {tradeAgreements.length > 0 && (
                         <div className="grid gap-3">
                           {tradeAgreements.map((agreement, index) => (
                             <div
