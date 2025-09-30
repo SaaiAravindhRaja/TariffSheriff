@@ -49,6 +49,7 @@ import { RVCCalculator } from '@/components/calculator/RVCCalculator';
 import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
 import { FieldLabel } from '@/components/calculator/FieldLabel';
 import { useDbCountries } from '@/hooks/useDbCountries';
+import { tariffApi } from '@/services/api';
 
 // Enhanced interfaces for professional calculator with AANZFTA RVC
 interface ProductInfo {
@@ -348,13 +349,68 @@ export function Calculator() {
     setIsCalculating(true);
 
     try {
-      // Simulate API call to get trade agreements
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch tariff rates from backend and derive agreements (MFN + PREF)
+      const response = await tariffApi.getTariffRates();
+      const rates: any[] = Array.isArray(response.data) ? response.data : response.data?.content ?? [];
 
-      // No hardcoded agreements. Will fetch from backend later.
-      setTradeAgreements([]);
+      const normalizeHs = (code: string) => String(code || '').replace(/\./g, '');
+      const inputHs = normalizeHs(productInfo.hsCode);
+
+      // Filter by importer (destination), HS code, and origin (for PREF)
+      const importerIso2 = productInfo.destinationCountry;
+      const originIso2 = productInfo.originCountry;
+
+      const byDestinationAndHs = rates.filter((r) => {
+        const importer = r.importer?.iso2 || r.importer?.iso2?.value;
+        const hsCodeStr = r.hsProduct?.hsCode || '';
+        const normalized = normalizeHs(String(hsCodeStr));
+        return (
+          importer && importer.toUpperCase() === (importerIso2 || '').toUpperCase() &&
+          (
+            normalized === inputHs ||
+            (normalized && inputHs && (normalized.startsWith(inputHs) || inputHs.startsWith(normalized)))
+          )
+        );
+      });
+
+      // Pick latest by validFrom for each basis
+      const sortByValidFromDesc = (a: any, b: any) => new Date(b.validFrom || b.validFromDate || 0).getTime() - new Date(a.validFrom || a.validFromDate || 0).getTime();
+      const mfnRates = byDestinationAndHs.filter((r) => (r.basis || '').toUpperCase() === 'MFN' && (r.origin == null || r.origin?.iso2 == null));
+      const prefRates = byDestinationAndHs.filter((r) => (r.basis || '').toUpperCase() === 'PREF' && (r.origin?.iso2 || '').toUpperCase() === (originIso2 || '').toUpperCase());
+
+      const topMfn = mfnRates.sort(sortByValidFromDesc)[0];
+      const topPref = prefRates.sort(sortByValidFromDesc)[0];
+
+      const agreementsFromBackend: TradeAgreement[] = [];
+
+      if (topMfn) {
+        const adValorem = Number(topMfn.adValoremRate ?? 0);
+        agreementsFromBackend.push({
+          type: 'MFN',
+          name: 'Most Favoured Nation',
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
+          description: 'Standard WTO tariff rate',
+          requirements: ['Commercial Invoice', 'Packing List'],
+        });
+      }
+
+      if (topPref) {
+        const adValorem = Number(topPref.adValoremRate ?? 0);
+        const rvc = topPref.agreement?.rvcThreshold != null ? Number(topPref.agreement.rvcThreshold) : undefined;
+        agreementsFromBackend.push({
+          type: rvc != null ? 'RVC' : 'ROOS',
+          name: topPref.agreement?.name || 'Preferential',
+          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
+          description: `Preferential rate${topPref.agreement?.name ? ` under ${topPref.agreement.name}` : ''}`,
+          requirements: ['Certificate of Origin'],
+          rvcThreshold: rvc,
+          rvcMethod: rvc != null ? 'both' : undefined,
+        });
+      }
+
+      setTradeAgreements(agreementsFromBackend);
       setBasicInfoComplete(true);
-      setSelectedAgreement(null);
+      setSelectedAgreement(agreementsFromBackend[0] ?? null);
 
     } catch (error) {
       console.error('Failed to fetch trade agreements:', error);

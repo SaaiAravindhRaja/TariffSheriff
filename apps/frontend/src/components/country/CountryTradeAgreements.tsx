@@ -1,24 +1,29 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Calendar, Users, CheckCircle, Clock, AlertTriangle, TrendingDown } from 'lucide-react';
+import { FileText, Calendar, Users, CheckCircle, Clock, AlertTriangle, Shield } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { tariffApi } from '@/services/api';
 
 interface CountryTradeAgreementsProps {
   countryCode: string;
 }
 
-// Agreements will be fetched later from backend/DB. For now, use empty list.
-const generateTradeAgreements = (_countryCode: string) => [] as Array<{
+type AgreementDto = {
+  id: number;
   name: string;
-  acronym: string;
+  type: string;
   status: string;
-  effectiveDate: string | null;
-  expiryDate: string | null;
-  participants: string[];
-  benefits: string[];
-  tariffReduction: number;
-}>;
+  enteredIntoForce?: string | null;
+  rvcThreshold?: number | null;
+};
+
+type TariffRateDto = {
+  id: number;
+  importer?: { iso2?: string };
+  origin?: { iso2?: string } | null;
+  basis?: string;
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -41,13 +46,45 @@ const getStatusIcon = (status: string) => {
 };
 
 export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ countryCode }) => {
-  const agreements = generateTradeAgreements(countryCode);
-  
-  const activeAgreements = agreements.filter(a => a.status === 'active').length;
-  const totalParticipants = new Set(agreements.flatMap(a => a.participants)).size;
-  const avgTariffReduction = agreements.length > 0
-    ? agreements.reduce((sum, a) => sum + a.tariffReduction, 0) / agreements.length
-    : 0;
+  const [agreements, setAgreements] = useState<AgreementDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMfn, setHasMfn] = useState<boolean>(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [agreementsRes, ratesRes] = await Promise.all([
+          tariffApi.getAgreements({ page: 0, size: 250 }),
+          tariffApi.getTariffRates(),
+        ]);
+
+        const agreementsData: AgreementDto[] = Array.isArray(agreementsRes.data)
+          ? agreementsRes.data
+          : (Array.isArray(agreementsRes.data?.content) ? agreementsRes.data.content : []);
+        if (!cancelled) setAgreements(agreementsData);
+
+        const rates: TariffRateDto[] = Array.isArray(ratesRes.data) ? ratesRes.data : [];
+        const mfnForImporter = rates.find(r =>
+          (r.importer?.iso2 || '').toUpperCase() === countryCode.toUpperCase() &&
+          (r.basis || '').toUpperCase() === 'MFN' &&
+          (!r.origin || !r.origin.iso2)
+        );
+        if (!cancelled) setHasMfn(Boolean(mfnForImporter));
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || 'Failed to load agreements');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true };
+  }, [countryCode]);
+
+  const activeAgreements = useMemo(() => agreements.filter(a => (a.status || '').toLowerCase() === 'active').length, [agreements]);
 
   return (
     <div className="space-y-6">
@@ -72,43 +109,48 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
               <Users className="w-4 h-4 mr-2 text-blue-600" />
-              Partner Countries
+              Total Agreements
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalParticipants}</div>
-            <p className="text-xs text-muted-foreground">
-              Unique trading partners
-            </p>
+            <div className="text-2xl font-bold">{agreements.length}</div>
+            <p className="text-xs text-muted-foreground">Across database</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
-              <TrendingDown className="w-4 h-4 mr-2 text-purple-600" />
-              Avg Tariff Reduction
+              <Shield className="w-4 h-4 mr-2 text-purple-600" />
+              MFN Available
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgTariffReduction.toFixed(0)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Across all agreements
-            </p>
+            <div className="text-2xl font-bold">{hasMfn ? 'Yes' : 'No'}</div>
+            <p className="text-xs text-muted-foreground">Based on tariff-rate endpoint</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Agreements List */}
       <div className="space-y-4">
-        {agreements.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8">
+            <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <div className="text-sm text-red-600">{error}</div>
+          </div>
+        ) : agreements.length === 0 ? (
           <div className="text-center py-8">
             <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
             <div className="text-sm text-muted-foreground">No agreements found</div>
           </div>
         ) : (
           agreements.map((agreement, index) => {
-            const StatusIcon = getStatusIcon(agreement.status);
+            const StatusIcon = getStatusIcon((agreement.status || '').toLowerCase());
             
             return (
               <Card key={index} className="card-hover">
@@ -120,19 +162,16 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
                         {agreement.name}
                       </CardTitle>
                       <div className="flex items-center space-x-2">
-                        <Badge variant="outline">{agreement.acronym}</Badge>
-                        <Badge variant={getStatusColor(agreement.status)}>
-                          {agreement.status.charAt(0).toUpperCase() + agreement.status.slice(1)}
+                        <Badge variant="outline">{(agreement as any).type}</Badge>
+                        <Badge variant={getStatusColor((agreement.status || '').toLowerCase())}>
+                          {(agreement.status || '').charAt(0).toUpperCase() + (agreement.status || '').slice(1)}
                         </Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {agreement.tariffReduction}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Tariff Reduction
-                      </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {(agreement as any).rvcThreshold != null && (
+                        <span>RVC Threshold: {(agreement as any).rvcThreshold}%</span>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -144,55 +183,18 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
                         Timeline
                       </h4>
                       <div className="space-y-1 text-sm">
-                        {agreement.effectiveDate && (
+                        {(agreement as any).enteredIntoForce && (
                           <div>
                             <span className="text-muted-foreground">Effective: </span>
-                            {formatDate(agreement.effectiveDate)}
+                            {formatDate((agreement as any).enteredIntoForce)}
                           </div>
                         )}
-                        {agreement.expiryDate && (
-                          <div>
-                            <span className="text-muted-foreground">Expires: </span>
-                            {formatDate(agreement.expiryDate)}
-                          </div>
-                        )}
-                        {!agreement.effectiveDate && agreement.status === 'negotiating' && (
+                        {!(agreement as any).enteredIntoForce && (agreement.status || '') === 'negotiating' && (
                           <div className="text-amber-600 dark:text-amber-400">
                             Under negotiation
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2 flex items-center">
-                        <Users className="w-4 h-4 mr-2" />
-                        Participants ({agreement.participants.length})
-                      </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {agreement.participants.slice(0, 8).map((country, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {country}
-                          </Badge>
-                        ))}
-                        {agreement.participants.length > 8 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{agreement.participants.length - 8} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2">Key Benefits</h4>
-                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                      {agreement.benefits.map((benefit, idx) => (
-                        <div key={idx} className="flex items-start space-x-2 text-sm">
-                          <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>{benefit}</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </CardContent>
@@ -213,7 +215,7 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             {['active', 'negotiating', 'pending', 'expired'].map((status) => {
-              const count = agreements.filter(a => a.status === status).length;
+              const count = agreements.filter(a => (a.status || '').toLowerCase() === status).length;
               const StatusIcon = getStatusIcon(status);
               
               return (
