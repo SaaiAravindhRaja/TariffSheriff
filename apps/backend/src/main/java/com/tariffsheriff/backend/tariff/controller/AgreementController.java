@@ -1,4 +1,4 @@
-package com.tariffsheriff.backend.agreement.controller;
+package com.tariffsheriff.backend.tariff.controller;
 
 import com.tariffsheriff.backend.tariff.model.Agreement;
 import com.tariffsheriff.backend.tariff.service.AgreementService;
@@ -36,4 +36,3 @@ public class AgreementController {
         return agreementService.getAgreement(id);
     }
 }
-
