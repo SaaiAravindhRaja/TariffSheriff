@@ -1,7 +1,7 @@
 package com.tariffsheriff.backend.country.controller;
 
-import com.tariffsheriff.backend.model.Country;
-import com.tariffsheriff.backend.service.CountryService;
+import com.tariffsheriff.backend.tariff.model.Country;
+import com.tariffsheriff.backend.tariff.service.CountryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;

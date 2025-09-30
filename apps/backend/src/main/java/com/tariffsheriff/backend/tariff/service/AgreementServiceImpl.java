@@ -1,12 +1,12 @@
 package com.tariffsheriff.backend.tariff.service;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.tariffsheriff.backend.tariff.model.Agreement;
 import com.tariffsheriff.backend.tariff.repository.AgreementRepository;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
@@ -16,6 +16,11 @@ public class AgreementServiceImpl implements AgreementService {
 
     public AgreementServiceImpl(AgreementRepository agreementRepository) {
         this.agreementRepository = agreementRepository;
+    }
+
+    @Override
+    public Page<Agreement> list(Pageable pageable) {
+        return agreementRepository.findAll(pageable);
     }
 
     @Override
