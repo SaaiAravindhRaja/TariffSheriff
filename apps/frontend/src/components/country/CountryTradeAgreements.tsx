@@ -15,7 +15,7 @@ type AgreementDto = {
   type: string;
   status: string;
   enteredIntoForce?: string | null;
-  rvcThreshold?: number | null;
+  rvc?: number | null;
 };
 
 type TariffRateDto = {
@@ -27,20 +27,26 @@ type TariffRateDto = {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'active': return 'success';
+    case 'active':
+    case 'in_force': return 'success';
     case 'negotiating': return 'warning';
-    case 'pending': return 'secondary';
-    case 'expired': return 'destructive';
+    case 'pending':
+    case 'signed': return 'secondary';
+    case 'expired':
+    case 'inactive': return 'destructive';
     default: return 'secondary';
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'active': return CheckCircle;
+    case 'active':
+    case 'in_force': return CheckCircle;
     case 'negotiating': return Clock;
-    case 'pending': return Clock;
-    case 'expired': return AlertTriangle;
+    case 'pending':
+    case 'signed': return Clock;
+    case 'expired':
+    case 'inactive': return AlertTriangle;
     default: return FileText;
   }
 };
@@ -58,7 +64,7 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
       setError(null);
       try {
         const [agreementsRes, ratesRes] = await Promise.all([
-          tariffApi.getAgreements({ page: 0, size: 250 }),
+          tariffApi.getAgreementsByCountry(countryCode),
           tariffApi.getTariffRates(),
         ]);
 
@@ -84,7 +90,10 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
     return () => { cancelled = true };
   }, [countryCode]);
 
-  const activeAgreements = useMemo(() => agreements.filter(a => (a.status || '').toLowerCase() === 'active').length, [agreements]);
+  const activeAgreements = useMemo(() => agreements.filter(a => {
+    const status = (a.status || '').toLowerCase();
+    return status === 'active' || status === 'in_force';
+  }).length, [agreements]);
 
   return (
     <div className="space-y-6">
@@ -169,8 +178,8 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
                       </div>
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
-                      {(agreement as any).rvcThreshold != null && (
-                        <span>RVC Threshold: {(agreement as any).rvcThreshold}%</span>
+                      {agreement.rvc != null && (
+                        <span>RVC Threshold: {agreement.rvc}%</span>
                       )}
                     </div>
                   </div>
@@ -214,15 +223,20 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            {['active', 'negotiating', 'pending', 'expired'].map((status) => {
-              const count = agreements.filter(a => (a.status || '').toLowerCase() === status).length;
-              const StatusIcon = getStatusIcon(status);
+            {[
+              { key: 'in_force', label: 'In Force' },
+              { key: 'signed', label: 'Signed' },
+              { key: 'negotiating', label: 'Negotiating' },
+              { key: 'inactive', label: 'Inactive' }
+            ].map(({ key, label }) => {
+              const count = agreements.filter(a => (a.status || '').toLowerCase() === key).length;
+              const StatusIcon = getStatusIcon(key);
               
               return (
-                <div key={status} className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div key={key} className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <StatusIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                   <div className="text-2xl font-bold">{count}</div>
-                  <div className="text-sm text-muted-foreground capitalize">{status}</div>
+                  <div className="text-sm text-muted-foreground">{label}</div>
                 </div>
               );
             })}

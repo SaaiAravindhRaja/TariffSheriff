@@ -58,4 +58,9 @@ public class AgreementServiceImpl implements AgreementService {
         Agreement existing = getAgreement(id);
         agreementRepository.delete(existing);
     }
+
+    @Override
+    public List<Agreement> getAgreementsByCountry(String countryIso2) {
+        return agreementRepository.findAgreementsByCountryIso2(countryIso2);
+    }
 }
