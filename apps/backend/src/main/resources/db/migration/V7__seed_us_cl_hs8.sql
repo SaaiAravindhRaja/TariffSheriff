@@ -91,4 +91,3 @@ FROM (
         (1, NULL::bigint, (SELECT id FROM hs_product WHERE destination_id = 1 AND hs_code = '85076020' AND hs_version = '2022'), 0.028, 'MFN for EU lithium-ion battery modules')
 ) AS rates(importer, origin, product_id, rate, source)
 ON CONFLICT DO NOTHING;
-
