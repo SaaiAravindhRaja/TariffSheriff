@@ -5,6 +5,7 @@ import com.tariffsheriff.backend.chatbot.dto.ToolCall;
 import com.tariffsheriff.backend.chatbot.dto.ToolDefinition;
 import com.tariffsheriff.backend.chatbot.dto.ToolResult;
 import com.tariffsheriff.backend.chatbot.exception.ToolExecutionException;
+import com.tariffsheriff.backend.chatbot.service.tools.ChatbotTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,11 +39,32 @@ public class ToolRegistryImpl implements ToolRegistry {
     @Autowired(required = false)
     private ToolHealthMonitor toolHealthMonitor;
     
+    @Autowired(required = false)
+    private List<ChatbotTool> chatbotTools;
+    
     public ToolRegistryImpl() {
         this.toolDefinitions = new HashMap<>();
         this.toolExecutors = new HashMap<>();
         this.executorService = Executors.newCachedThreadPool();
-        initializeTools();
+    }
+    
+    @jakarta.annotation.PostConstruct
+    public void initializeTools() {
+        if (chatbotTools != null) {
+            for (ChatbotTool tool : chatbotTools) {
+                try {
+                    ToolDefinition definition = tool.getDefinition();
+                    ToolExecutor executor = tool::execute;
+                    registerTool(definition, executor);
+                    logger.info("Registered tool: {}", tool.getName());
+                } catch (Exception e) {
+                    logger.error("Failed to register tool: {}", tool.getName(), e);
+                }
+            }
+            logger.info("Tool registration completed. {} tools available.", toolDefinitions.size());
+        } else {
+            logger.warn("No ChatbotTool beans found for registration.");
+        }
     }
     
     @Override
@@ -175,14 +197,7 @@ public class ToolRegistryImpl implements ToolRegistry {
         logger.info("Registered tool: {}", definition.getName());
     }
     
-    /**
-     * Initialize default tools (placeholders for now)
-     */
-    private void initializeTools() {
-        // Tool definitions will be registered by individual tool implementations
-        // This method serves as a placeholder for future tool registration
-        logger.info("Tool registry initialized");
-    }
+
     
     /**
      * Record successful tool execution for health monitoring

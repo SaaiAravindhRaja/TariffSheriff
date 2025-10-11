@@ -28,6 +28,7 @@ public class ToolHealthMonitor {
     private ToolProperties toolProperties;
     
     @Autowired
+    @org.springframework.context.annotation.Lazy
     private ToolRegistry toolRegistry;
     
     // Health metrics per tool
