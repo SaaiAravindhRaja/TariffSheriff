@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -128,18 +130,18 @@ public class ChatCacheService {
      */
     private void cleanupExpiredEntries() {
         long now = System.currentTimeMillis();
-        int removedCount = 0;
         
-        cache.entrySet().removeIf(entry -> {
-            if (entry.getValue().isExpired(now)) {
-                removedCount++;
-                return true;
-            }
-            return false;
-        });
+        // Collect keys to remove
+        List<String> keysToRemove = cache.entrySet().stream()
+                .filter(entry -> entry.getValue().isExpired(now))
+                .map(Map.Entry::getKey)
+                .collect(java.util.stream.Collectors.toList());
         
-        if (removedCount > 0) {
-            logger.debug("Cleaned up {} expired cache entries", removedCount);
+        // Remove expired entries
+        keysToRemove.forEach(cache::remove);
+        
+        if (!keysToRemove.isEmpty()) {
+            logger.debug("Cleaned up {} expired cache entries", keysToRemove.size());
         }
     }
     
@@ -147,12 +149,13 @@ public class ChatCacheService {
      * Evict oldest entries when cache is full
      */
     private void evictOldestEntries() {
-        int entriesToRemove = cache.size() - MAX_CACHE_SIZE + 100; // Remove extra to avoid frequent evictions
+        final int entriesToRemove = cache.size() - MAX_CACHE_SIZE + 100; // Remove extra to avoid frequent evictions
         
         cache.entrySet().stream()
                 .sorted((e1, e2) -> Long.compare(e1.getValue().timestamp, e2.getValue().timestamp))
                 .limit(entriesToRemove)
-                .forEach(entry -> cache.remove(entry.getKey()));
+                .map(entry -> entry.getKey())
+                .forEach(cache::remove);
         
         logger.debug("Evicted {} oldest cache entries", entriesToRemove);
     }

@@ -146,7 +146,7 @@ public class ToolHealthMonitor {
                 break;
         }
         
-        healthCheck.setParameters(parameters);
+        healthCheck.setArguments(parameters);
         return healthCheck;
     }
     
