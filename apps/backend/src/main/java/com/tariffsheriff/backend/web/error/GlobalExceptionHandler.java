@@ -1,5 +1,6 @@
 package com.tariffsheriff.backend.web.error;
 
+import com.tariffsheriff.backend.chatbot.exception.RateLimitExceededException;
 import com.tariffsheriff.backend.service.exception.NotFoundException;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTariffRateNotFound(TariffRateNotFoundException ex, HttpServletRequest req) {
         ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest req) {
+        log.warn("Rate limit exceeded on {}: {}", req.getRequestURI(), ex.getMessage());
+        ErrorResponse body = build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

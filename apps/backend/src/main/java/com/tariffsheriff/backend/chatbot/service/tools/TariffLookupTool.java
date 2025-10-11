@@ -148,10 +148,19 @@ public class TariffLookupTool implements ChatbotTool {
         // MFN Rate
         if (result.tariffRateMfn() != null) {
             formatted.append("Most Favored Nation (MFN) Rate:\n");
-            formatted.append("- Rate: ").append(result.tariffRateMfn().getRate()).append("%\n");
+            formatted.append("- Rate Type: ").append(result.tariffRateMfn().getRateType()).append("\n");
             formatted.append("- Basis: ").append(result.tariffRateMfn().getBasis()).append("\n");
-            if (result.tariffRateMfn().getUnit() != null) {
-                formatted.append("- Unit: ").append(result.tariffRateMfn().getUnit()).append("\n");
+            
+            if (result.tariffRateMfn().getAdValoremRate() != null) {
+                formatted.append("- Ad Valorem Rate: ").append(result.tariffRateMfn().getAdValoremRate()).append("%\n");
+            }
+            
+            if (result.tariffRateMfn().getSpecificAmount() != null) {
+                formatted.append("- Specific Amount: ").append(result.tariffRateMfn().getSpecificAmount());
+                if (result.tariffRateMfn().getSpecificUnit() != null) {
+                    formatted.append(" ").append(result.tariffRateMfn().getSpecificUnit());
+                }
+                formatted.append("\n");
             }
         } else {
             formatted.append("Most Favored Nation (MFN) Rate: Not available\n");
@@ -162,10 +171,19 @@ public class TariffLookupTool implements ChatbotTool {
         // Preferential Rate
         if (result.tariffRatePref() != null) {
             formatted.append("Preferential Rate:\n");
-            formatted.append("- Rate: ").append(result.tariffRatePref().getRate()).append("%\n");
+            formatted.append("- Rate Type: ").append(result.tariffRatePref().getRateType()).append("\n");
             formatted.append("- Basis: ").append(result.tariffRatePref().getBasis()).append("\n");
-            if (result.tariffRatePref().getUnit() != null) {
-                formatted.append("- Unit: ").append(result.tariffRatePref().getUnit()).append("\n");
+            
+            if (result.tariffRatePref().getAdValoremRate() != null) {
+                formatted.append("- Ad Valorem Rate: ").append(result.tariffRatePref().getAdValoremRate()).append("%\n");
+            }
+            
+            if (result.tariffRatePref().getSpecificAmount() != null) {
+                formatted.append("- Specific Amount: ").append(result.tariffRatePref().getSpecificAmount());
+                if (result.tariffRatePref().getSpecificUnit() != null) {
+                    formatted.append(" ").append(result.tariffRatePref().getSpecificUnit());
+                }
+                formatted.append("\n");
             }
             
             // Agreement information
