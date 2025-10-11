@@ -98,6 +98,27 @@ export const tariffApi = {
   }) => api.get('/analytics', { params }),
 }
 
+// Chat API endpoints
+export const chatApi = {
+  postChatQuery: (data: { query: string; conversationId?: string }, options?: { signal?: AbortSignal; timeout?: number }) => {
+    const config = {
+      ...options,
+      timeout: options?.timeout || 30000, // 30 second timeout for chat queries
+    };
+    return api.post('/chatbot/query', data, config);
+  },
+  
+  getConversations: () => api.get('/chatbot/conversations'),
+  
+  getConversation: (conversationId: string) => api.get(`/chatbot/conversations/${conversationId}`),
+  
+  deleteConversation: (conversationId: string) => api.delete(`/chatbot/conversations/${conversationId}`),
+  
+  getHealth: () => api.get('/chatbot/health'),
+  
+  getRateLimitStatus: () => api.get('/chatbot/rate-limit-status'),
+};
+
 // Auth API endpoints
 export const authApi = {
   login: (credentials: { email: string; password: string }) =>
