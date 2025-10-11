@@ -13,6 +13,7 @@ public class ChatQueryRequest {
     private String query;
     
     private String conversationId;
+    private String userId;
     
     public ChatQueryRequest() {}
     
@@ -23,6 +24,12 @@ public class ChatQueryRequest {
     public ChatQueryRequest(String query, String conversationId) {
         this.query = query;
         this.conversationId = conversationId;
+    }
+    
+    public ChatQueryRequest(String query, String conversationId, String userId) {
+        this.query = query;
+        this.conversationId = conversationId;
+        this.userId = userId;
     }
     
     public String getQuery() {
@@ -39,5 +46,13 @@ public class ChatQueryRequest {
     
     public void setConversationId(String conversationId) {
         this.conversationId = conversationId;
+    }
+    
+    public String getUserId() {
+        return userId;
+    }
+    
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }

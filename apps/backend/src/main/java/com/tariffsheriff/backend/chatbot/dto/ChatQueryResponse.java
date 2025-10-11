@@ -14,6 +14,7 @@ public class ChatQueryResponse {
     private List<String> toolsUsed;
     private Long processingTimeMs;
     private boolean success;
+    private boolean cached;
     
     public ChatQueryResponse() {
         this.timestamp = LocalDateTime.now();
@@ -76,5 +77,13 @@ public class ChatQueryResponse {
     
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+    
+    public boolean isCached() {
+        return cached;
+    }
+    
+    public void setCached(boolean cached) {
+        this.cached = cached;
     }
 }
