@@ -28,11 +28,18 @@ public class ChatbotService {
     
     private final LlmClient llmClient;
     private final ToolRegistry toolRegistry;
+    private final FallbackService fallbackService;
+    private final ChatCacheService cacheService;
+    private final ConversationService conversationService;
     
     @Autowired
-    public ChatbotService(LlmClient llmClient, ToolRegistry toolRegistry) {
+    public ChatbotService(LlmClient llmClient, ToolRegistry toolRegistry, FallbackService fallbackService,
+                         ChatCacheService cacheService, ConversationService conversationService) {
         this.llmClient = llmClient;
         this.toolRegistry = toolRegistry;
+        this.fallbackService = fallbackService;
+        this.cacheService = cacheService;
+        this.conversationService = conversationService;
     }
     
     /**
@@ -41,6 +48,7 @@ public class ChatbotService {
     public ChatQueryResponse processQuery(ChatQueryRequest request) {
         long startTime = System.currentTimeMillis();
         String conversationId = request.getConversationId();
+        String userId = request.getUserId(); // Assuming this is added to the request
         
         if (conversationId == null) {
             conversationId = UUID.randomUUID().toString();
@@ -51,6 +59,26 @@ public class ChatbotService {
             validateQuery(request.getQuery());
             
             logger.info("Processing query for conversation {}: {}", conversationId, request.getQuery());
+            
+            // Check cache first
+            ChatQueryResponse cachedResponse = cacheService.getCachedResponse(request.getQuery());
+            if (cachedResponse != null) {
+                // Update conversation ID and processing time for cached response
+                ChatQueryResponse response = new ChatQueryResponse(cachedResponse.getResponse(), conversationId);
+                response.setToolsUsed(cachedResponse.getToolsUsed());
+                response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
+                response.setCached(true);
+                
+                // Store in conversation history
+                if (userId != null) {
+                    conversationService.storeMessage(userId, conversationId, request, response);
+                }
+                
+                logger.info("Returned cached response for conversation {} in {}ms", 
+                        conversationId, response.getProcessingTimeMs());
+                
+                return response;
+            }
             
             // Phase 1: Query analysis and tool selection
             ToolCall toolCall = callLlmForToolSelection(request.getQuery());
@@ -66,10 +94,30 @@ public class ChatbotService {
             chatResponse.setToolsUsed(List.of(toolCall.getName()));
             chatResponse.setProcessingTimeMs(System.currentTimeMillis() - startTime);
             
+            // Cache the response
+            cacheService.cacheResponse(request.getQuery(), chatResponse);
+            
+            // Store in conversation history
+            if (userId != null) {
+                conversationService.storeMessage(userId, conversationId, request, chatResponse);
+            }
+            
             logger.info("Successfully processed query for conversation {} in {}ms", 
                     conversationId, chatResponse.getProcessingTimeMs());
             
             return chatResponse;
+            
+        } catch (LlmServiceException e) {
+            logger.warn("LLM service error for conversation {}: {}", conversationId, e.getMessage());
+            
+            // Check if this is a help query that can be handled by fallback
+            if (fallbackService.isHelpQuery(request.getQuery())) {
+                return fallbackService.generateFallbackResponse(request.getQuery(), conversationId, startTime);
+            }
+            
+            // For LLM service errors, try fallback response
+            logger.info("Attempting fallback response for conversation {}", conversationId);
+            return fallbackService.generateFallbackResponse(request.getQuery(), conversationId, startTime);
             
         } catch (ChatbotException e) {
             logger.warn("Chatbot error for conversation {}: {}", conversationId, e.getMessage());
@@ -77,6 +125,13 @@ public class ChatbotService {
             
         } catch (Exception e) {
             logger.error("Unexpected error processing query for conversation {}", conversationId, e);
+            
+            // For unexpected errors, also try fallback if it seems like a reasonable query
+            if (request.getQuery() != null && request.getQuery().trim().length() > 3) {
+                logger.info("Attempting fallback response for unexpected error in conversation {}", conversationId);
+                return fallbackService.generateFallbackResponse(request.getQuery(), conversationId, startTime);
+            }
+            
             return createErrorResponse(conversationId, 
                     "I'm having trouble processing your request right now.", 
                     "Please try again in a moment or rephrase your question.", 
@@ -220,5 +275,33 @@ public class ChatbotService {
             logger.error("Health check failed", e);
             return false;
         }
+    }
+    
+    /**
+     * Get conversation history for a user
+     */
+    public List<ConversationService.ConversationSummary> getUserConversations(String userId) {
+        return conversationService.getUserConversations(userId);
+    }
+    
+    /**
+     * Get specific conversation
+     */
+    public ConversationService.Conversation getConversation(String userId, String conversationId) {
+        return conversationService.getConversation(userId, conversationId);
+    }
+    
+    /**
+     * Delete a conversation
+     */
+    public boolean deleteConversation(String userId, String conversationId) {
+        return conversationService.deleteConversation(userId, conversationId);
+    }
+    
+    /**
+     * Clear all conversations for a user
+     */
+    public void clearUserConversations(String userId) {
+        conversationService.clearUserConversations(userId);
     }
 }
