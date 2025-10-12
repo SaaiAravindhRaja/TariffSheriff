@@ -24,6 +24,14 @@ public class ToolResult {
         this.data = data;
     }
     
+    public ToolResult(String toolName, boolean success, String data, String error, long executionTimeMs) {
+        this.toolName = toolName;
+        this.success = success;
+        this.data = data;
+        this.error = error;
+        this.executionTimeMs = executionTimeMs;
+    }
+    
     /**
      * Create a successful result
      */
