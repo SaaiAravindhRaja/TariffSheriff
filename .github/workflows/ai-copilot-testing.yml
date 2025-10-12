@@ -1,0 +1,476 @@
+name: AI Copilot Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '18'
+  MAVEN_OPTS: '-Xmx2048m'
+
+jobs:
+  # Backend Unit and Integration Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: tariffsheriff_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run Backend Unit Tests
+      run: |
+        cd apps/backend
+        mvn clean test -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Run AI Integration Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*IntegrationTest" -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Run Trade Scenario Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*ScenarioTest" -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Run Regression Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*RegressionTest" -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Generate Test Report
+      run: |
+        cd apps/backend
+        mvn surefire-report:report
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: backend-test-results
+        path: apps/backend/target/surefire-reports/
+
+  # Frontend Unit and Integration Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/frontend/package-lock.json
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd apps/frontend
+        npm ci
+
+    - name: Run Frontend Unit Tests
+      run: |
+        cd apps/frontend
+        npm run test:unit -- --run --reporter=verbose
+
+    - name: Run Frontend Integration Tests
+      run: |
+        cd apps/frontend
+        npm run test:integration -- --run --reporter=verbose
+
+    - name: Run Frontend Performance Tests
+      run: |
+        cd apps/frontend
+        npm run test:performance -- --run --reporter=verbose
+
+    - name: Generate Coverage Report
+      run: |
+        cd apps/frontend
+        npm run test:coverage -- --run
+
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: apps/frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-test-results
+        path: apps/frontend/coverage/
+
+  # Security Testing
+  security-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run Security Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*SecurityTest,*PenetrationTest" -Dspring.profiles.active=test
+
+    - name: Run OWASP Dependency Check
+      run: |
+        cd apps/backend
+        mvn org.owasp:dependency-check-maven:check
+
+    - name: Upload Security Report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-test-results
+        path: apps/backend/target/dependency-check-report.html
+
+  # Performance and Load Testing
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[perf-test]')
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: tariffsheriff_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run Load Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*LoadTest" -Dspring.profiles.active=performance-test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Run Performance Validation
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*PerformanceTest" -Dspring.profiles.active=performance-test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Upload Performance Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: apps/backend/target/performance-reports/
+
+  # User Acceptance Testing
+  acceptance-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: tariffsheriff_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Set up Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/frontend/package-lock.json
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd apps/frontend
+        npm ci
+
+    - name: Run Backend Acceptance Tests
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*AcceptanceTest" -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tariffsheriff_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: testpassword
+
+    - name: Run Frontend Acceptance Tests
+      run: |
+        cd apps/frontend
+        npm run test:acceptance -- --run --reporter=verbose
+
+    - name: Upload Acceptance Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: acceptance-test-results
+        path: |
+          apps/backend/target/surefire-reports/
+          apps/frontend/test-results/
+
+  # AI Response Quality Gates
+  ai-quality-gates:
+    runs-on: ubuntu-latest
+    needs: [acceptance-tests]
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Run AI Quality Assessment
+      run: |
+        cd apps/backend
+        mvn test -Dtest="*QualityTest" -Dspring.profiles.active=test
+
+    - name: Validate Response Accuracy
+      run: |
+        cd apps/backend
+        mvn exec:java -Dexec.mainClass="com.tariffsheriff.backend.quality.ResponseAccuracyValidator"
+
+    - name: Check Performance Benchmarks
+      run: |
+        cd apps/backend
+        mvn exec:java -Dexec.mainClass="com.tariffsheriff.backend.quality.PerformanceBenchmarkValidator"
+
+    - name: Generate Quality Report
+      run: |
+        cd apps/backend
+        mvn exec:java -Dexec.mainClass="com.tariffsheriff.backend.quality.QualityReportGenerator"
+
+    - name: Comment PR with Quality Metrics
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'apps/backend/target/quality-report.json';
+          
+          if (fs.existsSync(path)) {
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            
+            const comment = `## AI Quality Assessment Results
+            
+            ### Response Quality Metrics
+            - **Accuracy Score**: ${report.accuracyScore}%
+            - **Response Time**: ${report.averageResponseTime}ms
+            - **Success Rate**: ${report.successRate}%
+            - **Context Retention**: ${report.contextRetention}%
+            
+            ### Performance Benchmarks
+            - **Throughput**: ${report.throughput} requests/second
+            - **Memory Usage**: ${report.memoryUsage}MB
+            - **Cache Hit Rate**: ${report.cacheHitRate}%
+            
+            ### Quality Gates Status
+            ${report.qualityGatesPassed ? '✅ All quality gates passed' : '❌ Some quality gates failed'}
+            
+            ### Recommendations
+            ${report.recommendations.map(rec => `- ${rec}`).join('\n')}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+
+  # Deployment Validation
+  deployment-validation:
+    runs-on: ubuntu-latest
+    needs: [ai-quality-gates]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate Deployment Readiness
+      run: |
+        echo "Validating deployment readiness..."
+        # Add deployment validation logic here
+
+    - name: Run Smoke Tests
+      run: |
+        echo "Running smoke tests..."
+        # Add smoke test logic here
+
+    - name: Create Deployment Artifact
+      run: |
+        echo "Creating deployment artifact..."
+        # Add artifact creation logic here
+
+    - name: Upload Deployment Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-artifact
+        path: deployment/
+
+  # Test Results Summary
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, security-tests, acceptance-tests]
+    if: always()
+
+    steps:
+    - name: Download All Test Results
+      uses: actions/download-artifact@v3
+
+    - name: Generate Test Summary
+      run: |
+        echo "# Test Results Summary" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Backend Tests" >> test-summary.md
+        if [ -d "backend-test-results" ]; then
+          echo "✅ Backend tests completed" >> test-summary.md
+        else
+          echo "❌ Backend tests failed" >> test-summary.md
+        fi
+        echo "" >> test-summary.md
+        echo "## Frontend Tests" >> test-summary.md
+        if [ -d "frontend-test-results" ]; then
+          echo "✅ Frontend tests completed" >> test-summary.md
+        else
+          echo "❌ Frontend tests failed" >> test-summary.md
+        fi
+        echo "" >> test-summary.md
+        echo "## Security Tests" >> test-summary.md
+        if [ -d "security-test-results" ]; then
+          echo "✅ Security tests completed" >> test-summary.md
+        else
+          echo "❌ Security tests failed" >> test-summary.md
+        fi
+        echo "" >> test-summary.md
+        echo "## Acceptance Tests" >> test-summary.md
+        if [ -d "acceptance-test-results" ]; then
+          echo "✅ Acceptance tests completed" >> test-summary.md
+        else
+          echo "❌ Acceptance tests failed" >> test-summary.md
+        fi
+
+    - name: Upload Test Summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-summary.md
+
+    - name: Notify on Failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: 'AI Copilot Test Pipeline Failed',
+            body: `The AI Copilot testing pipeline failed for commit ${context.sha}. Please check the workflow logs for details.`,
+            labels: ['bug', 'testing', 'ai-copilot']
+          });
