@@ -199,6 +199,7 @@ public class LlmClient {
         }
         
         // Look for function call in response parts
+        String directText = null;
         for (GeminiResponse.Part part : candidate.getContent().getParts()) {
             if (part.getFunctionCall() != null) {
                 GeminiResponse.FunctionCall functionCall = part.getFunctionCall();
@@ -208,6 +209,13 @@ public class LlmClient {
                 
                 return new ToolCall(functionCall.getName(), arguments);
             }
+            if (part.getText() != null && !part.getText().trim().isEmpty()) {
+                directText = part.getText().trim();
+            }
+        }
+        if (directText != null) {
+            logger.debug("LLM returned direct response text without tool invocation");
+            return new ToolCall(ToolCall.DIRECT_RESPONSE_TOOL, Map.of("text", directText));
         }
         
         // If no function call found, throw exception
@@ -257,6 +265,79 @@ public class LlmClient {
         } catch (JsonProcessingException e) {
             logger.warn("Failed to convert function args to map: {}", args, e);
             return Map.of();
+        }
+    }
+    
+    /**
+     * Send a conversational request to Gemini API (for direct responses without tools)
+     */
+    public String sendConversationalRequest(GeminiRequest request) {
+        logger.debug("Sending conversational request");
+        
+        try {
+            GeminiResponse response = sendRequest(request);
+            return parseTextResponse(response);
+        } catch (Exception e) {
+            logger.error("Failed to get conversational response from LLM", e);
+            throw new LlmServiceException("Failed to generate a response. Please try again.", e);
+        }
+    }
+    
+    /**
+     * Test connectivity to Gemini API
+     */
+    public com.tariffsheriff.backend.chatbot.dto.DiagnosticResult testConnectivity(String testQuery) {
+        logger.debug("Testing Gemini API connectivity with query: {}", testQuery);
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            GeminiRequest request = new GeminiRequest();
+            GeminiRequest.Content content = new GeminiRequest.Content();
+            content.setRole("user");
+            
+            GeminiRequest.Part part = new GeminiRequest.Part();
+            part.setText(testQuery);
+            content.setParts(List.of(part));
+            
+            request.setContents(List.of(content));
+            
+            GeminiRequest.GenerationConfig config = new GeminiRequest.GenerationConfig();
+            config.setTemperature(geminiProperties.getTemperature());
+            config.setMaxOutputTokens(geminiProperties.getMaxTokens());
+            request.setGenerationConfig(config);
+            
+            GeminiResponse response = sendRequest(request);
+            long timingMs = System.currentTimeMillis() - startTime;
+            
+            // Extract response text
+            String responseText = parseTextResponse(response);
+            
+            return com.tariffsheriff.backend.chatbot.dto.DiagnosticResult.builder()
+                    .success(true)
+                    .timingMs(timingMs)
+                    .phase("complete")
+                    .rawRequest(request)
+                    .rawResponse(response)
+                    .addMetadata("responseText", responseText)
+                    .addMetadata("model", geminiProperties.getModel())
+                    .addMetadata("baseUrl", geminiProperties.getBaseUrl())
+                    .addMetadata("timeout", geminiProperties.getTimeoutMs())
+                    .addMetadata("candidatesCount", response.getCandidates() != null ? response.getCandidates().size() : 0)
+                    .addMetadata("finishReason", response.getCandidates() != null && !response.getCandidates().isEmpty() 
+                            ? response.getCandidates().get(0).getFinishReason() : null)
+                    .build();
+        } catch (Exception e) {
+            long timingMs = System.currentTimeMillis() - startTime;
+            logger.error("Connectivity test failed", e);
+            
+            return com.tariffsheriff.backend.chatbot.dto.DiagnosticResult.builder()
+                    .success(false)
+                    .timingMs(timingMs)
+                    .phase("error")
+                    .error(e.getMessage())
+                    .addMetadata("errorType", e.getClass().getSimpleName())
+                    .build();
         }
     }
 }
