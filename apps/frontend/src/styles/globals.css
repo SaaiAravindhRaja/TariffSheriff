@@ -120,6 +120,59 @@
   background-size: 200px 100%;
 }
 
+/* Custom prose styles for chat messages */
+.prose {
+  @apply text-foreground;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  @apply text-foreground font-semibold;
+}
+
+.prose p {
+  @apply text-foreground leading-relaxed;
+}
+
+.prose ul, .prose ol {
+  @apply text-foreground;
+}
+
+.prose li {
+  @apply text-foreground;
+}
+
+.prose strong {
+  @apply text-foreground font-semibold;
+}
+
+.prose em {
+  @apply text-foreground italic;
+}
+
+.prose code {
+  @apply bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose pre {
+  @apply bg-muted text-foreground rounded-lg p-4 overflow-x-auto;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary pl-4 text-muted-foreground italic;
+}
+
+.prose a {
+  @apply text-primary hover:text-primary/80 underline;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Skip link styles */
 .skip-link {
   position: absolute;
