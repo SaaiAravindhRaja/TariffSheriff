@@ -79,6 +79,13 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
-
-
+    
+    // Manual getters for Lombok compatibility issues
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getAboutMe() { return aboutMe; }
+    public String getRole() { return role; }
+    public Boolean getIsAdmin() { return isAdmin; }
+    public void setIsAdmin(Boolean isAdmin) { this.isAdmin = isAdmin; }
 }

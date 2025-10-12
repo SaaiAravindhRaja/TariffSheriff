@@ -6,7 +6,31 @@ target/
 .DS_Store
 .vscode/
 .idea/
+
 # Environment files (ignore real secrets everywhere)
 **/.env
 **/.env.*
 *.env
+
+# Internal documentation and specs (Kiro IDE)
+.kiro/
+docs/internal/
+
+# Temporary files
+.app_pids
+*.pid
+compile.log
+app-startup*.log
+backend*.log
+frontend*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

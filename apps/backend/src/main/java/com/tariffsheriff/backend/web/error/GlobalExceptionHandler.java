@@ -1,5 +1,10 @@
 package com.tariffsheriff.backend.web.error;
 
+import com.tariffsheriff.backend.chatbot.exception.ChatbotException;
+import com.tariffsheriff.backend.chatbot.exception.RateLimitExceededException;
+import com.tariffsheriff.backend.chatbot.exception.InvalidQueryException;
+import com.tariffsheriff.backend.chatbot.exception.LlmServiceException;
+import com.tariffsheriff.backend.chatbot.exception.ToolExecutionException;
 import com.tariffsheriff.backend.service.exception.NotFoundException;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,12 +35,72 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest req) {
+        log.warn("Rate limit exceeded on {}: {}", req.getRequestURI(), ex.getMessage());
+        // Use user-friendly message with suggestions
+        String fullMessage = ex.getUserFriendlyMessage();
+        if (ex.getSuggestion() != null) {
+            fullMessage += ex.getSuggestion();
+        }
+        ErrorResponse body = build(HttpStatus.TOO_MANY_REQUESTS, fullMessage, req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    }
+
+    @ExceptionHandler(InvalidQueryException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQuery(InvalidQueryException ex, HttpServletRequest req) {
+        log.warn("Invalid query on {}: {}", req.getRequestURI(), ex.getMessage());
+        // Use user-friendly message with suggestions
+        String fullMessage = ex.getUserFriendlyMessage();
+        if (ex.getSuggestion() != null) {
+            fullMessage += ex.getSuggestion();
+        }
+        ErrorResponse body = build(HttpStatus.BAD_REQUEST, fullMessage, req.getRequestURI());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(LlmServiceException.class)
+    public ResponseEntity<ErrorResponse> handleLlmServiceError(LlmServiceException ex, HttpServletRequest req) {
+        log.error("LLM service error on {}: {}", req.getRequestURI(), ex.getMessage());
+        // Use user-friendly message with suggestions
+        String fullMessage = ex.getUserFriendlyMessage();
+        if (ex.getSuggestion() != null) {
+            fullMessage += ex.getSuggestion();
+        }
+        ErrorResponse body = build(HttpStatus.SERVICE_UNAVAILABLE, fullMessage, req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
+    @ExceptionHandler(ToolExecutionException.class)
+    public ResponseEntity<ErrorResponse> handleToolExecutionError(ToolExecutionException ex, HttpServletRequest req) {
+        log.error("Tool execution error on {}: {}", req.getRequestURI(), ex.getMessage());
+        // Use user-friendly message with suggestions
+        String fullMessage = ex.getUserFriendlyMessage();
+        if (ex.getSuggestion() != null) {
+            fullMessage += ex.getSuggestion();
+        }
+        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, fullMessage, req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    @ExceptionHandler(ChatbotException.class)
+    public ResponseEntity<ErrorResponse> handleChatbotError(ChatbotException ex, HttpServletRequest req) {
+        log.error("Chatbot error on {}: {}", req.getRequestURI(), ex.getMessage());
+        // Use user-friendly message with suggestions
+        String fullMessage = ex.getUserFriendlyMessage();
+        if (ex.getSuggestion() != null) {
+            fullMessage += ex.getSuggestion();
+        }
+        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, fullMessage, req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
         log.error("Validation error on {}: {}", req.getRequestURI(), ex.getMessage());
-        StringBuilder message = new StringBuilder("Validation failed: ");
+        StringBuilder message = new StringBuilder("I had trouble with your request. Please check:\n");
         ex.getBindingResult().getFieldErrors().forEach(error -> 
-            message.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; "));
+            message.append("• ").append(error.getField()).append(": ").append(error.getDefaultMessage()).append("\n"));
         ErrorResponse body = build(HttpStatus.BAD_REQUEST, message.toString(), req.getRequestURI());
         return ResponseEntity.badRequest().body(body);
     }
@@ -43,11 +108,35 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ConstraintViolationException.class, IllegalArgumentException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
         log.error("Bad request on {}: {}", req.getRequestURI(), ex.getMessage());
-        ErrorResponse body = build(HttpStatus.BAD_REQUEST, extractMessage(ex), req.getRequestURI());
+        String userFriendlyMessage = makeUserFriendly(extractMessage(ex));
+        ErrorResponse body = build(HttpStatus.BAD_REQUEST, userFriendlyMessage, req.getRequestURI());
         return ResponseEntity.badRequest().body(body);
     }
 
-
+    /**
+     * Convert generic error messages to user-friendly ones
+     */
+    private String makeUserFriendly(String technicalMessage) {
+        if (technicalMessage == null) {
+            return "I encountered an issue processing your request. Please try again.";
+        }
+        
+        String lower = technicalMessage.toLowerCase();
+        
+        if (lower.contains("json") || lower.contains("parse") || lower.contains("deserialize")) {
+            return "I had trouble understanding the format of your request. Please check your input and try again.";
+        }
+        
+        if (lower.contains("required") || lower.contains("missing")) {
+            return "Some required information is missing from your request. Please provide all necessary details.";
+        }
+        
+        if (lower.contains("invalid") || lower.contains("illegal")) {
+            return "The information provided doesn't match what I expected. Please check your input and try again.";
+        }
+        
+        return "I had trouble processing your request. Please check your input and try again.";
+    }
 
     private static ErrorResponse build(HttpStatus status, String message, String path) {
         ErrorResponse body = new ErrorResponse();

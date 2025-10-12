@@ -12,7 +12,8 @@ import {
   BarChart3,
   Zap,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,12 @@ const navigationItems = [
     href: '/dashboard',
     icon: LayoutDashboard,
     description: 'Overview & Analytics'
+  },
+  {
+    title: '✨ AI Assistant',
+    href: '/ai-assistant',
+    icon: Sparkles,
+    description: 'Chat with AI Copilot'
   },
   {
     title: 'Tariff Calculator',

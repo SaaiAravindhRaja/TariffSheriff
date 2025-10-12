@@ -8,6 +8,7 @@ import { AuthPage } from '@/pages/AuthPage'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Dashboard } from '@/pages/Dashboard'
+import { AiAssistantPage } from '@/pages/AiAssistantPage'
 import { Calculator } from '@/pages/Calculator'
 import { Database } from '@/pages/Database'
 import { Analytics } from '@/pages/Analytics'
@@ -72,6 +73,7 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/ai-assistant" element={<AiAssistantPage />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/database" element={<Database />} />
               <Route path="/routes" element={<TradeRoutes />} />
