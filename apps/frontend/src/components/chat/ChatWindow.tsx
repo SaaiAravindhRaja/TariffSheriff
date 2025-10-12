@@ -2,9 +2,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ChatMessage, ChatMessage as ChatMessageType } from './ChatMessage';
-import { ProgressIndicator } from './ProgressIndicator';
-import { Send, Loader2 } from 'lucide-react';
+import { ChatMessage as ChatMessageComponent, ChatMessage as ChatMessageType } from './ChatMessage';
+import { ChatSuggestions, getContextualSuggestions } from './ChatSuggestions';
+// import { ProgressIndicator } from './ProgressIndicator';
+import { Send, Loader2, Mic, MicOff } from 'lucide-react';
 
 interface ChatWindowProps {
   messages: ChatMessageType[];
@@ -12,9 +13,14 @@ interface ChatWindowProps {
   isTyping: boolean;
   onSendMessage: (message: string) => void;
   onRetryMessage?: (messageId: string) => void;
+  onShareMessage?: (messageId: string) => void;
+  onBookmarkMessage?: (messageId: string) => void;
+  onExportMessage?: (messageId: string, format: 'pdf' | 'html' | 'json') => void;
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  showSuggestions?: boolean;
+  voiceEnabled?: boolean;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -23,14 +29,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   isTyping,
   onSendMessage,
   onRetryMessage,
+  onShareMessage,
+  onBookmarkMessage,
+  onExportMessage,
   className,
   placeholder = "Ask me about tariffs, trade agreements, or product classifications...",
   disabled = false,
+  showSuggestions = true,
+  voiceEnabled = false,
 }) => {
   const [inputValue, setInputValue] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [showSuggestionsPanel, setShowSuggestionsPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -47,11 +61,72 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [inputValue]);
 
+  // Initialize speech recognition
+  useEffect(() => {
+    if (!voiceEnabled || typeof window === 'undefined') {
+      return () => undefined;
+    }
+
+    const SpeechRecognitionCtor =
+      (window as typeof window & { webkitSpeechRecognition?: any }).webkitSpeechRecognition ||
+      (window as typeof window & { SpeechRecognition?: any }).SpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      return () => undefined;
+    }
+
+    let recognition: SpeechRecognition | null = null;
+    try {
+      const recognitionInstance: SpeechRecognition = new SpeechRecognitionCtor();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+      recognitionInstance.lang = 'en-US';
+
+      recognitionInstance.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue((prev) => prev + transcript);
+        setIsListening(false);
+      };
+
+      recognitionInstance.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognitionInstance;
+      recognition = recognitionInstance;
+    } catch (error) {
+      console.warn('Speech recognition is unavailable in this browser.', error);
+      recognitionRef.current = null;
+      setIsListening(false);
+      return () => undefined;
+    }
+
+    return () => {
+      if (recognition) {
+        recognition.stop();
+      }
+    };
+  }, [voiceEnabled]);
+
+  // Hide suggestions when user starts typing
+  useEffect(() => {
+    if (inputValue.trim()) {
+      setShowSuggestionsPanel(false);
+    } else if (messages.length === 0) {
+      setShowSuggestionsPanel(true);
+    }
+  }, [inputValue, messages.length]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !isLoading && !disabled) {
       onSendMessage(inputValue.trim());
       setInputValue('');
+      setShowSuggestionsPanel(false);
     }
   };
 
@@ -67,6 +142,29 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       onRetryMessage(messageId);
     }
   };
+
+  const handleSuggestionClick = (suggestion: any) => {
+    setInputValue(suggestion.text);
+    setShowSuggestionsPanel(false);
+    // Auto-focus the textarea
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    if (!voiceEnabled || !recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const suggestions = getContextualSuggestions(messages);
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
@@ -94,7 +192,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className="space-y-4">
             {messages.map((message) => (
               <div key={message.id} className="relative">
-                <ChatMessage message={message} />
+                <ChatMessageComponent 
+                  message={message}
+                  onShare={onShareMessage}
+                  onBookmark={onBookmarkMessage}
+                  onExport={onExportMessage}
+                />
                 {message.status === 'error' && onRetryMessage && (
                   <div className="flex justify-end px-4">
                     <Button
@@ -112,14 +215,42 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
 
-        {/* Progress indicator for long-running queries */}
-        <ProgressIndicator isVisible={isLoading || isTyping} />
+        {/* Progress indicator for long-running queries - Temporarily disabled */}
+        {/* <ProgressIndicator isVisible={isLoading || isTyping} /> */}
+
+        {/* Simple typing indicator */}
+        {(isLoading || isTyping) && (
+          <div className="flex items-center gap-3 p-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Loader2 size={16} className="animate-spin" />
+            </div>
+            <div className="flex items-center space-x-1 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground">
+              <span>AI is thinking</span>
+              <div className="flex space-x-1">
+                <div className="h-1 w-1 animate-pulse rounded-full bg-current"></div>
+                <div className="h-1 w-1 animate-pulse rounded-full bg-current delay-75"></div>
+                <div className="h-1 w-1 animate-pulse rounded-full bg-current delay-150"></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input form */}
+      {/* Suggestions panel */}
+      {showSuggestions && showSuggestionsPanel && (
+        <div className="px-4">
+          <ChatSuggestions
+            suggestions={suggestions}
+            onSuggestionClick={handleSuggestionClick}
+            visible={showSuggestionsPanel}
+          />
+        </div>
+      )}
+
+      {/* Enhanced input form */}
       <div className="border-t bg-background p-4">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <div className="flex-1">
@@ -135,6 +266,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               aria-label="Type your message"
             />
           </div>
+          
+          {/* Voice input button */}
+          {voiceEnabled && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 flex-shrink-0"
+              onClick={handleVoiceToggle}
+              disabled={disabled || isLoading}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+            >
+              {isListening ? (
+                <MicOff size={18} className="text-red-500" />
+              ) : (
+                <Mic size={18} />
+              )}
+            </Button>
+          )}
+          
           <Button
             type="submit"
             disabled={!inputValue.trim() || isLoading || disabled}
@@ -150,9 +301,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </Button>
         </form>
 
-        {/* Input hints */}
-        <div className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+        {/* Enhanced input hints */}
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span>Press Enter to send, Shift+Enter for new line</span>
+          {voiceEnabled && (
+            <span className="flex items-center gap-1">
+              <Mic size={12} />
+              Voice input {isListening ? 'active' : 'available'}
+            </span>
+          )}
         </div>
       </div>
     </div>
