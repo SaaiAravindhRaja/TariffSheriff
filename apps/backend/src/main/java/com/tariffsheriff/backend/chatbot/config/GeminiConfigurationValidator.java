@@ -1,10 +1,9 @@
 package com.tariffsheriff.backend.chatbot.config;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,11 +18,12 @@ public class GeminiConfigurationValidator {
     private GeminiProperties geminiProperties;
     
     /**
-     * Validates Gemini configuration after application startup
+     * Validates Gemini configuration after bean construction
+     * Uses @PostConstruct to run validation early in the application lifecycle
      */
-    @EventListener(ApplicationReadyEvent.class)
+    @PostConstruct
     public void validateConfiguration() {
-        logger.info("Validating Gemini configuration...");
+        logger.info("=== Validating Gemini Configuration ===");
         
         try {
             validateApiKey();
@@ -31,35 +31,56 @@ public class GeminiConfigurationValidator {
             validateBaseUrl();
             validateParameters();
             
-            logger.info("Gemini configuration validation completed successfully");
-            logger.info("Using Gemini model: {}", geminiProperties.getModel());
-            logger.info("Max tokens: {}, Temperature: {}, Timeout: {}ms", 
-                       geminiProperties.getMaxTokens(), 
-                       geminiProperties.getTemperature(), 
-                       geminiProperties.getTimeoutMs());
+            // Log configuration at startup without exposing the API key
+            logger.info("✓ Gemini configuration validation completed successfully");
+            logger.info("Configuration details:");
+            logger.info("  - Model: {}", geminiProperties.getModel());
+            logger.info("  - Base URL: {}", geminiProperties.getBaseUrl());
+            logger.info("  - Max Tokens: {}", geminiProperties.getMaxTokens());
+            logger.info("  - Temperature: {}", geminiProperties.getTemperature());
+            logger.info("  - Timeout: {}ms", geminiProperties.getTimeoutMs());
+            logger.info("  - API Key: Configured ({}...)", maskApiKey(geminiProperties.getApiKey()));
             
         } catch (Exception e) {
-            logger.error("Gemini configuration validation failed: {}", e.getMessage());
+            logger.error("✗ Gemini configuration validation FAILED: {}", e.getMessage());
             throw new IllegalStateException("Invalid Gemini configuration", e);
         }
     }
     
+    /**
+     * Masks the API key for safe logging
+     * Shows only the first 4 characters followed by asterisks
+     */
+    private String maskApiKey(String apiKey) {
+        if (apiKey == null || apiKey.length() < 4) {
+            return "****";
+        }
+        return apiKey.substring(0, 4) + "****";
+    }
+    
     private void validateApiKey() {
         String apiKey = geminiProperties.getApiKey();
+        
+        // Check API key presence
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("Gemini API key is required but not configured");
+            throw new IllegalArgumentException("GEMINI API KEY NOT CONFIGURED: API key is required but not set");
         }
         
-        if ("your_api_key_here".equals(apiKey)) {
-            throw new IllegalArgumentException("Gemini API key is not properly configured (still using placeholder value)");
+        // Check for placeholder values
+        if ("your_api_key_here".equals(apiKey) || "your-api-key-here".equals(apiKey)) {
+            throw new IllegalArgumentException("GEMINI API KEY NOT CONFIGURED: Still using placeholder value");
         }
         
-        // Basic format validation - Gemini API keys typically start with "AI"
-        if (!apiKey.startsWith("AI")) {
-            logger.warn("Gemini API key format may be invalid - expected to start with 'AI'");
+        // Validate API key format - Google Gemini API keys start with "AIza"
+        if (!apiKey.startsWith("AIza")) {
+            logger.warn("⚠ Gemini API key format may be invalid - expected to start with 'AIza' but got '{}'", 
+                       apiKey.substring(0, Math.min(4, apiKey.length())));
+            logger.warn("  This may cause authentication failures with the Gemini API");
+        } else {
+            logger.info("✓ API key format validation passed");
         }
         
-        logger.debug("Gemini API key validation passed");
+        logger.debug("Gemini API key validation completed");
     }
     
     private void validateModel() {

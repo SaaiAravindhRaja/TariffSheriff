@@ -28,7 +28,7 @@ public class GeminiProperties {
     
     @Min(value = 0, message = "Temperature must be at least 0")
     @Max(value = 2, message = "Temperature cannot exceed 2")
-    private double temperature = 0.1;
+    private double temperature = 0.7;
     
     @Min(value = 1000, message = "Timeout must be at least 1000ms")
     private int timeoutMs = 30000;

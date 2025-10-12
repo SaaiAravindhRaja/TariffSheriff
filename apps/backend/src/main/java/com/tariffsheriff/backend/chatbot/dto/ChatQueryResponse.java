@@ -15,6 +15,8 @@ public class ChatQueryResponse {
     private Long processingTimeMs;
     private boolean success;
     private boolean cached;
+    private boolean degraded;
+    private Double confidence;
     
     public ChatQueryResponse() {
         this.timestamp = LocalDateTime.now();
@@ -85,5 +87,35 @@ public class ChatQueryResponse {
     
     public void setCached(boolean cached) {
         this.cached = cached;
+    }
+    
+    public boolean isDegraded() {
+        return degraded;
+    }
+    
+    public void setDegraded(boolean degraded) {
+        this.degraded = degraded;
+    }
+    
+    public Double getConfidence() {
+        return confidence;
+    }
+    
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
+    
+    /**
+     * Get tool results (alias for toolsUsed for backward compatibility)
+     */
+    public List<String> getToolResults() {
+        return toolsUsed;
+    }
+    
+    /**
+     * Set tool results (alias for toolsUsed for backward compatibility)
+     */
+    public void setToolResults(List<String> toolResults) {
+        this.toolsUsed = toolResults;
     }
 }

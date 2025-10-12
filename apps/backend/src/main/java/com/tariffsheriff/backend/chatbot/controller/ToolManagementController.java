@@ -45,8 +45,8 @@ public class ToolManagementController {
     @GetMapping("/health")
     @Operation(summary = "Get tool health status", description = "Returns health status for all tools")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, ToolHealthMonitor.ToolHealthStatus>> getToolHealth() {
-        Map<String, ToolHealthMonitor.ToolHealthStatus> healthStatus = toolHealthMonitor.getAllToolHealth();
+    public ResponseEntity<Map<String, ToolHealthMonitor.EnhancedToolHealthStatus>> getToolHealth() {
+        Map<String, ToolHealthMonitor.EnhancedToolHealthStatus> healthStatus = toolHealthMonitor.getAllToolHealth();
         return ResponseEntity.ok(healthStatus);
     }
     
@@ -56,8 +56,8 @@ public class ToolManagementController {
     @GetMapping("/health/{toolName}")
     @Operation(summary = "Get specific tool health", description = "Returns health status for a specific tool")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ToolHealthMonitor.ToolHealthStatus> getToolHealth(@PathVariable String toolName) {
-        ToolHealthMonitor.ToolHealthStatus healthStatus = toolHealthMonitor.getToolHealth(toolName);
+    public ResponseEntity<ToolHealthMonitor.EnhancedToolHealthStatus> getToolHealth(@PathVariable String toolName) {
+        ToolHealthMonitor.EnhancedToolHealthStatus healthStatus = toolHealthMonitor.getToolHealth(toolName);
         return ResponseEntity.ok(healthStatus);
     }
     
