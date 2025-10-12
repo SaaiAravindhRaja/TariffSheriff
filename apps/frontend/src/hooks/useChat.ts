@@ -68,11 +68,25 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     if (persistConversation && !initialConversationId) {
       const saved = safeLocalStorage.get<{
         conversationId: string;
-        messages: ChatMessage[];
+        messages: Array<Omit<ChatMessage, 'timestamp'> & { timestamp: string | number | Date }>;
       }>(STORAGE_KEY);
-      
+
       if (saved && saved.messages && saved.messages.length > 0) {
-        setMessages(saved.messages);
+        const normalizedMessages: ChatMessage[] = saved.messages.map((message) => {
+          if (message.timestamp instanceof Date) {
+            return message as ChatMessage;
+          }
+
+          const parsedTimestamp = new Date(message.timestamp);
+          const fallbackTimestamp = Number.isNaN(parsedTimestamp.getTime()) ? new Date() : parsedTimestamp;
+
+          return {
+            ...message,
+            timestamp: fallbackTimestamp,
+          } as ChatMessage;
+        });
+
+        setMessages(normalizedMessages);
         setConversationId(saved.conversationId);
       }
     }
@@ -81,9 +95,14 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   // Save conversation to localStorage when messages change
   useEffect(() => {
     if (persistConversation && conversationId && messages.length > 0) {
+      const serializableMessages = messages.slice(-maxMessages).map((message) => ({
+        ...message,
+        timestamp: message.timestamp instanceof Date ? message.timestamp.toISOString() : message.timestamp,
+      }));
+
       safeLocalStorage.set(STORAGE_KEY, {
         conversationId,
-        messages: messages.slice(-maxMessages), // Only save recent messages
+        messages: serializableMessages,
       });
     }
   }, [messages, conversationId, persistConversation, maxMessages]);
