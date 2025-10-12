@@ -169,8 +169,29 @@ start_backend() {
         print_warning "Backend .env file not found. Using default configuration."
     fi
     
+    # Check if the project compiles first
+    print_status "Checking if backend compiles..."
+    if ! mvn compile -q > ../../compile.log 2>&1; then
+        print_error "Backend compilation failed!"
+        print_error "The application has compilation errors that need to be fixed first."
+        print_error ""
+        print_error "Common issues found:"
+        print_error "• Missing dependencies (Micrometer, Spring Mail)"
+        print_error "• Incomplete AI service implementations"
+        print_error "• Missing method implementations in model classes"
+        print_error ""
+        print_error "To see detailed compilation errors, run:"
+        print_error "  cd apps/backend && mvn compile"
+        print_error ""
+        print_error "Or check the compile.log file for details."
+        cd "$ORIGINAL_DIR"
+        exit 1
+    fi
+    
+    print_success "Backend compilation successful!"
+    
     # Start backend in background
-    print_status "Compiling and starting Spring Boot application..."
+    print_status "Starting Spring Boot application..."
     mvn spring-boot:run -Dspring-boot.run.arguments="--spring.flyway.validate-on-migrate=false" > ../../backend.log 2>&1 &
     BACKEND_PID=$!
     

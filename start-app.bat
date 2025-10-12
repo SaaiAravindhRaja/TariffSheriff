@@ -64,8 +64,31 @@ REM Start backend
 echo [INFO] Starting backend service...
 cd apps\backend
 
+REM Check if the project compiles first
+echo [INFO] Checking if backend compiles...
+mvn compile -q > ..\compile.log 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Backend compilation failed!
+    echo [ERROR] The application has compilation errors that need to be fixed first.
+    echo [ERROR]
+    echo [ERROR] Common issues found:
+    echo [ERROR] • Missing dependencies (Micrometer, Spring Mail)
+    echo [ERROR] • Incomplete AI service implementations
+    echo [ERROR] • Missing method implementations in model classes
+    echo [ERROR]
+    echo [ERROR] To see detailed compilation errors, run:
+    echo [ERROR]   cd apps\backend ^&^& mvn compile
+    echo [ERROR]
+    echo [ERROR] Or check the compile.log file for details.
+    cd ..
+    pause
+    exit /b 1
+)
+
+echo [SUCCESS] Backend compilation successful!
+
 REM Start backend in background
-echo [INFO] Compiling and starting Spring Boot application...
+echo [INFO] Starting Spring Boot application...
 start "TariffSheriff Backend" /min cmd /c "mvn spring-boot:run > ..\backend.log 2>&1"
 
 cd ..
