@@ -17,6 +17,9 @@ public class GeminiRequest {
     @JsonProperty("generationConfig")
     private GenerationConfig generationConfig;
     
+    @JsonProperty("system_instruction")
+    private Content systemInstruction;
+    
     public GeminiRequest() {}
     
     public GeminiRequest(List<Content> contents) {
@@ -53,6 +56,14 @@ public class GeminiRequest {
     
     public void setGenerationConfig(GenerationConfig generationConfig) {
         this.generationConfig = generationConfig;
+    }
+    
+    public Content getSystemInstruction() {
+        return systemInstruction;
+    }
+    
+    public void setSystemInstruction(Content systemInstruction) {
+        this.systemInstruction = systemInstruction;
     }
     
     /**
