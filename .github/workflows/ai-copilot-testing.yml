@@ -90,7 +90,7 @@ jobs:
         mvn surefire-report:report
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: backend-test-results
@@ -143,7 +143,7 @@ jobs:
         name: frontend-coverage
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: frontend-test-results
@@ -181,7 +181,7 @@ jobs:
         mvn org.owasp:dependency-check-maven:check
 
     - name: Upload Security Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-test-results
@@ -242,7 +242,7 @@ jobs:
         SPRING_DATASOURCE_PASSWORD: testpassword
 
     - name: Upload Performance Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: performance-test-results
@@ -303,7 +303,7 @@ jobs:
         npm run test:acceptance -- --run --reporter=verbose
 
     - name: Upload Acceptance Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: acceptance-test-results
@@ -409,7 +409,7 @@ jobs:
         # Add artifact creation logic here
 
     - name: Upload Deployment Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-artifact
         path: deployment/
@@ -457,7 +457,7 @@ jobs:
         fi
 
     - name: Upload Test Summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-summary
         path: test-summary.md
