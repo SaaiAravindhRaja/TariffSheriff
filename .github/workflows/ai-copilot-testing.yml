@@ -347,7 +347,7 @@ jobs:
         mvn exec:java -Dexec.mainClass="com.tariffsheriff.backend.quality.QualityReportGenerator"
 
     - name: Comment PR with Quality Metrics
-      uses: actions/github-script@v6
+      uses: actions/github-script@v8
       with:
         script: |
           const fs = require('fs');
@@ -464,7 +464,7 @@ jobs:
 
     - name: Notify on Failure
       if: failure()
-      uses: actions/github-script@v6
+      uses: actions/github-script@v8
       with:
         script: |
           github.rest.issues.create({
