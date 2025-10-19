@@ -175,9 +175,24 @@ public class RiskAssessmentTool implements ChatbotTool {
             return toolResult;
             
         } catch (Exception e) {
-            logger.error("Error executing trade risk assessment tool", e);
-            ToolResult errorResult = ToolResult.error(getName(), 
-                "Failed to perform trade risk assessment: " + e.getMessage());
+            logger.error("Error executing trade risk assessment tool for importer: {}, origins: {}", 
+                    toolCall.getStringArgument("importerIso2"), 
+                    toolCall.getArgument("originCountries"), e);
+            
+            String userMessage = "I had trouble assessing trade risks. ";
+            
+            // Provide helpful guidance
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("database")) {
+                userMessage += "There's a problem connecting to the risk assessment data. Please try again in a moment.";
+            } else {
+                userMessage += "Please try:\n" +
+                        "• Verifying all country codes are correct (2-letter codes like 'US', 'CN', 'MX')\n" +
+                        "• Providing at least one origin country\n" +
+                        "• Simplifying your risk assessment question\n" +
+                        "• Asking about specific risk types (political, economic, supply-chain, financial)";
+            }
+            
+            ToolResult errorResult = ToolResult.error(getName(), userMessage);
             errorResult.setExecutionTimeMs(System.currentTimeMillis() - startTime);
             return errorResult;
         }
