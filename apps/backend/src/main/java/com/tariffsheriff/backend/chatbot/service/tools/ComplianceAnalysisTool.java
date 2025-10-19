@@ -163,9 +163,25 @@ public class ComplianceAnalysisTool implements ChatbotTool {
             return toolResult;
             
         } catch (Exception e) {
-            logger.error("Error executing compliance analysis tool", e);
-            ToolResult errorResult = ToolResult.error(getName(), 
-                "Failed to perform compliance analysis: " + e.getMessage());
+            logger.error("Error executing compliance analysis tool for route {} -> {}, HS code: {}", 
+                    toolCall.getStringArgument("originIso2"), 
+                    toolCall.getStringArgument("importerIso2"), 
+                    toolCall.getStringArgument("hsCode"), e);
+            
+            String userMessage = "I had trouble analyzing compliance requirements. ";
+            
+            // Provide helpful guidance
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("database")) {
+                userMessage += "There's a problem connecting to the compliance database. Please try again in a moment.";
+            } else {
+                userMessage += "Please try:\n" +
+                        "• Verifying the country codes are correct (2-letter codes like 'US', 'MX', 'CN')\n" +
+                        "• Checking that the HS code is valid\n" +
+                        "• Simplifying your compliance question\n" +
+                        "• Asking about specific compliance aspects (documentation, procedures, licensing)";
+            }
+            
+            ToolResult errorResult = ToolResult.error(getName(), userMessage);
             errorResult.setExecutionTimeMs(System.currentTimeMillis() - startTime);
             return errorResult;
         }

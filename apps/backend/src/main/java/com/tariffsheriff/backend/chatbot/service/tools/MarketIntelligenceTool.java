@@ -170,9 +170,24 @@ public class MarketIntelligenceTool implements ChatbotTool {
             return toolResult;
             
         } catch (Exception e) {
-            logger.error("Error executing market intelligence analysis tool", e);
-            ToolResult errorResult = ToolResult.error(getName(), 
-                "Failed to perform market intelligence analysis: " + e.getMessage());
+            logger.error("Error executing market intelligence analysis tool for market: {}, product: {}", 
+                    toolCall.getStringArgument("marketCountry"), 
+                    toolCall.getStringArgument("productCategory"), e);
+            
+            String userMessage = "I had trouble analyzing market intelligence. ";
+            
+            // Provide helpful guidance
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("database")) {
+                userMessage += "There's a problem connecting to the market data. Please try again in a moment.";
+            } else {
+                userMessage += "Please try:\n" +
+                        "• Verifying the market country code is correct (2-letter code like 'US', 'JP', 'DE')\n" +
+                        "• Providing a clearer product category description\n" +
+                        "• Simplifying your market analysis question\n" +
+                        "• Asking about specific aspects (trends, opportunities, competition, pricing)";
+            }
+            
+            ToolResult errorResult = ToolResult.error(getName(), userMessage);
             errorResult.setExecutionTimeMs(System.currentTimeMillis() - startTime);
             return errorResult;
         }

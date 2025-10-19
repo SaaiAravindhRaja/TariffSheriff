@@ -64,6 +64,22 @@ public class ToolProperties {
         agreementTool.setMaxRetries(1);
         agreementTool.setDescription("Get trade agreements for specific countries");
         tools.put("getAgreementsByCountry", agreementTool);
+        
+        // Country Info Tool
+        ToolConfig countryInfoTool = new ToolConfig();
+        countryInfoTool.setEnabled(true);
+        countryInfoTool.setTimeoutMs(5000);
+        countryInfoTool.setMaxRetries(1);
+        countryInfoTool.setDescription("Get information about countries, list all countries, or search countries by name");
+        tools.put("getCountryInfo", countryInfoTool);
+        
+        // Tariff Comparison Tool
+        ToolConfig tariffComparisonTool = new ToolConfig();
+        tariffComparisonTool.setEnabled(true);
+        tariffComparisonTool.setTimeoutMs(15000); // Longer timeout for multiple queries
+        tariffComparisonTool.setMaxRetries(1);
+        tariffComparisonTool.setDescription("Compare tariff rates across multiple origin countries for the same product");
+        tools.put("compareTariffRoutes", tariffComparisonTool);
     }
     
     // Getters and setters

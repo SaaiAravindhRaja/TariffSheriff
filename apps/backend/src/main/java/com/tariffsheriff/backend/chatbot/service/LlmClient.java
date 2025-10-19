@@ -1,11 +1,11 @@
 package com.tariffsheriff.backend.chatbot.service;
 
-import com.tariffsheriff.backend.chatbot.config.GeminiProperties;
+import com.tariffsheriff.backend.chatbot.config.OpenAiProperties;
 import com.tariffsheriff.backend.chatbot.dto.ToolCall;
 import com.tariffsheriff.backend.chatbot.dto.ToolDefinition;
 import com.tariffsheriff.backend.chatbot.exception.LlmServiceException;
-import com.tariffsheriff.backend.chatbot.model.GeminiRequest;
-import com.tariffsheriff.backend.chatbot.model.GeminiResponse;
+import com.tariffsheriff.backend.chatbot.model.OpenAiRequest;
+import com.tariffsheriff.backend.chatbot.model.OpenAiResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -16,14 +16,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * HTTP client for Gemini API interactions
+ * HTTP client for OpenAI API interactions
  */
 @Service
 public class LlmClient {
@@ -31,119 +33,148 @@ public class LlmClient {
     private static final Logger logger = LoggerFactory.getLogger(LlmClient.class);
     
     private final WebClient webClient;
-    private final GeminiProperties geminiProperties;
+    private final OpenAiProperties openAiProperties;
     private final ObjectMapper objectMapper;
     
     @Autowired
-    public LlmClient(GeminiProperties geminiProperties, ObjectMapper objectMapper) {
-        this.geminiProperties = geminiProperties;
+    public LlmClient(OpenAiProperties openAiProperties, ObjectMapper objectMapper) {
+        this.openAiProperties = openAiProperties;
         this.objectMapper = objectMapper;
         this.webClient = WebClient.builder()
-                .baseUrl(geminiProperties.getBaseUrl())
+                .baseUrl(openAiProperties.getBaseUrl())
+                .defaultHeader("Authorization", "Bearer " + openAiProperties.getApiKey())
+                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
     
     /**
-     * Send a chat request to Gemini API for tool selection
+     * Select appropriate tool for the user query
+     * Phase 1: Tool Selection
      */
-    public ToolCall sendToolSelectionRequest(String query, List<ToolDefinition> availableTools) {
-        logger.debug("Sending tool selection request for query: {}", query);
+    public ToolCall selectTool(String query, List<ToolDefinition> availableTools, 
+                              List<ConversationService.ConversationMessage> conversationHistory) {
+        logger.debug("Selecting tool for query: {}", query);
         
         try {
-            GeminiRequest request = buildToolSelectionRequest(query, availableTools);
-            GeminiResponse response = sendRequest(request);
+            OpenAiRequest request = buildToolSelectionRequest(query, availableTools, conversationHistory);
+            OpenAiResponse response = sendRequest(request);
             
             return parseToolCall(response);
             
+        } catch (LlmServiceException e) {
+            throw e;
         } catch (Exception e) {
-            logger.error("Failed to get tool selection from LLM", e);
-            throw new LlmServiceException("Failed to analyze your query. Please try again.", e);
+            logger.error("Failed to select tool from LLM for query: '{}', available tools: {}", 
+                    query, availableTools.stream().map(ToolDefinition::getName).collect(Collectors.toList()), e);
+            throw new LlmServiceException("I'm having trouble understanding your question. Please try again.", e);
         }
     }
     
     /**
-     * Send a chat request to Gemini API for response generation
+     * Generate conversational response from tool results
+     * Phase 2: Response Generation
      */
-    public String sendResponseGenerationRequest(String query, String toolResult) {
-        logger.debug("Sending response generation request for query: {}", query);
+    public String generateResponse(String query, String toolData, 
+                                   List<ConversationService.ConversationMessage> conversationHistory) {
+        logger.debug("Generating response for query: {}", query);
         
         try {
-            GeminiRequest request = buildResponseGenerationRequest(query, toolResult);
-            GeminiResponse response = sendRequest(request);
+            OpenAiRequest request = buildResponseGenerationRequest(query, toolData, conversationHistory);
+            OpenAiResponse response = sendRequest(request);
             
             return parseTextResponse(response);
             
+        } catch (LlmServiceException e) {
+            throw e;
         } catch (Exception e) {
-            logger.error("Failed to generate response from LLM", e);
-            throw new LlmServiceException("Failed to generate a response. Please try again.", e);
+            logger.error("Failed to generate response from LLM for query: '{}', tool data length: {} chars", 
+                    query, toolData != null ? toolData.length() : 0, e);
+            throw new LlmServiceException("I'm having trouble formulating a response. Please try again.", e);
         }
     }
     
     /**
-     * Send generic request to Gemini API
+     * Send request to OpenAI API with retry logic
      */
-    private GeminiResponse sendRequest(GeminiRequest request) {
-        String url = String.format("/models/%s:generateContent?key=%s", 
-                geminiProperties.getModel(), geminiProperties.getApiKey());
-        
+    private OpenAiResponse sendRequest(OpenAiRequest request) {
         try {
             return webClient.post()
-                    .uri(url)
+                    .uri("/chat/completions")
                     .bodyValue(request)
                     .retrieve()
-                    .bodyToMono(GeminiResponse.class)
-                    .timeout(Duration.ofMillis(geminiProperties.getTimeoutMs()))
+                    .bodyToMono(OpenAiResponse.class)
+                    .timeout(Duration.ofMillis(openAiProperties.getTimeoutMs()))
+                    .retryWhen(Retry.fixedDelay(openAiProperties.getMaxRetries(), Duration.ofSeconds(1))
+                            .filter(throwable -> throwable instanceof WebClientResponseException &&
+                                    ((WebClientResponseException) throwable).getStatusCode().is5xxServerError()))
                     .block();
                     
         } catch (WebClientResponseException e) {
-            logger.error("Gemini API error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            
-            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-                throw new LlmServiceException("Invalid API key configuration");
-            } else if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                throw new LlmServiceException("Rate limit exceeded. Please try again in a moment.");
-            } else if (e.getStatusCode().is5xxServerError()) {
-                throw new LlmServiceException("Gemini service is temporarily unavailable");
-            } else {
-                throw new LlmServiceException("Failed to communicate with AI service");
-            }
+            logger.error("OpenAI API error: {} - {}, Request model: {}, messages: {}", 
+                    e.getStatusCode(), e.getResponseBodyAsString(), 
+                    request.getModel(), request.getMessages().size());
+            handleApiError(e);
+            throw new LlmServiceException("Failed to communicate with AI service");
             
         } catch (Exception e) {
-            logger.error("Unexpected error calling Gemini API", e);
-            throw new LlmServiceException("AI service is temporarily unavailable", e);
+            logger.error("Unexpected error calling OpenAI API, Request model: {}, messages: {}", 
+                    request.getModel(), request.getMessages().size(), e);
+            throw new LlmServiceException("I'm having trouble connecting to my AI service. Please try again in a moment.", e);
+        }
+    }
+    
+    /**
+     * Handle API errors with user-friendly messages
+     */
+    private void handleApiError(WebClientResponseException e) {
+        if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
+            throw new LlmServiceException("AI service authentication failed. Please contact support.");
+        } else if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+            throw new LlmServiceException("Too many requests. Please try again in a moment.");
+        } else if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+            logger.error("Bad request to OpenAI: {}", e.getResponseBodyAsString());
+            throw new LlmServiceException("Invalid request format. Please try rephrasing your question.");
+        } else if (e.getStatusCode().is5xxServerError()) {
+            throw new LlmServiceException("AI service is temporarily unavailable. Please try again in a moment.");
         }
     }
     
     /**
      * Build request for tool selection phase
      */
-    private GeminiRequest buildToolSelectionRequest(String query, List<ToolDefinition> availableTools) {
-        // Create content with user query
-        GeminiRequest.Part queryPart = new GeminiRequest.Part(query);
-        GeminiRequest.Content userContent = new GeminiRequest.Content("user", List.of(queryPart));
+    private OpenAiRequest buildToolSelectionRequest(String query, List<ToolDefinition> availableTools,
+                                                    List<ConversationService.ConversationMessage> conversationHistory) {
+        // System message to guide the AI
+        String systemPrompt = "You are a helpful AI assistant for Tariff Sheriff, a trade and tariff information system. " +
+                "Your role is to help users find tariff rates, HS codes, trade agreements, and other trade-related information. " +
+                "When a user asks a question, select the most appropriate tool to fetch the data they need. " +
+                "If you can answer directly without tools (like greetings or general questions), respond naturally without calling a tool. " +
+                "Use the conversation history to understand context and follow-up questions.";
         
-        // Convert tool definitions to Gemini format
-        List<GeminiRequest.FunctionDeclaration> functionDeclarations = availableTools.stream()
+        List<OpenAiRequest.Message> messages = new ArrayList<>();
+        messages.add(new OpenAiRequest.Message("system", systemPrompt));
+        
+        // Add conversation history for context
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            for (ConversationService.ConversationMessage historyMsg : conversationHistory) {
+                messages.add(new OpenAiRequest.Message(historyMsg.getRole(), historyMsg.getContent()));
+            }
+        }
+        
+        // Add current user query
+        messages.add(new OpenAiRequest.Message("user", query));
+        
+        // Convert tool definitions to OpenAI format
+        List<OpenAiRequest.Tool> tools = availableTools.stream()
                 .filter(ToolDefinition::isEnabled)
-                .map(this::convertToFunctionDeclaration)
+                .map(this::convertToOpenAiTool)
                 .collect(Collectors.toList());
         
-        GeminiRequest.Tool tool = new GeminiRequest.Tool(functionDeclarations);
-        
-        // Configure function calling
-        GeminiRequest.FunctionCallingConfig functionConfig = new GeminiRequest.FunctionCallingConfig("AUTO");
-        GeminiRequest.ToolConfig toolConfig = new GeminiRequest.ToolConfig(functionConfig);
-        
-        // Configure generation
-        GeminiRequest.GenerationConfig generationConfig = new GeminiRequest.GenerationConfig(
-                geminiProperties.getTemperature(),
-                geminiProperties.getMaxTokens()
-        );
-        
-        GeminiRequest request = new GeminiRequest(List.of(userContent));
-        request.setTools(List.of(tool));
-        request.setToolConfig(toolConfig);
-        request.setGenerationConfig(generationConfig);
+        OpenAiRequest request = new OpenAiRequest(openAiProperties.getModel(), messages);
+        request.setTools(tools);
+        request.setToolChoice("auto"); // Let the model decide whether to use a tool
+        request.setTemperature(openAiProperties.getTemperature());
+        request.setMaxTokens(openAiProperties.getMaxTokens());
         
         return request;
     }
@@ -151,193 +182,131 @@ public class LlmClient {
     /**
      * Build request for response generation phase
      */
-    private GeminiRequest buildResponseGenerationRequest(String query, String toolResult) {
-        String prompt = String.format(
-                "User query: %s\n\nTool result: %s\n\n" +
-                "Please provide a helpful, conversational response based on the tool result. " +
-                "Format the information clearly and explain any technical terms. " +
-                "If the tool result indicates no data was found, suggest alternative approaches.",
-                query, toolResult
+    private OpenAiRequest buildResponseGenerationRequest(String query, String toolData,
+                                                         List<ConversationService.ConversationMessage> conversationHistory) {
+        String systemPrompt = "You are a helpful AI assistant for Tariff Sheriff. " +
+                "Generate natural, conversational responses that explain trade and tariff information clearly. " +
+                "Use simple language and explain technical terms. " +
+                "Be concise but complete. " +
+                "If data is missing or not found, suggest alternative approaches or related information. " +
+                "Use the conversation history to maintain context and provide coherent follow-up responses.";
+        
+        List<OpenAiRequest.Message> messages = new ArrayList<>();
+        messages.add(new OpenAiRequest.Message("system", systemPrompt));
+        
+        // Add conversation history for context
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            for (ConversationService.ConversationMessage historyMsg : conversationHistory) {
+                messages.add(new OpenAiRequest.Message(historyMsg.getRole(), historyMsg.getContent()));
+            }
+        }
+        
+        // Add current query and tool data
+        String userPrompt = String.format(
+                "User asked: %s\n\n" +
+                "Tool returned this data: %s\n\n" +
+                "Please provide a helpful, conversational response that:\n" +
+                "- Directly answers the user's question\n" +
+                "- Explains the data in user-friendly terms\n" +
+                "- Highlights key information\n" +
+                "- Suggests related information if helpful",
+                query, toolData
         );
+        messages.add(new OpenAiRequest.Message("user", userPrompt));
         
-        GeminiRequest.Part promptPart = new GeminiRequest.Part(prompt);
-        GeminiRequest.Content userContent = new GeminiRequest.Content("user", List.of(promptPart));
-        
-        GeminiRequest.GenerationConfig generationConfig = new GeminiRequest.GenerationConfig(
-                geminiProperties.getTemperature(),
-                geminiProperties.getMaxTokens()
-        );
-        
-        GeminiRequest request = new GeminiRequest(List.of(userContent));
-        request.setGenerationConfig(generationConfig);
+        OpenAiRequest request = new OpenAiRequest(openAiProperties.getModel(), messages);
+        request.setTemperature(openAiProperties.getTemperature());
+        request.setMaxTokens(openAiProperties.getMaxTokens());
         
         return request;
     }
     
     /**
-     * Convert ToolDefinition to Gemini FunctionDeclaration
+     * Convert ToolDefinition to OpenAI Tool format
      */
-    private GeminiRequest.FunctionDeclaration convertToFunctionDeclaration(ToolDefinition toolDef) {
-        return new GeminiRequest.FunctionDeclaration(
+    private OpenAiRequest.Tool convertToOpenAiTool(ToolDefinition toolDef) {
+        OpenAiRequest.FunctionDefinition function = new OpenAiRequest.FunctionDefinition(
                 toolDef.getName(),
                 toolDef.getDescription(),
                 toolDef.getParameters()
         );
+        return new OpenAiRequest.Tool(function);
     }
     
     /**
-     * Parse tool call from Gemini response
+     * Parse tool call from OpenAI response
      */
-    private ToolCall parseToolCall(GeminiResponse response) {
-        if (response == null || response.getCandidates() == null || response.getCandidates().isEmpty()) {
+    private ToolCall parseToolCall(OpenAiResponse response) {
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
             throw new LlmServiceException("Empty response from AI service");
         }
         
-        GeminiResponse.Candidate candidate = response.getCandidates().get(0);
-        if (candidate.getContent() == null || candidate.getContent().getParts() == null) {
+        OpenAiResponse.Choice choice = response.getChoices().get(0);
+        OpenAiResponse.Message message = choice.getMessage();
+        
+        if (message == null) {
             throw new LlmServiceException("Invalid response format from AI service");
         }
         
-        // Look for function call in response parts
-        String directText = null;
-        for (GeminiResponse.Part part : candidate.getContent().getParts()) {
-            if (part.getFunctionCall() != null) {
-                GeminiResponse.FunctionCall functionCall = part.getFunctionCall();
-                
-                // Convert args to Map<String, Object>
-                Map<String, Object> arguments = convertArgsToMap(functionCall.getArgs());
-                
-                return new ToolCall(functionCall.getName(), arguments);
+        // Check if the model wants to call a tool
+        if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
+            OpenAiResponse.ToolCall toolCall = message.getToolCalls().get(0);
+            OpenAiResponse.Function function = toolCall.getFunction();
+            
+            if (function == null || function.getName() == null) {
+                throw new LlmServiceException("Invalid tool call format from AI service");
             }
-            if (part.getText() != null && !part.getText().trim().isEmpty()) {
-                directText = part.getText().trim();
-            }
-        }
-        if (directText != null) {
-            logger.debug("LLM returned direct response text without tool invocation");
-            return new ToolCall(ToolCall.DIRECT_RESPONSE_TOOL, Map.of("text", directText));
+            
+            // Parse function arguments from JSON string
+            Map<String, Object> arguments = parseArguments(function.getArguments());
+            
+            return new ToolCall(function.getName(), arguments, toolCall.getId());
         }
         
-        // If no function call found, throw exception
-        throw new LlmServiceException("AI service did not select a tool for your query. Please try rephrasing your question.");
+        // Check if the model responded directly without a tool
+        if (message.getContent() != null && !message.getContent().trim().isEmpty()) {
+            logger.debug("LLM returned direct response without tool call");
+            return new ToolCall(ToolCall.DIRECT_RESPONSE_TOOL, Map.of("text", message.getContent().trim()));
+        }
+        
+        // No tool call and no content
+        throw new LlmServiceException("I couldn't understand your question. Please try rephrasing it.");
     }
     
     /**
-     * Parse text response from Gemini response
+     * Parse text response from OpenAI response
      */
-    private String parseTextResponse(GeminiResponse response) {
-        if (response == null || response.getCandidates() == null || response.getCandidates().isEmpty()) {
+    private String parseTextResponse(OpenAiResponse response) {
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
             throw new LlmServiceException("Empty response from AI service");
         }
         
-        GeminiResponse.Candidate candidate = response.getCandidates().get(0);
-        if (candidate.getContent() == null || candidate.getContent().getParts() == null) {
-            throw new LlmServiceException("Invalid response format from AI service");
+        OpenAiResponse.Choice choice = response.getChoices().get(0);
+        OpenAiResponse.Message message = choice.getMessage();
+        
+        if (message == null || message.getContent() == null || message.getContent().trim().isEmpty()) {
+            throw new LlmServiceException("AI service returned an empty response");
         }
         
-        // Look for text in response parts
-        for (GeminiResponse.Part part : candidate.getContent().getParts()) {
-            if (part.getText() != null && !part.getText().trim().isEmpty()) {
-                return part.getText().trim();
-            }
-        }
-        
-        throw new LlmServiceException("AI service returned an empty response");
+        return message.getContent().trim();
     }
     
     /**
-     * Convert function call args to Map
+     * Parse function arguments from JSON string
      */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> convertArgsToMap(Object args) {
-        if (args == null) {
+    private Map<String, Object> parseArguments(String argumentsJson) {
+        if (argumentsJson == null || argumentsJson.trim().isEmpty()) {
             return Map.of();
         }
         
-        if (args instanceof Map) {
-            return (Map<String, Object>) args;
-        }
-        
-        // Try to convert using ObjectMapper
         try {
-            String json = objectMapper.writeValueAsString(args);
-            return objectMapper.readValue(json, Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = objectMapper.readValue(argumentsJson, Map.class);
+            return arguments;
         } catch (JsonProcessingException e) {
-            logger.warn("Failed to convert function args to map: {}", args, e);
+            logger.warn("Failed to parse function arguments: {}", argumentsJson, e);
             return Map.of();
         }
     }
     
-    /**
-     * Send a conversational request to Gemini API (for direct responses without tools)
-     */
-    public String sendConversationalRequest(GeminiRequest request) {
-        logger.debug("Sending conversational request");
-        
-        try {
-            GeminiResponse response = sendRequest(request);
-            return parseTextResponse(response);
-        } catch (Exception e) {
-            logger.error("Failed to get conversational response from LLM", e);
-            throw new LlmServiceException("Failed to generate a response. Please try again.", e);
-        }
-    }
-    
-    /**
-     * Test connectivity to Gemini API
-     */
-    public com.tariffsheriff.backend.chatbot.dto.DiagnosticResult testConnectivity(String testQuery) {
-        logger.debug("Testing Gemini API connectivity with query: {}", testQuery);
-        
-        long startTime = System.currentTimeMillis();
-        
-        try {
-            GeminiRequest request = new GeminiRequest();
-            GeminiRequest.Content content = new GeminiRequest.Content();
-            content.setRole("user");
-            
-            GeminiRequest.Part part = new GeminiRequest.Part();
-            part.setText(testQuery);
-            content.setParts(List.of(part));
-            
-            request.setContents(List.of(content));
-            
-            GeminiRequest.GenerationConfig config = new GeminiRequest.GenerationConfig();
-            config.setTemperature(geminiProperties.getTemperature());
-            config.setMaxOutputTokens(geminiProperties.getMaxTokens());
-            request.setGenerationConfig(config);
-            
-            GeminiResponse response = sendRequest(request);
-            long timingMs = System.currentTimeMillis() - startTime;
-            
-            // Extract response text
-            String responseText = parseTextResponse(response);
-            
-            return com.tariffsheriff.backend.chatbot.dto.DiagnosticResult.builder()
-                    .success(true)
-                    .timingMs(timingMs)
-                    .phase("complete")
-                    .rawRequest(request)
-                    .rawResponse(response)
-                    .addMetadata("responseText", responseText)
-                    .addMetadata("model", geminiProperties.getModel())
-                    .addMetadata("baseUrl", geminiProperties.getBaseUrl())
-                    .addMetadata("timeout", geminiProperties.getTimeoutMs())
-                    .addMetadata("candidatesCount", response.getCandidates() != null ? response.getCandidates().size() : 0)
-                    .addMetadata("finishReason", response.getCandidates() != null && !response.getCandidates().isEmpty() 
-                            ? response.getCandidates().get(0).getFinishReason() : null)
-                    .build();
-        } catch (Exception e) {
-            long timingMs = System.currentTimeMillis() - startTime;
-            logger.error("Connectivity test failed", e);
-            
-            return com.tariffsheriff.backend.chatbot.dto.DiagnosticResult.builder()
-                    .success(false)
-                    .timingMs(timingMs)
-                    .phase("error")
-                    .error(e.getMessage())
-                    .addMetadata("errorType", e.getClass().getSimpleName())
-                    .build();
-        }
-    }
 }
