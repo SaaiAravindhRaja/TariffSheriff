@@ -71,6 +71,16 @@ public class RateLimitService {
     }
     
     /**
+     * Allow a request and record it (alias for isAllowed that also records)
+     * 
+     * @param userEmail The user's email address
+     * @return true if request is allowed, false if rate limit exceeded
+     */
+    public boolean allowRequest(String userEmail) {
+        return isAllowed(userEmail);
+    }
+    
+    /**
      * Get current rate limit status for a user
      * 
      * @param userEmail The user's email address
