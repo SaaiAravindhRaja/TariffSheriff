@@ -42,59 +42,15 @@ check_port() {
     fi
 }
 
-# Function to kill processes on specific ports
 cleanup_ports() {
-    print_status "Cleaning up any existing processes..."
-    
-    # Kill any processes on port 8080 (backend)
-    if check_port 8080; then
-        print_warning "Port 8080 is in use. Killing processes..."
-        lsof -ti:8080 | xargs kill -9 2>/dev/null || true
-        pkill -f "spring-boot:run" 2>/dev/null || true
-        pkill -f "java.*backend" 2>/dev/null || true
-        pkill -f "mvn.*spring-boot" 2>/dev/null || true
-        sleep 3
-        
-        # Double check and force kill if still running
-        if check_port 8080; then
-            print_warning "Port 8080 still in use. Force killing..."
-            lsof -ti:8080 | xargs kill -9 2>/dev/null || true
-            sleep 2
-        fi
-    fi
-    
-    # Kill any processes on port 3000 (frontend) - AGGRESSIVE CLEANUP
-    print_warning "Aggressively cleaning port 3000..."
-    lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-    pkill -f "vite" 2>/dev/null || true
-    pkill -f "node.*vite" 2>/dev/null || true
-    pkill -f "npm.*dev" 2>/dev/null || true
-    pkill -f "decibel" 2>/dev/null || true
-    pkill -f "Decibel" 2>/dev/null || true
-    sleep 3
-    
-    # Double check and force kill if still running
-    if check_port 3000; then
-        print_warning "Port 3000 still in use. Force killing everything on this port..."
-        lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-        sleep 3
-        
-        # Triple check with extreme prejudice
-        if check_port 3000; then
-            print_warning "Port 3000 STILL in use. Nuclear option..."
-            sudo lsof -ti:3000 | xargs sudo kill -9 2>/dev/null || true
-            sleep 2
-        fi
-    fi
-    
-    # Final verification
-    if check_port 8080 || check_port 3000; then
-        print_error "Unable to free required ports. Please manually kill processes and try again."
-        print_error "Run: lsof -ti:8080,3000 | xargs kill -9"
-        exit 1
-    fi
-    
-    print_success "Ports 8080 and 3000 are now available."
+    print_status "Checking ports 8080 and 3000..."
+    for p in 8080 3000; do
+      if check_port $p; then
+        print_warning "Port $p is in use. Attempting graceful stop..."
+        lsof -ti:$p | xargs kill 2>/dev/null || true
+        sleep 2
+      fi
+    done
 }
 
 # Function to check prerequisites
@@ -169,26 +125,9 @@ start_backend() {
         print_warning "Backend .env file not found. Using default configuration."
     fi
     
-    # Check if the project compiles first
-    print_status "Checking if backend compiles..."
-    if ! mvn compile -q > ../../compile.log 2>&1; then
-        print_error "Backend compilation failed!"
-        print_error "The application has compilation errors that need to be fixed first."
-        print_error ""
-        print_error "Common issues found:"
-        print_error "• Missing dependencies (Micrometer, Spring Mail)"
-        print_error "• Incomplete AI service implementations"
-        print_error "• Missing method implementations in model classes"
-        print_error ""
-        print_error "To see detailed compilation errors, run:"
-        print_error "  cd apps/backend && mvn compile"
-        print_error ""
-        print_error "Or check the compile.log file for details."
-        cd "$ORIGINAL_DIR"
-        exit 1
-    fi
-    
-    print_success "Backend compilation successful!"
+    # Build backend quickly (skip tests)
+    print_status "Building backend (skip tests)..."
+    mvn -q -DskipTests package || { print_error "Backend build failed"; cd "$ORIGINAL_DIR"; exit 1; }
     
     # Start backend in background
     print_status "Starting Spring Boot application..."
@@ -198,7 +137,7 @@ start_backend() {
     cd "$ORIGINAL_DIR"
     
     # Wait for backend to start
-    print_status "Waiting for backend to start on port 8080..."
+    print_status "Waiting for backend on port 8080..."
     for i in {1..60}; do
         if check_port 8080; then
             print_success "Backend started successfully! (PID: $BACKEND_PID)"
@@ -231,7 +170,7 @@ start_frontend() {
     cd apps/frontend
     
     # Start frontend in background
-    print_status "Starting Vite development server..."
+    print_status "Starting Vite dev server..."
     npm run dev > ../../frontend.log 2>&1 &
     FRONTEND_PID=$!
     
@@ -265,7 +204,6 @@ show_services() {
     echo "📱 Frontend:     http://localhost:3000"
     echo "🔧 Backend API:  http://localhost:8080/api"
     echo "📚 Swagger UI:   http://localhost:8080/swagger-ui.html"
-    echo "🤖 AI Assistant: http://localhost:3000/ai-assistant"
     echo ""
     echo "📋 Process Information:"
     echo "   Backend PID:  $BACKEND_PID"
