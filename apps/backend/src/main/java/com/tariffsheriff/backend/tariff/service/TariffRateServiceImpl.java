@@ -78,18 +78,6 @@ public class TariffRateServiceImpl implements TariffRateService {
         Long hsProductId = product.getId();
 
         // Determine MFN: prefer origin-specific MFN when origin provided; otherwise fall back to general MFN
-        // TariffRate tariffRateMfn = null;
-        // if (origin != null) {
-        //     Long originId = origin.getId();
-        //     tariffRateMfn = tariffRates
-        //         .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "MFN")
-        //         .orElse(null);
-        // }
-        // if (tariffRateMfn == null) {
-        //     tariffRateMfn = tariffRates
-        //         .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN")
-        //         .orElseThrow(() -> new TariffRateNotFoundException("No MFN tariff rate found for importer " + importerIso2 + " and HS code " + hsCode));
-        // }
         TariffRate tariffRateMfn = tariffRates
         .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "MFN")
         .orElseGet(() -> {
@@ -98,13 +86,6 @@ public class TariffRateServiceImpl implements TariffRateService {
         });
 
         // Determine preferential rate: only when origin provided and there is a matching origin-specific PREF
-        // TariffRate tariffRatePref = null;
-        // if (origin != null) {
-        //     Long originId = origin.getId();
-        //     tariffRatePref = tariffRates
-        //         .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
-        //         .orElse(null);
-        // }
         TariffRate tariffRatePref = tariffRates
         .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
         .orElseGet(() -> {
