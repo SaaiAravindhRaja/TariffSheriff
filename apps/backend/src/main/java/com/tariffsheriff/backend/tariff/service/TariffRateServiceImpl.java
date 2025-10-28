@@ -105,23 +105,33 @@ public class TariffRateServiceImpl implements TariffRateService {
         return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
     }
 
-    public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
+
+    public com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse calculateTariffRate(TariffRateRequestDto rq) {
         BigDecimal mfnRate = rq.getMfnRate();
         BigDecimal prefRate = rq.getPrefRate();
-        BigDecimal rvcDefined = rq.getRvc(); 
-        BigDecimal RVC = rq.getMaterialCost()
-                        .add(rq.getLabourCost())
-                        .add(rq.getOverheadCost())
-                        .add(rq.getProfit())
-                        .add(rq.getOtherCosts())
-                        .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100));
-    
-        BigDecimal avRate = RVC.compareTo(rvcDefined) >= 0 ? prefRate : mfnRate; // apply pref if rvc >= defined
-        BigDecimal totalValue = rq.getTotalValue();
-        BigDecimal totalTariff = BigDecimal.ZERO;
-        totalTariff = totalValue.multiply(avRate);
-        return totalTariff;
+        BigDecimal threshold = rq.getRvcThreshold();
+
+        BigDecimal rvc = rq.getMaterialCost()
+                .add(rq.getLabourCost())
+                .add(rq.getOverheadCost())
+                .add(rq.getProfit())
+                .add(rq.getOtherCosts())
+                .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+
+        boolean canApplyPref = prefRate != null && threshold != null && rvc.compareTo(threshold) >= 0;
+        BigDecimal appliedRate = (canApplyPref ? prefRate : mfnRate);
+        String basis = (canApplyPref ? "PREF" : "MFN");
+
+        BigDecimal totalDuty = rq.getTotalValue().multiply(appliedRate);
+
+        return new com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse(
+                basis,
+                appliedRate,
+                totalDuty,
+                rvc,
+                threshold
+        );
     }
     
 }

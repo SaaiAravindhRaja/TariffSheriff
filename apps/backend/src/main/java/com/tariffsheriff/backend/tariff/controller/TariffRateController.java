@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
+import com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse;
 import com.tariffsheriff.backend.tariff.model.TariffRate;
 import com.tariffsheriff.backend.tariff.service.TariffRateService;
 
@@ -43,7 +44,7 @@ public class TariffRateController {
     }
 
     @PostMapping("/calculate")
-    public BigDecimal calculateTariffRate(@RequestBody TariffRateRequestDto tariffCalculationData) {
+    public TariffCalculationResponse calculateTariffRate(@jakarta.validation.Valid @RequestBody TariffRateRequestDto tariffCalculationData) {
         return tariffRateService.calculateTariffRate(tariffCalculationData);
     }
 
