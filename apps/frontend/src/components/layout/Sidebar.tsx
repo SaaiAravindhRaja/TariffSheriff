@@ -30,12 +30,6 @@ const navigationItems = [
     description: 'Overview & Analytics'
   },
   {
-    title: '✨ AI Assistant',
-    href: '/ai-assistant',
-    icon: Sparkles,
-    description: 'Chat with AI Copilot'
-  },
-  {
     title: 'Tariff Calculator',
     href: '/calculator',
     icon: Calculator,

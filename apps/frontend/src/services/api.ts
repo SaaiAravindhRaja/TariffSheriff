@@ -48,7 +48,8 @@ export const tariffApi = {
   calculateTariff: (data: {
     mfnRate: number
     prefRate: number
-    rvc: number
+    rvcThreshold?: number
+    rvc?: number
     agreementId?: number
     quantity: number
     totalValue: number

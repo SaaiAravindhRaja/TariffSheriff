@@ -456,7 +456,7 @@ export function Calculator() {
       const calculationData = {
         mfnRate: mfnRate,
         prefRate: prefRate,
-        rvc: rvcThreshold,
+        rvcThreshold: rvcThreshold,
         agreementId: prefAgreement ? 1 : undefined,
         quantity: productInfo.quantity,
         totalValue: productInfo.unitValue * productInfo.quantity,
@@ -471,7 +471,8 @@ export function Calculator() {
 
       // Call backend calculation API
       const response = await tariffApi.calculateTariff(calculationData);
-      const tariffAmount = response.data; // Backend returns BigDecimal as number
+      const { totalDuty, basis, appliedRate, rvc: backendRvc, rvcThreshold: backendRvcThreshold } = response.data || {};
+      const tariffAmount = Number(totalDuty);
 
       const baseValue = productInfo.unitValue * productInfo.quantity;
       const dutiableValue = baseValue;
@@ -481,7 +482,9 @@ export function Calculator() {
       const rvcPercentage = fobValue > 0 ? (originatingValue / fobValue) * 100 : 0;
       
       updateProductInfo('rvcPercentage', rvcPercentage);
-      const qualifiesForPreferential = rvcPercentage >= rvcThreshold;
+      const qualifiesForPreferential = backendRvcThreshold != null
+        ? rvcPercentage >= Number(backendRvcThreshold)
+        : rvcPercentage >= rvcThreshold;
       
       // Calculate additional fees (these are still frontend-calculated)
       const vatRate = 0.20; // 20% VAT
@@ -493,7 +496,7 @@ export function Calculator() {
       const effectiveRate = dutiableValue > 0 ? ((totalCost - dutiableValue) / dutiableValue) * 100 : 0;
 
       // Determine which rate was actually applied by the backend
-      const actualRate = qualifiesForPreferential ? prefRate : mfnRate;
+      const actualRate = appliedRate != null ? Number(appliedRate) : (qualifiesForPreferential ? prefRate : mfnRate);
       const appliedRatePercentage = actualRate * 100;
 
       const newCalculation: TariffCalculation = {
@@ -525,7 +528,7 @@ export function Calculator() {
               category: 'duty',
               rate: actualRate,
               amount: tariffAmount,
-              description: `${qualifiesForPreferential ? 'Preferential' : 'MFN'} tariff rate (${appliedRatePercentage.toFixed(2)}%)`,
+              description: `${basis === 'PREF' ? 'Preferential' : 'MFN'} tariff rate (${appliedRatePercentage.toFixed(2)}%)`,
               legal_basis: qualifiesForPreferential ? 'AANZFTA Agreement' : 'WTO MFN Schedule'
             },
             {
