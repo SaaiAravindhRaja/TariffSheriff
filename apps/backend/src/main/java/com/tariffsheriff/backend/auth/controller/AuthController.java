@@ -21,7 +21,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"})
 public class AuthController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthController.class);
 
@@ -44,9 +43,10 @@ public class AuthController {
             user.setName(request.getName());
             user.setEmail(request.getEmail());
             user.setAboutMe(request.getAboutMe());
-            user.setRole(request.getRole());
+            // Enforce minimal, safe defaults regardless of client input
+            user.setRole("USER");
             user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setIsAdmin(request.getIsAdmin() != null ? request.getIsAdmin() : false);
+            user.setIsAdmin(false);
 
             User savedUser = userRepository.save(user);
 

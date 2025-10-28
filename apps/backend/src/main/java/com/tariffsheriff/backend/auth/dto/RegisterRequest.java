@@ -17,7 +17,6 @@ public class RegisterRequest {
     
     private String aboutMe;
     
-    @NotBlank(message = "Role is required")
     private String role;
     
     @NotBlank(message = "Password is required")
