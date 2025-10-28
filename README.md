@@ -1,4 +1,4 @@
-# 👮 TariffSheriff
+# TariffSheriff
 
 [![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
 
@@ -14,18 +14,17 @@ A full-stack web application that helps businesses calculate and analyze import 
 
 ---
 
-## 🚀 Features
+## Features
 
 - **Accurate Tariff Calculations** - Real-time import duty calculations across multiple countries
 - **EV Industry Focus** - Specialized data for Electric Vehicle trade compliance  
 - **Route Optimization** - Find the most cost-effective shipping routes
 - **Transparent Pricing** - Detailed breakdowns with legal citations
-- **Admin Dashboard** - Manage tariff rules and user permissions
-- **API Integration** - Connect with WITS, HS Code services, and regional trade portals
+- Optional features (AI assistant, admin/ops tooling) are not enabled by default in this branch to keep the core small for class use. AI can still be enabled via backend profile `ai`.
 
 ---
 
-## 🛠 Development Quickstart
+## Development Quickstart
 
 **Prerequisites:** Node.js 18+, npm 9+, Java 17, Docker (Docker Desktop or Colima).
 
@@ -56,80 +55,69 @@ npm run dev --workspace=frontend
 mvn test                     # backend (Testcontainers)
 npm run test --workspace=frontend
 
-# 6. Production deployment is handled by GitHub Actions (.github/workflows/ci.yml)
+# 6. AI Assistant (optional): run with profile
+# (cd apps/backend && mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dspring.profiles.active=ai")
+
+# 7. CI builds and tests are handled by GitHub Actions (.github/workflows/ci.yml)
 ```
 
 > Need a clean database? Stop the backend, remove any local Postgres container (e.g. `docker rm -f tariffsheriff-postgres`), then rerun `mvn spring-boot:run` to replay Flyway migrations and the mock seed.
 
 ---
 
-## 🌐 Live Demo
+## Live Demo
 
 [https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
 ___
 
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TB
     %% Client Layer
-    subgraph CLIENT["🌐 Client Applications"]
-        WEB["� Web rDashboard<br/>React + TypeScript<br/>Tailwind CSS"]
-        MOBILE["📱 Mobile App<br/>Responsive Design<br/>PWA Support"]
-        API_CLIENT["🔌 API Clients<br/>Third-party Integrations"]
+    subgraph CLIENT["Client Applications"]
+        WEB["Web Dashboard<br/>React + TypeScript<br/>Tailwind CSS"]
+        MOBILE["Mobile App<br/>Responsive Design<br/>PWA Support"]
+        API_CLIENT["API Clients<br/>Third-party Integrations"]
     end
 
     %% Load Balancer & Gateway
-    subgraph GATEWAY["🚪 API Gateway Layer"]
-        ALB["⚖️ Application Load Balancer<br/>AWS ALB<br/>SSL Termination"]
-        RATE_LIMIT["�️e Rate Limiting<br/>DDoS Protection<br/>CORS Handling"]
+    subgraph GATEWAY["API Gateway Layer"]
+        ALB["Application Load Balancer<br/>AWS ALB<br/>SSL Termination"]
+        RATE_LIMIT["Rate Limiting<br/>DDoS Protection<br/>CORS Handling"]
     end
 
     %% Core Application Services
-    subgraph BACKEND["🏛️ TariffSheriff Backend Services"]
-        AUTH_SVC["🔐 Authentication Service<br/>JWT + Spring Security<br/>User Management"]
-        
-        CALC_ENGINE["📊 Tariff Calculation Engine<br/>Core Business Logic<br/>HS Code Processing"]
-        
-        ADMIN_SVC["👨‍💼 Admin Service<br/>Rule Management<br/>CRUD Operations"]
-        
-        REC_ENGINE["🎯 Recommendation Engine<br/>Route Optimization<br/>Cost Analysis"]
-        
-        SIM_ENGINE["🔬 Simulation Engine<br/>Policy Modeling<br/>Scenario Analysis"]
-        
-        SWAGGER_UI["📚 API Documentation<br/>Swagger/OpenAPI<br/>Interactive Testing"]
+    subgraph BACKEND["Backend"]
+        AUTH_SVC["Auth<br/>JWT + Spring Security"]
+        CALC_ENGINE["Tariff Engine<br/>Core Logic + HS Codes"]
+        SWAGGER_UI["OpenAPI/Swagger"]
     end
 
     %% Data Storage Layer
-    subgraph DATA_LAYER["💾 Data Management Layer"]
-        PRIMARY_DB[("🐘 PostgreSQL<br/>Primary Database<br/>Tariff Rules & Users")]
+    subgraph DATA_LAYER["Data Management Layer"]
+        PRIMARY_DB[("PostgreSQL<br/>Primary Database<br/>Tariff Rules & Users")]
         
-        CACHE_LAYER[("⚡ Redis Cache<br/>Session Storage<br/>Query Optimization")]
+        CACHE_LAYER[("Redis Cache<br/>Session Storage<br/>Query Optimization")]
         
-        FILE_STORAGE[("📁 AWS S3<br/>Document Storage<br/>Export Files")]
+        FILE_STORAGE[("AWS S3<br/>Document Storage<br/>Export Files")]
     end
 
     %% External Data Sources
-    subgraph EXTERNAL["📡 External Data Sources"]
-        WITS_API["🌍 WITS Database<br/>World Trade Statistics<br/>Historical Data"]
+    subgraph EXTERNAL["External Data Sources"]
+        WITS_API["WITS Database<br/>World Trade Statistics<br/>Historical Data"]
         
-        HS_CODE_API["🏷️ HS Code Services<br/>Product Classification<br/>SimplyDuty/Mooah API"]
+        HS_CODE_API["HS Code Services<br/>Product Classification<br/>SimplyDuty/Mooah API"]
         
-        REGIONAL_API["🌏 Regional Trade Portals<br/>Country-Specific Data<br/>Legal Citations"]
+        REGIONAL_API["Regional Trade Portals<br/>Country-Specific Data<br/>Legal Citations"]
         
-        TRADE_AGREEMENTS["📜 Trade Agreement APIs<br/>Bilateral Agreements<br/>MFN Rates"]
+        TRADE_AGREEMENTS["Trade Agreement APIs<br/>Bilateral Agreements<br/>MFN Rates"]
     end
 
     %% Infrastructure & DevOps
-    subgraph INFRA["☁️ AWS Cloud Infrastructure"]
-        CONTAINER_REGISTRY["🏪 AWS ECR<br/>Container Registry<br/>Image Management"]
-        
-        ORCHESTRATION["�t AWS ECS<br/>Container Orchestration<br/>Auto Scaling"]
-        
-        MONITORING["📊 CloudWatch<br/>Logging & Metrics<br/>Performance Monitoring"]
-        
-        CICD["🔄 GitHub Actions<br/>CI/CD Pipeline<br/>Automated Testing"]
+    subgraph INFRA["Infrastructure"]
+        CICD["GitHub Actions<br/>Build + Test"]
     end
 
     %% Data Flow Connections
@@ -165,9 +153,7 @@ graph TB
     SIM_ENGINE --> CALC_ENGINE
     SIM_ENGINE --> FILE_STORAGE
     
-    CICD --> CONTAINER_REGISTRY
-    CONTAINER_REGISTRY --> ORCHESTRATION
-    ORCHESTRATION --> MONITORING
+    CICD --> BACKEND
     
     %% Styling
     classDef clientStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
@@ -185,7 +171,7 @@ graph TB
     class CONTAINER_REGISTRY,ORCHESTRATION,MONITORING,CICD infraStyle
 ```
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 apps/
@@ -196,17 +182,17 @@ docs/         # Documentation
 infrastructure/ # Docker, K8s, CI/CD configs
 ```
 
-## 🔄 Data Flow & Business Logic
+## Data Flow & Business Logic
 
 ```mermaid
 sequenceDiagram
-    participant U as 👤 User
-    participant F as 🌐 Frontend
-    participant A as 🔐 Auth Service
-    participant T as 📊 Tariff Engine
-    participant D as 🗄️ Database
-    participant E as 📡 External APIs
-    participant R as 🎯 Recommender
+    participant U as User
+    participant F as Frontend
+    participant A as Auth Service
+    participant T as Tariff Engine
+    participant D as Database
+    participant E as External APIs
+    participant R as Recommender
 
     U->>F: Input tariff calculation request
     F->>A: Authenticate user
@@ -231,7 +217,7 @@ sequenceDiagram
     F-->>U: Display results & recommendations
 ```
 
-## 🧠 Core Business Logic
+## Core Business Logic
 
 ### Tariff Calculation Engine
 - **Input Processing**: Product category (HS code), origin/destination countries, transaction details
@@ -240,15 +226,15 @@ sequenceDiagram
 - **Citation Generation**: Provides transparent rule references for compliance
 
 ### Key Features
-- 🔍 **HS Code Resolution**: Automatic product classification using harmonized system codes
-- 🌍 **Multi-Country Support**: Handles bilateral and multilateral trade agreements
-- 📅 **Time-Sensitive Rules**: Applies correct rates based on transaction dates
-- 🏆 **MFN Treatment**: Most-Favored-Nation rate calculations
-- 📜 **Certificate Handling**: Processes origin certificates and special conditions
+- **HS Code Resolution**: Automatic product classification using harmonized system codes
+- **Multi-Country Support**: Handles bilateral and multilateral trade agreements
+- **Time-Sensitive Rules**: Applies correct rates based on transaction dates
+- **MFN Treatment**: Most-Favored-Nation rate calculations
+- **Certificate Handling**: Processes origin certificates and special conditions
 
 ---
 
-## 🛠️ Getting Started (Monorepo)
+## Getting Started
 
 ```bash
 # 1. Install dependencies (from repo root)
@@ -278,7 +264,7 @@ npm run build
 - Alternatively, in the Vercel project settings set the **Root Directory** to `apps/frontend` and the **Output Directory** to `dist`.
 - The root-level `vercel.json` is intentionally minimal to avoid schema validation errors — per-app configs in subfolders are recommended for monorepos.
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **Framework**: Spring Boot 3.1 with Java 17
@@ -312,7 +298,7 @@ npm run build
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 - See the [`docs/`](docs/) folder for guidelines and architecture decisions.
 - Use atomic, logical commits for all changes.
@@ -320,7 +306,7 @@ npm run build
 ---
 
 
-## 👥 Contributors
+## Contributors
 
 <table>
 	<tr>
@@ -365,6 +351,6 @@ npm run build
 
 ---
 
-## 📄 License
+## License
 
 This project is private and not yet licensed for public use.
