@@ -1,8 +1,0 @@
-{
-  "name": "shared-utils",
-  "version": "1.0.0",
-  "main": "src/index.js",
-  "scripts": {
-    "build": "echo 'No build needed for shared-utils'"
-  }
-}

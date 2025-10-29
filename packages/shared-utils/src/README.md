@@ -1,3 +1,0 @@
-# Shared Utils Source
-
-Placeholder.

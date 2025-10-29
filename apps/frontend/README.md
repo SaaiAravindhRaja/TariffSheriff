@@ -2,7 +2,7 @@
 
 A modern, responsive React application for calculating and analyzing import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry.
 
-## 🚀 Features
+## Features
 
 - **Modern UI/UX**: Clean, responsive design with dark/light mode support
 - **Real-time Calculations**: Instant tariff calculations with detailed breakdowns
@@ -11,11 +11,11 @@ A modern, responsive React application for calculating and analyzing import tari
 - **Mobile-First Design**: Optimized for all device sizes
 - **Accessibility**: WCAG compliant with keyboard navigation support
 
-## 🌐 Live Demo
+## Live Demo
 
 [https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
@@ -28,7 +28,7 @@ A modern, responsive React application for calculating and analyzing import tari
 - **HTTP Client**: Axios
 - **Form Handling**: React Hook Form with Zod validation
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -45,7 +45,7 @@ src/
 └── types/              # TypeScript type definitions
 ```
 
-## 🎨 Design System
+## Design System
 
 ### Colors
 - **Brand**: Blue gradient (#0ea5e9 to #0369a1)
@@ -60,7 +60,7 @@ src/
 ### Components
 All components follow the shadcn/ui design system with custom TariffSheriff branding.
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
@@ -100,7 +100,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - `npm run lint` - Run ESLint
 - `npm test` - Run tests
 
-## 📱 Pages & Features
+## Pages & Features
 
 ### Dashboard
 - Overview of trade operations
@@ -140,7 +140,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - Interactive map
 - Route recommendations
 
-## 🎯 Key Components
+## Key Components
 
 ### Layout Components
 - **Header**: Navigation, search, user menu, theme toggle
@@ -158,7 +158,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - **Input**: Form inputs with focus states
 - **Badge**: Status indicators and labels
 
-## 🔧 Customization
+## Customization
 
 ### Theme Customization
 Update `tailwind.config.js` to modify:
@@ -183,14 +183,14 @@ Components use CSS variables for theming:
 2. Add route to `src/App.tsx`
 3. Update navigation in `src/components/layout/Sidebar.tsx`
 
-## 📊 Performance
+## Performance
 
 - **Bundle Size**: Optimized with tree shaking
 - **Code Splitting**: Route-based lazy loading
 - **Caching**: TanStack Query for API caching
 - **Images**: Optimized loading and formats
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run unit tests
@@ -200,7 +200,7 @@ npm test
 npm run test:watch
 
 
-## 👤 Profile (local)
+## Profile
 
 This project includes a local, client-side Profile feature for quick demos:
 
@@ -218,7 +218,7 @@ Note: This is a local demo implementation. For production, integrate with your a
 npm run test:coverage
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Build for Production
 ```bash
@@ -237,7 +237,7 @@ npm run build
 npx gh-pages -d dist
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -245,7 +245,7 @@ npx gh-pages -d dist
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
