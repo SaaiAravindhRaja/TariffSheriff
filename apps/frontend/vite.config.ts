@@ -23,12 +23,6 @@ export default defineConfig({
         path.resolve(__dirname, 'public'),
       ],
     },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: false,
-      },
-    },
   },
   build: {
     rollupOptions: {

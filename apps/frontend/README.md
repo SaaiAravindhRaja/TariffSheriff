@@ -1,32 +1,13 @@
 # TariffSheriff Frontend
 
-A modern, responsive React application for calculating and analyzing import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry.
+Minimal React + Vite app for tariff lookup and RVC-aware duty calculation.
 
 ## Features
 
-- **Modern UI/UX**: Clean, responsive design with dark/light mode support
-- **Real-time Calculations**: Instant tariff calculations with detailed breakdowns
-- **Interactive Visualizations**: Charts and maps for trade route analysis
-- **Comprehensive Dashboard**: Overview of trade operations and analytics
-- **Mobile-First Design**: Optimized for all device sizes
-- **Accessibility**: WCAG compliant with keyboard navigation support
-
-## Live Demo
-
-[https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
-
-## Tech Stack
-
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS with custom design system
-- **UI Components**: Radix UI primitives with shadcn/ui
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **State Management**: TanStack Query (React Query)
-- **Routing**: React Router v6
-- **HTTP Client**: Axios
-- **Form Handling**: React Hook Form with Zod validation
+- Authentication (register/login)
+- Countries list for selectors
+- Tariff lookup (MFN + preferential candidate)
+- RVC calculator (selects MFN or preferential rate)
 
 ## Project Structure
 
@@ -122,23 +103,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - Filter and sort options
 - Detailed rule information
 
-### Analytics
-- Trade volume trends
-- Tariff rate analysis
-- Country comparisons
-- Market insights
-
-### Simulator
-- Policy scenario modeling
-- Impact analysis
-- Side-by-side comparisons
-- What-if scenarios
-
-### Trade Routes
-- Route optimization
-- Cost comparisons
-- Interactive map
-- Route recommendations
+ 
 
 ## Key Components
 
@@ -146,11 +111,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - **Header**: Navigation, search, user menu, theme toggle
 - **Sidebar**: Collapsible navigation with route indicators
 
-### Dashboard Components
-- **QuickCalculator**: Instant tariff calculations
-- **RecentCalculations**: History of calculations
-- **TariffChart**: Interactive trend visualization
-- **TradeRouteMap**: Global trade route visualization
+ 
 
 ### UI Components
 - **Button**: Multiple variants with animations
