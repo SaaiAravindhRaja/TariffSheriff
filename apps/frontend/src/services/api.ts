@@ -42,7 +42,6 @@ api.interceptors.response.use(
   }
 )
 
-// Tariff API endpoints
 export const tariffApi = {
   // Backend tariff calculation endpoint
   calculateTariff: (data: {
@@ -61,82 +60,19 @@ export const tariffApi = {
     fob: number
     nonOriginValue: number
   }) => api.post('/tariff-rate/calculate', data),
-  
-  // Legacy calculate method (deprecated)
-  calculate: (data: {
-    productCode: string
-    originCountry: string
-    destinationCountry: string
-    value: number
-    quantity: number
-    date?: string
-  }) => api.post('/tariffs/calculate', data),
-  
-  getRules: (params?: {
-    country?: string
-    productCode?: string
-    page?: number
-    limit?: number
-  }) => api.get('/tariffs/rules', { params }),
-  
   getCountries: (params?: { q?: string; page?: number; size?: number }) => api.get('/countries', { params }),
   getAgreements: (params?: { page?: number; size?: number }) => api.get('/agreements', { params }),
   getAgreementsByCountry: (countryIso2: string) => api.get(`/agreements/by-country/${countryIso2}`),
   getTariffRates: () => api.get('/tariff-rate/'),
   getTariffRateLookup: (params: { importerIso2: string; originIso2?: string; hsCode: string }) => 
     api.get('/tariff-rate/lookup', { params }),
-  
-  getHsCodes: (query?: string) => api.get('/hs-codes', { 
-    params: { q: query } 
-  }),
-  
-  getTradeRoutes: () => api.get('/trade-routes'),
-  
-  getAnalytics: (params?: {
-    startDate?: string
-    endDate?: string
-    country?: string
-  }) => api.get('/analytics', { params }),
 }
 
-// Chat API endpoints
-export const chatApi = {
-  postChatQuery: (data: { query: string; conversationId?: string }, options?: { signal?: AbortSignal; timeout?: number }) => {
-    const config = {
-      ...options,
-      timeout: options?.timeout || 30000, // 30 second timeout for chat queries
-    };
-    return api.post('/chatbot/query', data, config);
-  },
-  
-  getConversations: () => api.get('/chatbot/conversations'),
-  
-  getConversation: (conversationId: string) => api.get(`/chatbot/conversations/${conversationId}`),
-  
-  deleteConversation: (conversationId: string) => api.delete(`/chatbot/conversations/${conversationId}`),
-  
-  getHealth: () => api.get('/chatbot/health'),
-  
-  getRateLimitStatus: () => api.get('/chatbot/rate-limit-status'),
-};
-
 // Auth API endpoints
+// Optional: provide auth API helpers if you want to use axios instead of fetch
 export const authApi = {
-  login: (credentials: { email: string; password: string }) =>
-    api.post('/auth/login', credentials),
-  
-  register: (userData: { 
-    email: string
-    password: string
-    firstName: string
-    lastName: string 
-  }) => api.post('/auth/register', userData),
-  
-  logout: () => api.post('/auth/logout'),
-  
-  refreshToken: () => api.post('/auth/refresh'),
-  
-  getProfile: () => api.get('/auth/profile'),
+  login: (credentials: { email: string; password: string }) => api.post('/auth/login', credentials),
+  register: (userData: { name: string; email: string; password: string; aboutMe?: string }) => api.post('/auth/register', userData),
 }
 
 export default api

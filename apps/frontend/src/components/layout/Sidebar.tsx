@@ -41,30 +41,7 @@ const navigationItems = [
     icon: Database,
     description: 'Browse Tariff Rules'
   },
-  {
-    title: 'Trade Routes',
-    href: '/routes',
-    icon: Globe,
-    description: 'Optimize Trade Paths'
-  },
-  {
-    title: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-    description: 'Market Insights'
-  },
-  {
-    title: 'Simulator',
-    href: '/simulator',
-    icon: Zap,
-    description: 'Policy Scenarios'
-  },
-  {
-    title: 'Reports',
-    href: '/reports',
-    icon: FileText,
-    description: 'Export & Documentation'
-  },
+ 
   {
     title: 'Settings',
     href: '/settings',
