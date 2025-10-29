@@ -104,3 +104,25 @@ curl -s -X POST http://localhost:8080/api/tariff-rate/calculate \
 ```
 
 OpenAPI/Swagger: http://localhost:8080/swagger-ui.html
+
+### Docker Compose (backend + Postgres)
+
+From `apps/backend`, you can run the backend together with Postgres using Docker Compose:
+
+1. Start services
+```bash
+docker compose up --build -d
+```
+
+2. Access the API
+- Backend: http://localhost:8080
+- Swagger UI: http://localhost:8080/swagger-ui.html
+
+3. Stop and remove containers
+```bash
+docker compose down -v
+```
+
+Notes
+- Runs with `SPRING_PROFILES_ACTIVE=dev` for Swagger and relaxed CORS in development.
+- A demo Base64 JWT secret is included for local use; change if needed.
