@@ -67,7 +67,7 @@ export const tariffApi = {
     otherCosts: number
     fob: number
     nonOriginValue: number
-  }) => api.post('/tariff-rate/calculate', data),
+  }, config?: { signal?: AbortSignal }) => api.post('/tariff-rate/calculate', data, config),
   getCountries: (params?: { q?: string; page?: number; size?: number }) =>
     api.get('/countries', { params }),
   getAgreements: (params?: { page?: number; size?: number }) =>

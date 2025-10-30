@@ -25,28 +25,45 @@ export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
     {
       name: 'Base Value',
       value: data.baseValue,
-      color: '#0ea5e9'
+      color: '#0ea5e9',
+      rate: undefined as number | undefined,
     },
     ...data.breakdown.map((item, index) => ({
       name: item.type,
       value: item.amount,
-      color: COLORS[index + 1] || COLORS[0]
+      color: COLORS[index + 1] || COLORS[0],
+      rate: typeof item.rate === 'number' ? item.rate : undefined,
     }))
   ]
 
+  const getKnownRatePct = (): number => {
+    return chartData.reduce((sum, e: any) => sum + (typeof e.rate === 'number' ? e.rate * 100 : 0), 0)
+  }
+
+  const getDisplayPercent = (entry: any): number => {
+    if (typeof entry?.rate === 'number') {
+      return entry.rate * 100
+    }
+    if (entry?.name === 'Base Value') {
+      const knownPct = getKnownRatePct()
+      return Math.max(0, 100 - knownPct)
+    }
+    const total = chartData.reduce((sum, e: any) => sum + (e.value || 0), 0)
+    return total > 0 ? ((entry?.value || 0) / total) * 100 : 0
+  }
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0]
+      const slice = payload[0]
+      const pct = getDisplayPercent(slice.payload)
       return (
         <div className="bg-background border border-border rounded-lg shadow-lg p-3">
-          <p className="font-medium text-foreground">{data.name}</p>
+          <p className="font-medium text-foreground">{slice.name}</p>
           <p className="text-sm text-muted-foreground">
-            Amount: <span className="font-medium text-foreground">{formatCurrency(data.value)}</span>
+            Amount: <span className="font-medium text-foreground">{formatCurrency(slice.value)}</span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Percentage: <span className="font-medium text-foreground">
-              {((data.value / data.payload.totalCost) * 100).toFixed(1)}%
-            </span>
+            Percentage: <span className="font-medium text-foreground">{pct.toFixed(1)}%</span>
           </p>
         </div>
       )
@@ -71,7 +88,7 @@ export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ payload }) => `${payload.name}: ${getDisplayPercent(payload).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
