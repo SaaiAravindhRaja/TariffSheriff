@@ -144,9 +144,17 @@ export function Calculator() {
     rvcDebounceRef.current = window.setTimeout(async () => {
       try {
         // Guard: don't call backend while FOB is invalid
-        if (costs.fob <= 0) {
+        const originatingSum =
+          costs.materialCost +
+          costs.labourCost +
+          costs.overheadCost +
+          costs.profit +
+          costs.otherCosts
+        if (costs.fob <= 0 || originatingSum > costs.fob) {
           setBackendRvc(0)
           phase1ResultRef.current = null
+          setCalcResult(null)
+          setUsedAgreementName(null)
           return
         }
         // cancel previous in-flight phase1 request
@@ -225,7 +233,13 @@ export function Calculator() {
         setUsedAgreementName(null)
         return
       }
-      if (costs.fob <= 0) {
+      const originatingSum =
+        costs.materialCost +
+        costs.labourCost +
+        costs.overheadCost +
+        costs.profit +
+        costs.otherCosts
+      if (costs.fob <= 0 || originatingSum > costs.fob) {
         // Don't attempt final calc when FOB invalid
         setCalcResult(null)
         return
@@ -340,6 +354,11 @@ export function Calculator() {
       })
       const data = response.data
       setLookup(data)
+      // Reset inputs and previous results for a fresh calculation flow
+      setCosts(initialCosts)
+      setCalcResult(null)
+      setUsedAgreementName(null)
+      setBackendRvc(0)
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -347,6 +366,10 @@ export function Calculator() {
         'Unable to find tariff information.'
       setError(message)
       setLookup(null)
+      // Clear any prior results when lookup fails
+      setCalcResult(null)
+      setUsedAgreementName(null)
+      setBackendRvc(0)
     } finally {
       setLoading(false)
     }
@@ -442,6 +465,10 @@ export function Calculator() {
                         inputMode="decimal"
                         value={costs[field]}
                         onChange={(event) => handleCostChange(field, event.target.value)}
+                        onFocus={(event) => {
+                          // Select existing content (e.g., the default 0) so typing replaces it immediately
+                          event.currentTarget.select()
+                        }}
                         min={0}
                       />
                     </div>
@@ -512,13 +539,22 @@ export function Calculator() {
         </Card>
       )}
 
-      {lookup && costs.fob <= 0 && (
+      {lookup && (costs.fob <= 0 || (
+        costs.materialCost +
+        costs.labourCost +
+        costs.overheadCost +
+        costs.profit +
+        costs.otherCosts) > costs.fob) && (
         <Card>
           <CardHeader>
             <CardTitle>3. Results</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-red-600">Enter a valid FOB value greater than 0 to compute RVC and duty.</p>
+            {costs.fob <= 0 ? (
+              <p className="text-sm text-red-600">Enter a valid FOB value greater than 0 to compute RVC and duty.</p>
+            ) : (
+              <p className="text-sm text-red-600">Originating costs (Material + Labour + Overhead + Profit + Other) must not exceed FOB. Adjust your inputs to proceed.</p>
+            )}
           </CardContent>
         </Card>
       )}
