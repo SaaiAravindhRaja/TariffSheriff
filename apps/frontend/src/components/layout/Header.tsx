@@ -2,8 +2,6 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { 
   Shield, 
-  Moon, 
-  Sun, 
   User, 
   Bell,
   Search,
@@ -14,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { CountrySearch } from '@/components/search/CountrySearch'
-import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +20,6 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { resolvedTheme, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
@@ -106,22 +102,6 @@ export function Header({ className }: HeaderProps) {
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger-500 rounded-full text-xs flex items-center justify-center">
               <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
             </span>
-          </Button>
-
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => toggleTheme()}
-            aria-label={`Toggle theme, currently ${resolvedTheme}`}
-            title={`Toggle theme (currently ${resolvedTheme})`}
-            className="transition-transform hover:scale-110"
-          >
-            {resolvedTheme === 'dark' ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
           </Button>
 
           {/* User Menu */}

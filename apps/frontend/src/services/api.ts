@@ -1,5 +1,22 @@
 import axios from 'axios'
-import safeLocalStorage from '@/lib/safeLocalStorage'
+
+export interface TariffRateOption {
+  id: number
+  basis: string
+  adValoremRate: number | null
+  specificAmount: number | null
+  specificUnit: string | null
+  agreementId: number | null
+  agreementName: string | null
+  rvcThreshold: number | null
+}
+
+export interface TariffLookupResponse {
+  importerIso2: string
+  originIso2: string | null
+  hsCode: string
+  rates: TariffRateOption[]
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
 
@@ -11,39 +28,30 @@ export const api = axios.create({
   },
 })
 
-// Request interceptor for auth
 api.interceptors.request.use(
   (config) => {
-    // Get token directly as string (JWT tokens are not JSON)
     const token = typeof window !== 'undefined' ? window.localStorage.getItem('auth_token') : null
     if (token) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore - axios types allow headers as any in runtime
+      config.headers = config.headers ?? {}
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error),
 )
 
-// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('auth_token')
-        window.location.href = '/login'
-      }
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      window.localStorage.removeItem('auth_token')
+      window.location.href = '/login'
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export const tariffApi = {
-  // Backend tariff calculation endpoint
   calculateTariff: (data: {
     mfnRate: number
     prefRate: number
@@ -60,19 +68,25 @@ export const tariffApi = {
     fob: number
     nonOriginValue: number
   }) => api.post('/tariff-rate/calculate', data),
-  getCountries: (params?: { q?: string; page?: number; size?: number }) => api.get('/countries', { params }),
-  getAgreements: (params?: { page?: number; size?: number }) => api.get('/agreements', { params }),
-  getAgreementsByCountry: (countryIso2: string) => api.get(`/agreements/by-country/${countryIso2}`),
+  getCountries: (params?: { q?: string; page?: number; size?: number }) =>
+    api.get('/countries', { params }),
+  getAgreements: (params?: { page?: number; size?: number }) =>
+    api.get('/agreements', { params }),
+  getAgreementsByCountry: (countryIso2: string) =>
+    api.get(`/agreements/by-country/${countryIso2}`),
   getTariffRates: () => api.get('/tariff-rate/'),
-  getTariffRateLookup: (params: { importerIso2: string; originIso2?: string; hsCode: string }) => 
-    api.get('/tariff-rate/lookup', { params }),
+  getTariffRateLookup: (params: {
+    importerIso2: string
+    originIso2?: string
+    hsCode: string
+  }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
 }
 
-// Auth API endpoints
-// Optional: provide auth API helpers if you want to use axios instead of fetch
 export const authApi = {
-  login: (credentials: { email: string; password: string }) => api.post('/auth/login', credentials),
-  register: (userData: { name: string; email: string; password: string; aboutMe?: string }) => api.post('/auth/register', userData),
+  login: (credentials: { email: string; password: string }) =>
+    api.post('/auth/login', credentials),
+  register: (userData: { name: string; email: string; password: string; aboutMe?: string }) =>
+    api.post('/auth/register', userData),
 }
 
 export default api

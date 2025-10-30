@@ -36,8 +36,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}")
+    @Value("${cors.allowed-origins:}")
     private String corsAllowedOrigins;
+
+    @Value("${cors.allowed-origin-patterns:http://localhost:* ,http://127.0.0.1:*}")
+    private String corsAllowedOriginPatterns;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -60,7 +63,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(parseOrigins(corsAllowedOrigins));
+        List<String> origins = parseList(corsAllowedOrigins);
+        List<String> originPatterns = parseList(corsAllowedOriginPatterns);
+
+        if (!originPatterns.isEmpty()) {
+            configuration.setAllowedOriginPatterns(originPatterns);
+        }
+        if (!origins.isEmpty()) {
+            configuration.setAllowedOrigins(origins);
+        }
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -90,8 +101,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private List<String> parseOrigins(String origins) {
-        if (origins == null || origins.isBlank()) return List.of("*");
-        return Arrays.stream(origins.split(",")).map(String::trim).toList();
+    private List<String> parseList(String value) {
+        if (value == null) return List.of();
+        return Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .toList();
     }
 }

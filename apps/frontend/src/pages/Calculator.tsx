@@ -1,1494 +1,376 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Calculator as CalculatorIcon,
-  Search,
-  Filter,
-  Save,
-  Download,
-  Calendar,
-  MapPin,
-  Package,
-  DollarSign,
-  Percent,
-  FileText,
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  Info,
-  Zap,
-  Shield,
-  Globe,
-  BookOpen,
-  BarChart3,
-  RefreshCw,
-  Copy,
-  ExternalLink,
-  Bookmark,
-  History,
-  HelpCircle,
-  ChevronRight,
+import { useEffect, useMemo, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import CountrySelect from '@/components/inputs/CountrySelect'
+import { useDbCountries } from '@/hooks/useDbCountries'
+import { useSettings } from '@/contexts/SettingsContext'
+import { tariffApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
+import { formatCurrency } from '@/lib/utils'
 
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import CountrySelect from '@/components/inputs/CountrySelect';
-import { formatCurrency, formatPercentage, formatDate } from '@/lib/utils';
-import { useSettings } from '@/contexts/SettingsContext';
-import safeLocalStorage from '@/lib/safeLocalStorage';
-import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownChart';
-import { ComparisonChart } from '@/components/calculator/ComparisonChart';
-import { HistoricalRatesChart } from '@/components/calculator/HistoricalRatesChart';
-import { CostAnalysisChart } from '@/components/calculator/CostAnalysisChart';
-import { RVCCalculator } from '@/components/calculator/RVCCalculator';
-import { RVCInfoPanel } from '@/components/calculator/RVCInfoPanel';
-import { FieldLabel } from '@/components/calculator/FieldLabel';
-import { useDbCountries } from '@/hooks/useDbCountries';
-import { tariffApi } from '@/services/api';
+type CostField =
+  | 'totalValue'
+  | 'materialCost'
+  | 'labourCost'
+  | 'overheadCost'
+  | 'profit'
+  | 'otherCosts'
+  | 'fob'
+  | 'nonOriginValue'
 
-// Enhanced interfaces for professional calculator with AANZFTA RVC
-interface ProductInfo {
-  description: string;
-  hsCode: string;
-  hsCodeDescription: string;
-  category: string;
-  quantity: number;
-  unitValue: number;
-  currency: string;
-  weight: number;
-  weightUnit: 'kg' | 'lbs';
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    unit: 'cm' | 'in';
-  };
-  originCountry: string;
-  destinationCountry: string;
-  shipmentDate: string;
-  incoterms: string;
-  certificates: string[];
-  specialConditions: string[];
-  // AANZFTA Cost breakdown fields
-  materialCost: number; // AANZFTA Material Cost (originating materials)
-  labourCost: number; // Labour Cost (wages, remuneration, employee benefits)
-  overheadCost: number; // Overhead Cost (total overhead expense)
-  profit: number;
-  otherCosts: number; // Other Costs (transport, storage, port handling, etc.)
-  fobValue: number; // Free-on-Board value
-  // RVC Calculation fields
-  nonOriginatingMaterialsValue: number; // CIF value of non-originating materials
-  rvcMethod: 'direct' | 'indirect'; // Direct or Build-Down formula
-  rvcPercentage: number; // Calculated RVC percentage
-  rvcThreshold: number; // Required RVC threshold for qualification
+type CostState = Record<CostField, number>
+
+const initialCosts: CostState = {
+  totalValue: 0,
+  materialCost: 0,
+  labourCost: 0,
+  overheadCost: 0,
+  profit: 0,
+  otherCosts: 0,
+  fob: 0,
+  nonOriginValue: 0,
 }
 
-interface TradeAgreement {
-  type: 'MFN' | 'RVC' | 'ROOS';
-  name: string;
-  rate: number;
-  description: string;
-  requirements?: string[];
-  rvcThreshold?: number; // Required RVC percentage for preferential rate
-  rvcMethod?: 'direct' | 'indirect' | 'both'; // Allowed RVC calculation methods
+function parseNumber(value: string): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
-interface TariffCalculation {
-  id: string;
-  timestamp: string;
-  productInfo: ProductInfo;
-  results: {
-    baseValue: number;
-    dutiableValue: number;
-    tariffRate: number;
-    tariffAmount: number;
-    additionalDuties: number;
-    taxes: {
-      vat: number;
-      excise: number;
-      other: number;
-    };
-    fees: {
-      processing: number;
-      inspection: number;
-      storage: number;
-      other: number;
-    };
-    totalCost: number;
-    effectiveRate: number;
-    breakdown: Array<{
-      type: string;
-      category: 'duty' | 'tax' | 'fee';
-      rate: number;
-      amount: number;
-      description: string;
-      legal_basis: string;
-    }>;
-    appliedRules: Array<{
-      ruleId: string;
-      description: string;
-      source: string;
-      validFrom: string;
-      validTo: string;
-      confidence: number;
-      tradeAgreement?: string;
-    }>;
-    warnings: Array<{
-      type: 'info' | 'warning' | 'error';
-      message: string;
-      recommendation?: string;
-    }>;
-    alternativeRoutes: Array<{
-      country: string;
-      countryName: string;
-      tariffRate: number;
-      totalCost: number;
-      savings: number;
-      savingsPercentage: number;
-      tradeAgreement?: string;
-      transitTime?: number;
-    }>;
-    compliance: {
-      requiredDocuments: string[];
-      certificates: string[];
-      restrictions: string[];
-      prohibitions: string[];
-    };
-  };
+function calculateRvc(costs: CostState): number {
+  if (costs.fob <= 0) return 0
+  const originating =
+    costs.materialCost +
+    costs.labourCost +
+    costs.overheadCost +
+    costs.profit +
+    costs.otherCosts
+  return (originating / costs.fob) * 100
 }
 
-interface HSCodeSuggestion {
-  code: string;
-  description: string;
-  category: string;
-  confidence: number;
+function resolveSelection(
+  options: TariffRateOption[],
+  selectedId: number | null,
+  rvc: number,
+) {
+  if (!options.length) return null
+
+  const withEligibility = options.map((option) => ({
+    option,
+    eligible:
+      option.rvcThreshold === null ||
+      option.rvcThreshold === undefined ||
+      rvc >= option.rvcThreshold,
+  }))
+
+  const selectedEntry = withEligibility.find(({ option }) => option.id === selectedId)
+  const eligibleSelected = selectedEntry && selectedEntry.eligible ? selectedEntry.option : null
+  const fallbackEntry = eligibleSelected ? null : withEligibility.find(({ eligible }) => eligible)
+  const fallbackOption = fallbackEntry?.option ?? withEligibility[0]?.option ?? null
+  const chosen = eligibleSelected ?? fallbackOption
+  const usedFallback = Boolean(chosen && chosen.id !== selectedId)
+
+  return {
+    selected: chosen,
+    options: withEligibility,
+    usedFallback,
+  }
+}
+
+function computeResult(
+  selection: TariffRateOption | null,
+  costs: CostState,
+  rvc: number,
+) {
+  if (!selection) {
+    return null
+  }
+
+  const appliedRate = selection.adValoremRate ?? 0
+  return {
+    basis: selection.basis,
+    appliedRate,
+    totalDuty: costs.totalValue * appliedRate,
+    rvc,
+    rvcThreshold: selection.rvcThreshold ?? null,
+  }
 }
 
 export function Calculator() {
-  const { settings } = useSettings();
-  const { countries: dbCountries, loading: dbCountriesLoading, error: dbCountriesError } = useDbCountries();
+  const { settings } = useSettings()
+  const { countries, loading: countriesLoading, error: countriesError } = useDbCountries()
 
-  // Clean MVP form state - no confusing mock values
-  const [productInfo, setProductInfo] = useState<ProductInfo>({
-    description: '',
+  const [form, setForm] = useState({
+    importerIso2: '',
+    originIso2: '',
     hsCode: '',
-    hsCodeDescription: '',
-    category: '',
-    quantity: 1,
-    unitValue: 0,
-    currency: settings.currency,
-    weight: 0,
-    weightUnit: 'kg',
-    dimensions: {
-      length: 0,
-      width: 0,
-      height: 0,
-      unit: 'cm'
-    },
-    originCountry: '',
-    destinationCountry: '',
-    shipmentDate: new Date().toISOString().split('T')[0],
-    incoterms: 'CIF',
-    certificates: [],
-    specialConditions: [],
-    // Backend calculation fields - will be set when needed
-    materialCost: 0,
-    labourCost: 0,
-    overheadCost: 0,
-    profit: 0,
-    otherCosts: 0,
-    fobValue: 0,
-    // RVC Calculation fields
-    nonOriginatingMaterialsValue: 0,
-    rvcMethod: 'direct',
-    rvcPercentage: 0,
-    rvcThreshold: 40
-  });
+  })
+  const [costs, setCosts] = useState<CostState>(initialCosts)
+  const [lookup, setLookup] = useState<TariffLookupResponse | null>(null)
+  const [selectedRateId, setSelectedRateId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Calculation state
-  const [calculation, setCalculation] = useState<TariffCalculation | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [calculationHistory, setCalculationHistory] = useState<TariffCalculation[]>([]);
+  const rvcPercentage = useMemo(() => calculateRvc(costs), [costs])
 
-  // UI state - Step-based flow for business owners
-  const [currentStep, setCurrentStep] = useState(1); // 1: Basic Info, 2: Select Agreement, 3: Cost Input, 4: Results
-  const [activeTab, setActiveTab] = useState('basic');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
-  const [hsCodeSuggestions, setHsCodeSuggestions] = useState<HSCodeSuggestion[]>([]);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [tradeAgreements, setTradeAgreements] = useState<TradeAgreement[]>([]);
-  const [selectedAgreement, setSelectedAgreement] = useState<TradeAgreement | null>(null);
-  const [basicInfoComplete, setBasicInfoComplete] = useState(false);
-
-  // Auto-save to localStorage
-  useEffect(() => {
-    const saved = safeLocalStorage.get('tariff-calculator-draft');
-    if (saved) {
-      try {
-        setProductInfo(prev => ({ ...prev, ...saved }));
-      } catch (e) {
-        console.error('Failed to load saved draft:', e);
-      }
-    }
-  }, []);
+  const selection = useMemo(() => {
+    if (!lookup) return null
+    return resolveSelection(lookup.rates, selectedRateId, rvcPercentage)
+  }, [lookup, selectedRateId, rvcPercentage])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeLocalStorage.set('tariff-calculator-draft', productInfo);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [productInfo]);
+    if (
+      selection?.selected &&
+      selection.usedFallback &&
+      selection.selected.id !== selectedRateId
+    ) {
+      setSelectedRateId(selection.selected.id)
+    }
+  }, [selection, selectedRateId])
 
-  // Validation logic
-  const validateBasicInfo = useCallback((): Record<string, string> => {
-    const errors: Record<string, string> = {};
+  const result = useMemo(() => {
+    return computeResult(selection?.selected ?? null, costs, rvcPercentage)
+  }, [selection, costs, rvcPercentage])
 
-    if (!productInfo.hsCode.trim()) {
-      errors.hsCode = 'HS Code is required';
-    } else if (!/^\d{4,10}(\.\d{2})*$/.test(productInfo.hsCode) && !/^\d{4,10}$/.test(productInfo.hsCode)) {
-      errors.hsCode = 'Invalid HS Code format (e.g., 870380 or 8703.80.10)';
+  const handleFormChange = (field: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value.toUpperCase() }))
+  }
+
+  const handleCostChange = (field: CostField, value: string) => {
+    const numeric = parseNumber(value)
+    setCosts((prev) => ({ ...prev, [field]: numeric }))
+  }
+
+  const handleLookup = async () => {
+    setError(null)
+
+    const importer = form.importerIso2.trim().toUpperCase()
+    const hsCode = form.hsCode.replace(/\./g, '').trim()
+    if (!importer || !hsCode) {
+      setError('Importer and HS code are required.')
+      return
     }
 
-    // Origin country is optional - if not provided, we'll only get MFN rates
-    // if (!productInfo.originCountry) {
-    //   errors.originCountry = 'Origin country is required';
-    // }
-
-    if (!productInfo.destinationCountry) {
-      errors.destinationCountry = 'Destination country is required';
-    }
-
-    if (productInfo.originCountry && productInfo.originCountry === productInfo.destinationCountry) {
-      errors.destinationCountry = 'Origin and destination must be different';
-    }
-
-    return errors;
-  }, [productInfo]);
-
-  const validateCalculateForm = useCallback((): Record<string, string> => {
-    const errors: Record<string, string> = {};
-
-    if (!basicInfoComplete) {
-      errors.basicInfo = 'Please complete Basic Info first';
-    }
-
-    if (productInfo.quantity <= 0) {
-      errors.quantity = 'Quantity must be greater than 0';
-    }
-
-    if (productInfo.materialCost < 0) {
-      errors.materialCost = 'Material cost cannot be negative';
-    }
-
-    if (productInfo.labourCost < 0) {
-      errors.labourCost = 'Labour cost cannot be negative';
-    }
-
-    if (productInfo.overheadCost < 0) {
-      errors.overheadCost = 'Overhead cost cannot be negative';
-    }
-
-    if (productInfo.profit < 0) {
-      errors.profit = 'Profit cannot be negative';
-    }
-
-    if (productInfo.otherCosts < 0) {
-      errors.otherCosts = 'Other costs cannot be negative';
-    }
-
-    return errors;
-  }, [productInfo, basicInfoComplete]);
-
-  // HS Code lookup simulation
-  const searchHSCode = useCallback(async (query: string) => {
-    if (query.length < 3) {
-      setHsCodeSuggestions([]);
-      return;
-    }
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const mockSuggestions: HSCodeSuggestion[] = [
-      {
-        code: '8703.80.10',
-        description: 'Electric vehicles with lithium-ion batteries',
-        category: 'Motor Vehicles',
-        confidence: 0.95
-      },
-      {
-        code: '8703.80.90',
-        description: 'Other electric vehicles',
-        category: 'Motor Vehicles',
-        confidence: 0.87
-      },
-      {
-        code: '8507.60.00',
-        description: 'Lithium-ion batteries',
-        category: 'Electrical Equipment',
-        confidence: 0.72
-      }
-    ];
-
-    setHsCodeSuggestions(mockSuggestions);
-  }, []);
-
-  // Fetch trade agreements based on basic info
-  const fetchTradeAgreements = useCallback(async () => {
-    const errors = validateBasicInfo();
-    setValidationErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      return;
-    }
-
-    setIsCalculating(true);
-    // Reset any previous results to avoid stale UI while fetching
-    setTradeAgreements([]);
-    setSelectedAgreement(null);
-    setBasicInfoComplete(false);
-
-    // Normalize and validate inputs (declare outside try block for error handling)
-    const normalizedHsCode = productInfo.hsCode.replace(/\./g, '').trim();
-    const importerIso2 = productInfo.destinationCountry.trim();
-    const originIso2 = productInfo.originCountry?.trim() || undefined;
-
+    setLoading(true)
     try {
-      // Call the lookup API
-      const lookupResponse = await tariffApi.getTariffRateLookup({
-        importerIso2,
-        originIso2,
-        hsCode: normalizedHsCode
-      });
-
-      const lookupData = lookupResponse.data;
-      const agreementsFromBackend: TradeAgreement[] = [];
-
-      // Add MFN agreement if available
-      if (lookupData.tariffRateMfn) {
-        const adValorem = Number(lookupData.tariffRateMfn.adValoremRate ?? 0);
-        agreementsFromBackend.push({
-          type: 'MFN',
-          name: 'Most Favoured Nation',
-          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
-          description: 'Standard WTO tariff rate',
-          requirements: ['Commercial Invoice', 'Packing List'],
-        });
-      }
-
-      // Add preferential agreement if available
-      if (lookupData.tariffRatePref && lookupData.agreement) {
-        const adValorem = Number(lookupData.tariffRatePref.adValoremRate ?? 0);
-        const rvc = lookupData.agreement.rvc != null ? Number(lookupData.agreement.rvc) : undefined;
-        agreementsFromBackend.push({
-          type: rvc != null ? 'RVC' : 'ROOS',
-          name: lookupData.agreement.name || 'Preferential',
-          rate: Math.round(adValorem * 10000) / 100, // convert to % with 2 decimals
-          description: `Preferential rate under ${lookupData.agreement.name}`,
-          requirements: ['Certificate of Origin'],
-          rvcThreshold: rvc,
-          rvcMethod: rvc != null ? 'both' : undefined,
-        });
-      }
-
-      setTradeAgreements(agreementsFromBackend);
-      setBasicInfoComplete(true);
-      setSelectedAgreement(agreementsFromBackend[0] ?? null);
-      setCurrentStep(2); // Move to agreement selection step
-
-    } catch (error: any) {
-      console.error('Failed to fetch trade agreements:', error);
-      let errorMessage = 'Failed to fetch trade agreements. Please try again.';
-
-      if (error.response?.status === 404) {
-        errorMessage = `No tariff data found for HS Code "${normalizedHsCode}" with importer "${importerIso2}"${originIso2 ? ` and origin "${originIso2}"` : ''}. Try the test data: HS Code "870380", Origin "KR", Destination "EU".`;
-      } else if (error.response?.status === 400) {
-        errorMessage = error.response.data?.message || `Invalid parameters: HS Code "${normalizedHsCode}", Importer "${importerIso2}", Origin "${originIso2 || 'none'}".`;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      setValidationErrors({ general: errorMessage });
-      setTradeAgreements([]);
-      setBasicInfoComplete(false);
+      const response = await tariffApi.getTariffRateLookup({
+        importerIso2: importer,
+        originIso2: form.originIso2.trim() || undefined,
+        hsCode,
+      })
+      const data = response.data
+      setLookup(data)
+      setSelectedRateId(null)
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Unable to find tariff information.'
+      setError(message)
+      setLookup(null)
+      setSelectedRateId(null)
     } finally {
-      setIsCalculating(false);
+      setLoading(false)
     }
-  }, [productInfo.hsCode, productInfo.originCountry, productInfo.destinationCountry, validateBasicInfo]);
-
-  // Real calculation logic using backend API
-  const handleCalculate = async () => {
-    const errors = validateCalculateForm();
-    setValidationErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      return;
-    }
-
-    if (!selectedAgreement) {
-      setValidationErrors({ agreement: 'Please select a trade agreement first' });
-      return;
-    }
-
-    setIsCalculating(true);
-
-    try {
-      // Calculate FOB value from user inputs
-      const calculatedFob = (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity;
-      const fobValue = productInfo.fobValue || calculatedFob;
-      
-      // Find MFN and Preferential rates from available agreements
-      const mfnAgreement = tradeAgreements.find(a => a.type === 'MFN');
-      const prefAgreement = tradeAgreements.find(a => a.type === 'RVC' || a.type === 'ROOS');
-      
-      const mfnRate = mfnAgreement ? mfnAgreement.rate / 100 : 0.125; // Default 12.5%
-      const prefRate = prefAgreement ? prefAgreement.rate / 100 : 0;
-      const rvcThreshold = prefAgreement?.rvcThreshold || 55; // Default 55%
-
-      // Prepare API request data using actual user inputs
-      const calculationData = {
-        mfnRate: mfnRate,
-        prefRate: prefRate,
-        rvcThreshold: rvcThreshold,
-        agreementId: prefAgreement ? 1 : undefined,
-        quantity: productInfo.quantity,
-        totalValue: productInfo.unitValue * productInfo.quantity,
-        materialCost: productInfo.materialCost,
-        labourCost: productInfo.labourCost,
-        overheadCost: productInfo.overheadCost,
-        profit: productInfo.profit,
-        otherCosts: productInfo.otherCosts,
-        fob: fobValue,
-        nonOriginValue: productInfo.nonOriginatingMaterialsValue
-      };
-
-      // Call backend calculation API
-      const response = await tariffApi.calculateTariff(calculationData);
-      const { totalDuty, basis, appliedRate, rvc: backendRvc, rvcThreshold: backendRvcThreshold } = response.data || {};
-      const tariffAmount = Number(totalDuty);
-
-      const baseValue = productInfo.unitValue * productInfo.quantity;
-      const dutiableValue = baseValue;
-
-      // Calculate actual RVC percentage using same logic as backend
-      const originatingValue = productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts;
-      const rvcPercentage = fobValue > 0 ? (originatingValue / fobValue) * 100 : 0;
-      
-      updateProductInfo('rvcPercentage', rvcPercentage);
-      const qualifiesForPreferential = backendRvcThreshold != null
-        ? rvcPercentage >= Number(backendRvcThreshold)
-        : rvcPercentage >= rvcThreshold;
-      
-      // Calculate additional fees (these are still frontend-calculated)
-      const vatRate = 0.20; // 20% VAT
-      const vatAmount = (dutiableValue + tariffAmount) * vatRate;
-      const processingFee = Math.min(dutiableValue * 0.005, 500);
-      const inspectionFee = 75;
-
-      const totalCost = dutiableValue + tariffAmount + vatAmount + processingFee + inspectionFee;
-      const effectiveRate = dutiableValue > 0 ? ((totalCost - dutiableValue) / dutiableValue) * 100 : 0;
-
-      // Determine which rate was actually applied by the backend
-      const actualRate = appliedRate != null ? Number(appliedRate) : (qualifiesForPreferential ? prefRate : mfnRate);
-      const appliedRatePercentage = actualRate * 100;
-
-      const newCalculation: TariffCalculation = {
-        id: `calc_${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        productInfo: { ...productInfo },
-        results: {
-          baseValue,
-          dutiableValue,
-          tariffRate: actualRate,
-          tariffAmount,
-          additionalDuties: 0,
-          taxes: {
-            vat: vatAmount,
-            excise: 0,
-            other: 0
-          },
-          fees: {
-            processing: processingFee,
-            inspection: inspectionFee,
-            storage: 0,
-            other: 0
-          },
-          totalCost,
-          effectiveRate: effectiveRate / 100,
-          breakdown: [
-            {
-              type: 'Import Duty',
-              category: 'duty',
-              rate: actualRate,
-              amount: tariffAmount,
-              description: `${basis === 'PREF' ? 'Preferential' : 'MFN'} tariff rate (${appliedRatePercentage.toFixed(2)}%)`,
-              legal_basis: qualifiesForPreferential ? 'AANZFTA Agreement' : 'WTO MFN Schedule'
-            },
-            {
-              type: 'Value Added Tax',
-              category: 'tax',
-              rate: vatRate,
-              amount: vatAmount,
-              description: 'Standard VAT on imported goods',
-              legal_basis: 'VAT Act Section 12'
-            },
-            {
-              type: 'Processing Fee',
-              category: 'fee',
-              rate: 0.005,
-              amount: processingFee,
-              description: 'Customs processing and documentation',
-              legal_basis: 'Customs Tariff Schedule'
-            },
-            {
-              type: 'Inspection Fee',
-              category: 'fee',
-              rate: 0,
-              amount: inspectionFee,
-              description: 'Mandatory goods inspection',
-              legal_basis: 'Import Safety Regulations'
-            }
-          ],
-          appliedRules: [
-            {
-              ruleId: `${productInfo.destinationCountry}-${productInfo.hsCode}-2024`,
-              description: `Tariff classification for ${productInfo.hsCodeDescription || 'specified goods'}`,
-              source: 'Harmonized Tariff Schedule',
-              validFrom: '2024-01-01',
-              validTo: '2024-12-31',
-              confidence: 0.95,
-              tradeAgreement: qualifiesForPreferential ? selectedAgreement.name : undefined
-            }
-          ],
-          warnings: [
-            ...(productInfo.weight > 1000 ? [{
-              type: 'warning' as const,
-              message: 'Heavy goods may require special handling',
-              recommendation: 'Consider freight consolidation to reduce costs'
-            }] : []),
-            ...(baseValue > 100000 ? [{
-              type: 'info' as const,
-              message: 'High-value shipment detected',
-              recommendation: 'Additional documentation may be required'
-            }] : []),
-            ...(selectedAgreement.type === 'RVC' && !qualifiesForPreferential ? [{
-              type: 'warning' as const,
-              message: `RVC requirement not met (${rvcPercentage.toFixed(1)}% vs ${rvcThreshold}% required)`,
-              recommendation: 'Falling back to MFN rate. Consider increasing originating content or reducing non-originating materials.'
-            }] : []),
-            ...(selectedAgreement.type === 'RVC' && qualifiesForPreferential ? [{
-              type: 'info' as const,
-              message: `RVC requirement satisfied (${rvcPercentage.toFixed(1)}% vs ${rvcThreshold}% required)`,
-              recommendation: 'Eligible for preferential tariff treatment under AANZFTA.'
-            }] : [])
-          ],
-          alternativeRoutes: [
-            {
-              country: 'MX',
-              countryName: 'Mexico',
-              tariffRate: 0.08,
-              totalCost: dutiableValue + (dutiableValue * 0.08) + vatAmount + processingFee + inspectionFee,
-              savings: !qualifiesForPreferential ? (dutiableValue * (mfnRate - 0.08)) : 0,
-              savingsPercentage: !qualifiesForPreferential ? ((mfnRate - 0.08) / mfnRate) * 100 : 0,
-              tradeAgreement: 'Alternative Route',
-              transitTime: 5
-            },
-            {
-              country: 'CA',
-              countryName: 'Canada', 
-              tariffRate: 0.095,
-              totalCost: dutiableValue + (dutiableValue * 0.095) + vatAmount + processingFee + inspectionFee,
-              savings: !qualifiesForPreferential ? (dutiableValue * (mfnRate - 0.095)) : 0,
-              savingsPercentage: !qualifiesForPreferential ? ((mfnRate - 0.095) / mfnRate) * 100 : 0,
-              tradeAgreement: 'Alternative Route',
-              transitTime: 3
-            }
-          ],
-          compliance: {
-            requiredDocuments: [
-              'Commercial Invoice',
-              'Packing List',
-              'Bill of Lading',
-              ...(qualifiesForPreferential ? ['Certificate of Origin'] : [])
-            ],
-            certificates: [
-              'CE Marking (if applicable)',
-              'Safety Certificate',
-              'Environmental Compliance'
-            ],
-            restrictions: [
-              'Import license may be required for quantities > 10 units',
-              'Battery regulations may apply for electric vehicles'
-            ],
-            prohibitions: []
-          }
-        }
-      };
-
-      setCalculation(newCalculation);
-      setCalculationHistory(prev => [newCalculation, ...prev.slice(0, 9)]); // Keep last 10
-      setCurrentStep(4); // Move to results step
-
-    } catch (error) {
-      console.error('Calculation failed:', error);
-      setValidationErrors({ general: 'Calculation failed. Please try again.' });
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  // Update product info
-  const updateProductInfo = (field: keyof ProductInfo, value: any) => {
-    setProductInfo(prev => ({ ...prev, [field]: value }));
-
-    // Clear validation error for this field
-    if (validationErrors[field]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-
-    // Clear calculation when inputs change
-    if (calculation) {
-      setCalculation(null);
-    }
-
-    // If core inputs change, clear agreements and selection to prevent stale buttons
-    if (field === 'hsCode' || field === 'originCountry' || field === 'destinationCountry') {
-      setTradeAgreements([]);
-      setSelectedAgreement(null);
-      setBasicInfoComplete(false);
-    }
-  };
-
-  // Step navigation functions
-  const goToNextStep = () => {
-    if (currentStep === 2 && selectedAgreement) {
-      setCurrentStep(3); // Go to cost input
-      // Force tab switch after state update
-      setTimeout(() => setActiveTab('calculate'), 0);
-    }
-  };
-
-  const goToPreviousStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      if (currentStep === 2) {
-        setCalculation(null); // Clear results when going back
-      }
-    }
-  };
-
-  // Save calculation
-  const saveCalculation = () => {
-    if (calculation) {
-      const saved = safeLocalStorage.get('saved-calculations') || [];
-      const savedArray = Array.isArray(saved) ? saved : [];
-      savedArray.unshift(calculation);
-      safeLocalStorage.set('saved-calculations', savedArray.slice(0, 50)); // Keep last 50
-    }
-  };
-
-  // Export calculation
-  const exportCalculation = () => {
-    if (calculation) {
-      const dataStr = JSON.stringify(calculation, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tariff-calculation-${calculation.id}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
-  };
+  }
 
   return (
-    <div className="flex-1 space-y-6 p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <CalculatorIcon className="w-8 h-8 text-brand-600" />
-            Import Tax Calculator
-          </h1>
-          <p className="text-muted-foreground">
-            Calculate import duties and taxes for your business
-          </p>
-          
-          {/* Step Indicator */}
-          <div className="flex items-center gap-4 mt-4">
-            {[
-              { step: 1, label: 'Product Info', icon: Package },
-              { step: 2, label: 'Select Rate', icon: Percent },
-              { step: 3, label: 'Cost Details', icon: DollarSign },
-              { step: 4, label: 'Results', icon: BarChart3 }
-            ].map(({ step, label, icon: Icon }) => (
-              <div key={step} className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-                currentStep === step 
-                  ? 'bg-brand-100 text-brand-700 border border-brand-300' 
-                  : currentStep > step 
-                    ? 'bg-green-100 text-green-700 border border-green-300'
-                    : 'bg-gray-100 text-gray-500 border border-gray-200'
-              }`}>
-                <Icon className="w-4 h-4" />
-                <span className="font-medium">{label}</span>
-                {currentStep > step && <CheckCircle className="w-4 h-4" />}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            {showAdvanced ? 'Basic' : 'Advanced'} Mode
-          </Button>
-          {calculation && (
-            <>
-              <Button variant="outline" onClick={exportCalculation}>
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-              <Button variant="outline" onClick={saveCalculation}>
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </Button>
-            </>
-          )}
-          <Button
-            variant="gradient"
-            onClick={() => setShowComparison(!showComparison)}
-            disabled={!calculation}
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Route Analysis
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Validation Errors */}
-      {Object.keys(validationErrors).length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
-        >
-          <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-red-800 dark:text-red-200">Please correct the following errors:</h4>
-              <ul className="mt-2 text-sm text-red-700 dark:text-red-300 space-y-1">
-                {Object.entries(validationErrors).map(([field, error]) => (
-                  <li key={field}>• {error}</li>
-                ))}
-              </ul>
+    <div className="p-6 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>1. Identify Your Trade</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Importer (Destination)</label>
+              <CountrySelect
+                countries={countries}
+                value={form.importerIso2}
+                onChange={(code) =>
+                  handleFormChange('importerIso2', Array.isArray(code) ? code[0] ?? '' : code ?? '')
+                }
+                loading={countriesLoading}
+                error={countriesError}
+                placeholder="Select importer"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Exporter (Origin)</label>
+              <CountrySelect
+                countries={countries}
+                value={form.originIso2}
+                onChange={(code) =>
+                  handleFormChange('originIso2', Array.isArray(code) ? code[0] ?? '' : code ?? '')
+                }
+                loading={countriesLoading}
+                error={countriesError}
+                placeholder="Select origin (optional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">HS Code</label>
+              <Input
+                value={form.hsCode}
+                onChange={(event) => handleFormChange('hsCode', event.target.value)}
+                placeholder="e.g. 870380"
+              />
             </div>
           </div>
-        </motion.div>
-      )}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleLookup} disabled={loading}>
+              {loading ? 'Searching…' : 'Lookup Tariff Options'}
+            </Button>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Enhanced Input Form */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="lg:col-span-2"
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Product & Shipment Details
+      {lookup && (
+        <Card>
+          <CardHeader>
+            <CardTitle>2. Fill in Costs & Choose an Agreement</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">Cost Breakdown</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Provide costs in {settings.currency}. These values drive the RVC calculation.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={showAdvanced}
-                    onCheckedChange={setShowAdvanced}
-                  />
-                  <span className="text-sm text-muted-foreground">Advanced</span>
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Enter comprehensive product and shipment information for accurate calculations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger 
-                    value="calculate" 
-                    disabled={currentStep < 3}
-                  >Calculate</TabsTrigger>
-                  <TabsTrigger value="rvc" disabled={!selectedAgreement || selectedAgreement.type !== 'RVC'}>RVC</TabsTrigger>
-                  <TabsTrigger value="logistics">Logistics</TabsTrigger>
-                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                </TabsList>
-
-                {/* Basic Information Tab */}
-                <TabsContent value="basic" className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">HS Code *</label>
-                      <div className="relative">
-                        <Input
-                          placeholder="e.g., 870380 or 8703.80.10"
-                          value={productInfo.hsCode}
-                          onChange={(e) => {
-                            updateProductInfo('hsCode', e.target.value);
-                            searchHSCode(e.target.value);
-                          }}
-                          className={validationErrors.hsCode ? 'border-red-500' : ''}
-                        />
-                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      </div>
-                      {validationErrors.hsCode && (
-                        <p className="text-sm text-red-600">{validationErrors.hsCode}</p>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        💡 Try: HS Code "870380", Origin "Republic of Korea", Destination "European Union"
-                      </div>
-                    </div>
-
-                    {/* HS Code Suggestions */}
-                    {hsCodeSuggestions.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Suggested Classifications</label>
-                        <div className="space-y-2">
-                          {hsCodeSuggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => {
-                                updateProductInfo('hsCode', suggestion.code);
-                                updateProductInfo('hsCodeDescription', suggestion.description);
-                                updateProductInfo('category', suggestion.category);
-                                setHsCodeSuggestions([]);
-                              }}
-                              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="font-medium">{suggestion.code}</div>
-                                  <div className="text-sm text-muted-foreground">{suggestion.description}</div>
-                                  <div className="text-xs text-muted-foreground">{suggestion.category}</div>
-                                </div>
-                                <Badge variant="secondary">
-                                  {Math.round(suggestion.confidence * 100)}% match
-                                </Badge>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Origin Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select origin country"
-                          value={productInfo.originCountry}
-                          countries={dbCountries}
-                          loading={dbCountriesLoading}
-                          error={dbCountriesError}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('originCountry', String(single));
-                          }}
-                          className={validationErrors.originCountry ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.originCountry && (
-                          <p className="text-sm text-red-600">{validationErrors.originCountry}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          Destination Country *
-                        </label>
-                        <CountrySelect
-                          placeholder="Select destination country"
-                          value={productInfo.destinationCountry}
-                          countries={dbCountries}
-                          loading={dbCountriesLoading}
-                          error={dbCountriesError}
-                          onChange={(code) => {
-                            const single = Array.isArray(code) ? code[0] ?? '' : code ?? '';
-                            updateProductInfo('destinationCountry', String(single));
-                          }}
-                          className={validationErrors.destinationCountry ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.destinationCountry && (
-                          <p className="text-sm text-red-600">{validationErrors.destinationCountry}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-4">
-                      <Button
-                        onClick={fetchTradeAgreements}
-                        disabled={isCalculating}
-                        className="min-w-[200px]"
-                      >
-                        {isCalculating ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Fetching Agreements...
-                          </>
-                        ) : (
-                          <>
-                            <Search className="w-4 h-4 mr-2" />
-                            Get Trade Agreements
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Trade Agreements Results */}
-                    <div className="space-y-4 pt-4 border-t">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Globe className="w-5 h-5" />
-                        Available Trade Agreements
-                      </h3>
-                      {validationErrors.general && (
-                        <div className="text-center py-6 text-sm text-red-600">{validationErrors.general}</div>
-                      )}
-                      {!validationErrors.general && tradeAgreements.length === 0 && basicInfoComplete && (
-                        <div className="text-center py-6 text-sm text-muted-foreground">No agreements found for this combination</div>
-                      )}
-                      {!validationErrors.general && tradeAgreements.length === 0 && !basicInfoComplete && (
-                        <div className="text-center py-6 text-sm text-muted-foreground">Click "Get Trade Agreements" to fetch available agreements</div>
-                      )}
-                      {tradeAgreements.length > 0 && (
-                        <div className="grid gap-3">
-                          {tradeAgreements.map((agreement, index) => (
-                            <div
-                              key={index}
-                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAgreement?.type === agreement.type
-                                ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                                }`}
-                              onClick={() => setSelectedAgreement(agreement)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant={agreement.type === 'MFN' ? 'secondary' : 'default'}>
-                                      {agreement.type}
-                                    </Badge>
-                                    <span className="font-medium">{agreement.name}</span>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-1">{agreement.description}</p>
-                                  {agreement.requirements && (
-                                    <div className="mt-2">
-                                      <p className="text-xs text-muted-foreground">Requirements:</p>
-                                      <ul className="text-xs text-muted-foreground list-disc list-inside">
-                                        {agreement.requirements.map((req, idx) => (
-                                          <li key={idx}>{req}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-lg font-bold text-brand-600">
-                                    {agreement.rate}%
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">Tariff Rate</div>
-                                  {agreement.rvcThreshold && (
-                                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                      {agreement.rvcThreshold}% RVC Required
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Next Button */}
-                      {selectedAgreement && tradeAgreements.length > 0 && (
-                        <div className="flex justify-center mt-6">
-                          <Button 
-                            onClick={goToNextStep} 
-                            className="px-8 py-2"
-                            size="lg"
-                          >
-                            Next: Enter Cost Details
-                            <ChevronRight className="w-4 h-4 ml-2" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Calculate Tab - Comprehensive Cost Form */}
-                <TabsContent value="calculate" className="space-y-6">
-                  <div className="text-center space-y-2 mb-6">
-                    <h3 className="text-xl font-semibold">Cost Information</h3>
-                    <p className="text-muted-foreground">Enter all cost details for accurate tariff calculation</p>
-                    <Badge variant="outline">
-                      Selected: {selectedAgreement?.name || 'No agreement selected'} ({selectedAgreement?.rate || 0}%)
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-lg">Cost Breakdown & Trade Information</h4>
-                      <Badge variant="outline" className="text-xs">
-                        Step 3: Enter All Required Information
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      {/* Quantity */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Quantity"
-                          required
-                          tooltip="Number of units being imported"
-                        />
-                        <Input
-                          type="number"
-                          step="1"
-                          min="1"
-                          placeholder="1"
-                          value={productInfo.quantity}
-                          onChange={(e) => updateProductInfo('quantity', parseInt(e.target.value) || 1)}
-                          className={validationErrors.quantity ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.quantity && (
-                          <p className="text-sm text-red-600">{validationErrors.quantity}</p>
-                        )}
-                      </div>
-
-                      {/* Unit Value */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Product Value per Unit"
-                          required
-                          tooltip="Value of each unit of the product"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={productInfo.unitValue}
-                            onChange={(e) => updateProductInfo('unitValue', parseFloat(e.target.value) || 0)}
-                            className={validationErrors.unitValue ? 'border-red-500' : 'flex-1'}
-                          />
-                          <select
-                            value={productInfo.currency}
-                            onChange={(e) => updateProductInfo('currency', e.target.value)}
-                            className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-                          >
-                            <option value="AUD">AUD</option>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="GBP">GBP</option>
-                            <option value="JPY">JPY</option>
-                            <option value="CAD">CAD</option>
-                          </select>
-                        </div>
-                        {validationErrors.unitValue && (
-                          <p className="text-sm text-red-600">{validationErrors.unitValue}</p>
-                        )}
-                      </div>
-
-                      {/* 1. Material Cost */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Material Cost"
-                          required
-                          tooltip="Value of originating materials, parts or produce that are acquired or self-produced by the producer in the production of the good"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.materialCost}
-                          onChange={(e) => updateProductInfo('materialCost', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.materialCost ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.materialCost && (
-                          <p className="text-sm text-red-600">{validationErrors.materialCost}</p>
-                        )}
-                      </div>
-
-                      {/* 2. Labour Cost */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Labour Cost"
-                          required
-                          tooltip="Includes wages, remuneration and other employee benefits"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.labourCost}
-                          onChange={(e) => updateProductInfo('labourCost', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.labourCost ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.labourCost && (
-                          <p className="text-sm text-red-600">{validationErrors.labourCost}</p>
-                        )}
-                      </div>
-
-                      {/* 3. Overhead Cost */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Overhead Cost"
-                          required
-                          tooltip="The total overhead expense"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.overheadCost}
-                          onChange={(e) => updateProductInfo('overheadCost', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.overheadCost ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.overheadCost && (
-                          <p className="text-sm text-red-600">{validationErrors.overheadCost}</p>
-                        )}
-                      </div>
-
-                      {/* 4. Profit */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Profit"
-                          tooltip="Profit included in the FOB value"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.profit}
-                          onChange={(e) => updateProductInfo('profit', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.profit ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.profit && (
-                          <p className="text-sm text-red-600">{validationErrors.profit}</p>
-                        )}
-                      </div>
-
-                      {/* 5. Other Costs */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Other Costs"
-                          tooltip="Costs incurred in placing the good in the ship or other means of transport for export including, but not limited to, domestic transport costs, storage and warehousing, port handling, brokerage fees and service charges"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.otherCosts}
-                          onChange={(e) => updateProductInfo('otherCosts', parseFloat(e.target.value) || 0)}
-                          className={validationErrors.otherCosts ? 'border-red-500' : ''}
-                        />
-                        {validationErrors.otherCosts && (
-                          <p className="text-sm text-red-600">{validationErrors.otherCosts}</p>
-                        )}
-                      </div>
-
-                      {/* 6. Free-on-Board Value */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Free-on-Board Value"
-                          tooltip="The free-on-board value of the goods as defined in Article 1 (Definitions)"
-                        />
-                        <Input
-                          type="number"
-                          value={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
-                          disabled
-                          className="bg-gray-50 dark:bg-gray-800 font-medium"
-                        />
-                      </div>
-
-                      {/* 7. Value of Non-Originating Materials */}
-                      <div className="space-y-2">
-                        <FieldLabel
-                          label="Value of Non-Originating Materials"
-                          tooltip="The CIF value at the time of importation or the earliest ascertained price paid for all non-originating materials, parts or produce that are acquired by the producer in the production of the good. Non-originating materials include materials of undetermined origin but do not include a material that is self-produced"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={productInfo.nonOriginatingMaterialsValue}
-                          onChange={(e) => updateProductInfo('nonOriginatingMaterialsValue', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between pt-6">
-                    <Button variant="outline" onClick={goToPreviousStep}>
-                      ← Back to Agreements
-                    </Button>
-                    <Button
-                      onClick={handleCalculate}
-                      disabled={isCalculating || !selectedAgreement || !productInfo.unitValue}
-                      className="min-w-[200px]"
-                      variant="default"
-                    >
-                      {isCalculating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Calculating...
-                        </>
-                      ) : (
-                        <>
-                          <CalculatorIcon className="w-4 h-4 mr-2" />
-                          Calculate Import Tax
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                {/* RVC Tab */}
-                <TabsContent value="rvc" className="space-y-6">
-                  {selectedAgreement?.type === 'RVC' ? (
-                    <>
-                      <RVCInfoPanel />
-
-                      {/* Live RVC Calculator */}
-                      {productInfo.fobValue > 0 && (
-                        <RVCCalculator
-                          materialCost={productInfo.materialCost}
-                          labourCost={productInfo.labourCost}
-                          overheadCost={productInfo.overheadCost}
-                          profit={productInfo.profit}
-                          otherCosts={productInfo.otherCosts}
-                          fobValue={productInfo.fobValue || (productInfo.materialCost + productInfo.labourCost + productInfo.overheadCost + productInfo.profit + productInfo.otherCosts) * productInfo.quantity}
-                          nonOriginatingMaterialsValue={productInfo.nonOriginatingMaterialsValue}
-                          method={productInfo.rvcMethod}
-                          threshold={selectedAgreement.rvcThreshold || 40}
-                          currency={productInfo.currency}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-8">
-                      <CalculatorIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">RVC Calculation Not Available</h3>
-                      <p className="text-muted-foreground">
-                        Please select an RVC-based trade agreement to access Regional Value Content calculations.
-                      </p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Logistics Tab */}
-                <TabsContent value="logistics" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Weight</label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0"
-                          value={productInfo.weight}
-                          onChange={(e) => updateProductInfo('weight', parseFloat(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                        <select
-                          value={productInfo.weightUnit}
-                          onChange={(e) => updateProductInfo('weightUnit', e.target.value)}
-                          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="kg">kg</option>
-                          <option value="lbs">lbs</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Shipment Date</label>
+                <div className="space-y-3">
+                  {(
+                    [
+                      ['totalValue', 'Customs Value (Total)', true],
+                      ['materialCost', 'Material Cost', true],
+                      ['labourCost', 'Labour Cost', true],
+                      ['overheadCost', 'Overhead Cost', true],
+                      ['profit', 'Profit', true],
+                      ['otherCosts', 'Other Costs', true],
+                      ['fob', 'FOB Value', true],
+                      ['nonOriginValue', 'Non-originating Material (CIF)', false],
+                    ] as Array<[CostField, string, boolean]>
+                  ).map(([field, label, required]) => (
+                    <div key={field} className="space-y-1">
+                      <label className="text-sm font-medium">
+                        {label}
+                        {required ? ' *' : ''}
+                      </label>
                       <Input
-                        type="date"
-                        value={productInfo.shipmentDate}
-                        onChange={(e) => updateProductInfo('shipmentDate', e.target.value)}
+                        type="number"
+                        inputMode="decimal"
+                        value={costs[field]}
+                        onChange={(event) => handleCostChange(field, event.target.value)}
+                        min={0}
                       />
                     </div>
-                  </div>
-                </TabsContent>
+                  ))}
+                </div>
+              </div>
 
-                {/* Compliance Tab */}
-                <TabsContent value="compliance" className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Incoterms</label>
-                    <select
-                      value={productInfo.incoterms}
-                      onChange={(e) => updateProductInfo('incoterms', e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="CIF">CIF - Cost, Insurance, and Freight</option>
-                      <option value="FOB">FOB - Free on Board</option>
-                      <option value="EXW">EXW - Ex Works</option>
-                      <option value="DDP">DDP - Delivered Duty Paid</option>
-                    </select>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </motion.div>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">Agreement Options</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Agreements that do not meet the RVC threshold are disabled automatically.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {selection?.options?.length ? (
+                    selection.options.map(({ option, eligible }) => {
+                      const isSelected = selection?.selected?.id === option.id
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            if (eligible) {
+                              setSelectedRateId(option.id)
+                            }
+                          }}
+                          className={`w-full rounded-md border px-4 py-3 text-left transition ${
+                            isSelected
+                              ? 'border-brand-500 bg-brand-50'
+                              : 'border-border bg-background'
+                          } ${eligible ? '' : 'opacity-50 cursor-not-allowed'}`}
+                          disabled={!eligible}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">
+                                {option.agreementName ?? 'Most Favoured Nation'}
+                              </p>
+                              <p className="text-xs text-muted-foreground uppercase">
+                                {option.basis}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold">
+                                {(option.adValoremRate ?? 0) * 100}%
+                              </p>
+                              {option.rvcThreshold != null && (
+                                <p className="text-xs text-muted-foreground">
+                                  RVC ≥ {option.rvcThreshold}%
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No tariff agreements were returned for this search. Confirm the HS code and try again.
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-md border px-4 py-3 bg-muted/30">
+                  <p className="text-sm font-medium">Calculated RVC</p>
+                  <p className="text-2xl font-bold">{rvcPercentage.toFixed(2)}%</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(selection?.selected?.agreementName ?? 'Current selection')}{' '}
+                    requires {selection?.selected?.rvcThreshold ?? 'N/A'}%.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Results Panel */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="space-y-6"
-        >
-          {calculation ? (
-            <>
-              {/* Summary Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
-                    Calculation Results
-                  </CardTitle>
-                  <CardDescription>
-                    Total import costs and breakdown
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Base Value:</span>
-                        <span className="font-medium">{formatCurrency(calculation.results.baseValue)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tariff Amount:</span>
-                        <span className="font-medium">{formatCurrency(calculation.results.tariffAmount)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">VAT:</span>
-                        <span className="font-medium">{formatCurrency(calculation.results.taxes.vat)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Processing Fees:</span>
-                        <span className="font-medium">{formatCurrency(calculation.results.fees.processing)}</span>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between text-lg font-bold">
-                        <span>Total Cost:</span>
-                        <span className="text-brand-600">{formatCurrency(calculation.results.totalCost)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Effective Rate:</span>
-                        <span>{formatPercentage(calculation.results.effectiveRate)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Charts */}
-              {showComparison && calculation.results.alternativeRoutes.length > 0 && (
-                <ComparisonChart
-                  baseResult={{
-                    baseValue: calculation.results.baseValue,
-                    tariffRate: calculation.results.tariffRate,
-                    totalCost: calculation.results.totalCost
-                  }}
-                  alternatives={calculation.results.alternativeRoutes.map(route => ({
-                    country: route.countryName,
-                    tariffRate: route.tariffRate,
-                    savings: route.savings
-                  }))}
-                />
-              )}
-
-              <TariffBreakdownChart
-                data={{
-                  baseValue: calculation.results.baseValue,
-                  tariffAmount: calculation.results.tariffAmount,
-                  additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection,
-                  totalCost: calculation.results.totalCost,
-                  breakdown: calculation.results.breakdown
-                }}
-              />
-
-              <HistoricalRatesChart
-                hsCode={calculation.productInfo.hsCode}
-                originCountry={calculation.productInfo.originCountry}
-                destinationCountry={calculation.productInfo.destinationCountry}
-              />
-
-              <CostAnalysisChart
-                data={{
-                  baseValue: calculation.results.baseValue,
-                  tariffAmount: calculation.results.tariffAmount,
-                  additionalFees: calculation.results.fees.processing + calculation.results.fees.inspection,
-                  totalCost: calculation.results.totalCost
-                }}
-              />
-
-              {/* RVC Calculator - Show if RVC agreement is selected */}
-              {selectedAgreement?.type === 'RVC' && selectedAgreement.rvcThreshold && (
-                <RVCCalculator
-                  materialCost={calculation.productInfo.materialCost}
-                  labourCost={calculation.productInfo.labourCost}
-                  overheadCost={calculation.productInfo.overheadCost}
-                  profit={calculation.productInfo.profit}
-                  otherCosts={calculation.productInfo.otherCosts}
-                  fobValue={calculation.productInfo.fobValue}
-                  nonOriginatingMaterialsValue={calculation.productInfo.nonOriginatingMaterialsValue}
-                  method={calculation.productInfo.rvcMethod}
-                  threshold={selectedAgreement.rvcThreshold}
-                  currency={calculation.productInfo.currency}
-                />
-              )}
-            </>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <CalculatorIcon className="w-12 h-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Ready to Calculate</h3>
-                <p className="text-muted-foreground text-center">
-                  Complete the form and click calculate to see your tariff breakdown
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
-      </div>
+      {result && (
+        <Card>
+          <CardHeader>
+            <CardTitle>3. Results</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Tariff Basis</p>
+              <p className="text-lg font-semibold">{result.basis}</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Applied Rate</p>
+              <p className="text-lg font-semibold">{(result.appliedRate * 100).toFixed(2)}%</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Total Duty</p>
+              <p className="text-lg font-semibold">
+                {formatCurrency(result.totalDuty, settings.currency)}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">RVC vs Threshold</p>
+              <p className="text-lg font-semibold">
+                {result.rvc.toFixed(2)}% / {result.rvcThreshold ?? 'N/A'}%
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
-  );
+  )
 }
+
+export default Calculator

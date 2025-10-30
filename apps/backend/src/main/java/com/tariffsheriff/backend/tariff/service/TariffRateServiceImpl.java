@@ -2,11 +2,13 @@ package com.tariffsheriff.backend.tariff.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
+import com.tariffsheriff.backend.tariff.dto.TariffRateOptionDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import com.tariffsheriff.backend.tariff.model.Agreement;
@@ -102,7 +104,19 @@ public class TariffRateServiceImpl implements TariffRateService {
             agreement = agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
         }
 
-        return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
+        List<TariffRateOptionDto> options = new ArrayList<>();
+        options.add(toOptionDto(tariffRateMfn, null));
+
+        if (tariffRatePref != null) {
+            options.add(toOptionDto(tariffRatePref, agreement));
+        }
+
+        return new TariffRateLookupDto(
+            importerIso2,
+            originIso2,
+            hsCode,
+            options
+        );
     }
 
 
@@ -131,6 +145,23 @@ public class TariffRateServiceImpl implements TariffRateService {
                 totalDuty,
                 rvc,
                 threshold
+        );
+    }
+
+    private TariffRateOptionDto toOptionDto(TariffRate rate, Agreement agreement) {
+        BigDecimal rvcThreshold = agreement != null ? agreement.getRvcThreshold() : null;
+        String agreementName = agreement != null ? agreement.getName() : null;
+        Long agreementId = agreement != null ? agreement.getId() : rate.getAgreementId();
+
+        return new TariffRateOptionDto(
+            rate.getId(),
+            rate.getBasis(),
+            rate.getAdValoremRate(),
+            rate.getSpecificAmount(),
+            rate.getSpecificUnit(),
+            agreementId,
+            agreementName,
+            rvcThreshold
         );
     }
     

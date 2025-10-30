@@ -126,3 +126,22 @@ docker compose down -v
 Notes
 - Runs with `SPRING_PROFILES_ACTIVE=dev` for Swagger and relaxed CORS in development.
 - A demo Base64 JWT secret is included for local use; change if needed.
+
+### Connecting to Neon (hosted Postgres)
+
+The backend reads its datasource settings from standard environment variables, so you can point it at a Neon database without code changes. Example:
+
+```bash
+# Required
+export DATABASE_URL="jdbc:postgresql://YOUR_NEON_HOST:5432/tariffsheriff?sslmode=require"
+export DATABASE_USERNAME="app_dev"
+export DATABASE_PASSWORD="your-neon-password"
+
+# Recommended tuning for serverless Postgres
+export DATABASE_SSL=true                 # enables driver SSL flag
+export DATABASE_SSLMODE=require          # redundant but explicit
+export DATABASE_MAX_POOL_SIZE=5          # Neon limits session counts
+export DATABASE_MIN_IDLE=0
+```
+
+Then start the backend as usual (`./mvnw spring-boot:run` or `mvn spring-boot:run`). Flyway will apply the migrations on first run; if you want to skip them for a pre-provisioned schema you can set `SPRING_FLYWAY_ENABLED=false`.
