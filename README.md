@@ -65,80 +65,6 @@ npm run test --workspace=frontend
 
 ---
 
-## Live Demo
-
-[https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
-___
-
-
-## System Architecture
-
-```mermaid
-flowchart TB
-    subgraph clients [" Client Layer "]
-        web[Web Dashboard<br/>React + TypeScript + Tailwind]
-        mobile[Mobile PWA<br/>Responsive Design]
-    end
-
-    subgraph gateway [" API Gateway "]
-        lb[Load Balancer<br/>SSL + CORS]
-    end
-
-    subgraph backend [" Backend Services "]
-        auth[Authentication<br/>JWT + Spring Security]
-        calc[Tariff Calculator<br/>HS Code + MFN/Pref Rates]
-        docs[API Docs<br/>Swagger/OpenAPI]
-    end
-
-    subgraph storage [" Data Storage "]
-        db[(PostgreSQL<br/>Tariff Rules + Users)]
-        cache[(Redis<br/>Session + Query Cache)]
-    end
-
-    subgraph external [" External APIs "]
-        wits[WITS<br/>Trade Stats]
-        hscode[HS Codes<br/>Classification]
-        regional[Regional<br/>Country Data]
-    end
-
-    subgraph cicd [" CI/CD Pipeline "]
-        actions[GitHub Actions<br/>Build + Test + Deploy]
-    end
-
-    web --> lb
-    mobile --> lb
-
-    lb --> auth
-    lb --> calc
-    lb --> docs
-
-    auth --> db
-    auth --> cache
-
-    calc --> db
-    calc --> cache
-    calc -.-> wits
-    calc -.-> hscode
-    calc -.-> regional
-
-    actions -.-> backend
-    actions -.-> storage
-
-    classDef clientClass fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef gatewayClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef backendClass fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    classDef storageClass fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef externalClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    classDef cicdClass fill:#f1f8e9,stroke:#689f38,stroke-width:2px
-
-    class web,mobile clientClass
-    class lb gatewayClass
-    class auth,calc,docs backendClass
-    class db,cache storageClass
-    class wits,hscode,regional externalClass
-    class actions cicdClass
-```
-
 ## Project Structure
 
 ```
@@ -242,20 +168,6 @@ npm run dev --workspace=frontend
 npm run build
 ```
 
-### Deployment (Vercel)
-
-- If you deploy the monorepo to Vercel, the frontend app is in `apps/frontend`.
-- Place a `vercel.json` inside `apps/frontend/` with:
-
-```json
-{
-    "outputDirectory": "dist"
-}
-```
-
-- Alternatively, in the Vercel project settings set the **Root Directory** to `apps/frontend` and the **Output Directory** to `dist`.
-- The root-level `vercel.json` is intentionally minimal to avoid schema validation errors — per-app configs in subfolders are recommended for monorepos.
-
 ## Technology Stack
 
 ### Backend
@@ -289,14 +201,6 @@ npm run build
 
 
 ---
-
-## Contributing
-
-- See the [`docs/`](docs/) folder for guidelines and architecture decisions.
-- Use atomic, logical commits for all changes.
-
----
-
 
 ## Contributors
 
