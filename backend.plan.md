@@ -155,7 +155,7 @@ function calculateRvc(costs: CostState): number {
   const totalCost = baseValue + tariffAmount
   ```
 
-- [ ] Refactor Calculator.tsx to remove manual agreement selection UI/state
+- [#] Refactor Calculator.tsx to remove manual agreement selection UI/state
   - Reference: `apps/frontend/src/pages/Calculator.tsx` selection UI and state
   ```109:118:apps/frontend/src/pages/Calculator.tsx
   const [selectedRateId, setSelectedRateId] = useState<number | null>(null)

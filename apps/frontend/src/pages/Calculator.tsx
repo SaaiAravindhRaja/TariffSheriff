@@ -106,7 +106,7 @@ export function Calculator() {
   })
   const [costs, setCosts] = useState<CostState>(initialCosts)
   const [lookup, setLookup] = useState<TariffLookupResponse | null>(null)
-  const [selectedRateId, setSelectedRateId] = useState<number | null>(null)
+  // Manual agreement selection removed; selection is now auto-determined
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -114,18 +114,11 @@ export function Calculator() {
 
   const selection = useMemo(() => {
     if (!lookup) return null
-    return resolveSelection(lookup.rates, selectedRateId, rvcPercentage)
-  }, [lookup, selectedRateId, rvcPercentage])
+    // Pass null for selectedId to avoid manual selection and use fallback
+    return resolveSelection(lookup.rates, null, rvcPercentage)
+  }, [lookup, rvcPercentage])
 
-  useEffect(() => {
-    if (
-      selection?.selected &&
-      selection.usedFallback &&
-      selection.selected.id !== selectedRateId
-    ) {
-      setSelectedRateId(selection.selected.id)
-    }
-  }, [selection, selectedRateId])
+  // Manual selection syncing removed
 
   const result = useMemo(() => {
     return computeResult(selection?.selected ?? null, costs, rvcPercentage)
@@ -159,7 +152,6 @@ export function Calculator() {
       })
       const data = response.data
       setLookup(data)
-      setSelectedRateId(null)
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -167,7 +159,6 @@ export function Calculator() {
         'Unable to find tariff information.'
       setError(message)
       setLookup(null)
-      setSelectedRateId(null)
     } finally {
       setLoading(false)
     }
@@ -282,20 +273,13 @@ export function Calculator() {
                     selection.options.map(({ option, eligible }) => {
                       const isSelected = selection?.selected?.id === option.id
                       return (
-                        <button
+                        <div
                           key={option.id}
-                          type="button"
-                          onClick={() => {
-                            if (eligible) {
-                              setSelectedRateId(option.id)
-                            }
-                          }}
-                          className={`w-full rounded-md border px-4 py-3 text-left transition ${
+                          className={`w-full rounded-md border px-4 py-3 text-left ${
                             isSelected
                               ? 'border-brand-500 bg-brand-50'
                               : 'border-border bg-background'
-                          } ${eligible ? '' : 'opacity-50 cursor-not-allowed'}`}
-                          disabled={!eligible}
+                          } ${eligible ? '' : 'opacity-50'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div>
@@ -317,7 +301,7 @@ export function Calculator() {
                               )}
                             </div>
                           </div>
-                        </button>
+                        </div>
                       )
                     })
                   ) : (
