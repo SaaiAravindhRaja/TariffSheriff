@@ -446,7 +446,7 @@ export function Calculator() {
                 <div>
                   <h3 className="text-sm font-semibold">Cost Breakdown</h3>
                   <p className="text-xs text-muted-foreground">
-                    Provide costs in {settings.currency}. These values drive the RVC calculation.
+                    Provide costs in {settings.currency}.
                   </p>
                 </div>
                 <div className="space-y-3">
@@ -459,7 +459,7 @@ export function Calculator() {
                       ['profit', 'Profit', true],
                       ['otherCosts', 'Other Costs', true],
                       ['fob', 'FOB Value', true],
-                      ['nonOriginValue', 'Non-originating Material (CIF)', false],
+                      // 'Non-originating Material (CIF)' removed as it is not used in calculation
                     ] as Array<[CostField, string, boolean]>
                   ).map(([field, label, required]) => (
                     <div key={field} className="space-y-1">
@@ -533,7 +533,7 @@ export function Calculator() {
                   )}
                 </div>
                 <div className="rounded-md border px-4 py-3 bg-muted/30">
-                  <p className="text-sm font-medium">RVC (from backend)</p>
+                  <p className="text-sm font-medium">RVC</p>
                   <p className="text-2xl font-bold">{backendRvc.toFixed(2)}%</p>
                   <p className="text-xs text-muted-foreground">
                     {(selection?.selected?.agreementName ?? 'Current selection')}{' '}
