@@ -258,10 +258,10 @@ export const tariffApi = {
       BigDecimal rvcThreshold
   ) {}
   ```
-- [ ] Feed charts with backend totals/rates when available; keep local math
-  - Reference: `apps/frontend/src/components/calculator/TariffBreakdownChart.tsx`, `CostAnalysisChart.tsx`, `ComparisonChart.tsx`, `HistoricalRatesChart.tsx`
+- [#] Feed charts with backend totals/rates when available; keep local math
+  - Reference: `apps/frontend/src/components/calculator/TariffBreakdownChart.tsx`
 
-- [ ] Audit utils to avoid calculateTariffTotal for primary result
+- [#] Audit utils to avoid calculateTariffTotal for primary result
   - Reference: `apps/frontend/src/lib/utils.ts`
   ```72:78:apps/frontend/src/lib/utils.ts
   export function calculateTariffTotal(

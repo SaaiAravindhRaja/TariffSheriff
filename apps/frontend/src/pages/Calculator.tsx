@@ -6,6 +6,7 @@ import CountrySelect from '@/components/inputs/CountrySelect'
 import { useDbCountries } from '@/hooks/useDbCountries'
 import { useSettings } from '@/contexts/SettingsContext'
 import { tariffApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
+import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownChart'
 import { formatCurrency } from '@/lib/utils'
 
 type CostField =
@@ -33,7 +34,8 @@ const initialCosts: CostState = {
 
 function parseNumber(value: string): number {
   const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
+  if (!Number.isFinite(parsed)) return 0
+  return parsed < 0 ? 0 : parsed
 }
 
 
@@ -141,6 +143,12 @@ export function Calculator() {
     }
     rvcDebounceRef.current = window.setTimeout(async () => {
       try {
+        // Guard: don't call backend while FOB is invalid
+        if (costs.fob <= 0) {
+          setBackendRvc(0)
+          phase1ResultRef.current = null
+          return
+        }
         // cancel previous in-flight phase1 request
         if (phase1AbortRef.current) {
           phase1AbortRef.current.abort()
@@ -215,6 +223,11 @@ export function Calculator() {
       if (!bestOption) {
         setCalcResult(null)
         setUsedAgreementName(null)
+        return
+      }
+      if (costs.fob <= 0) {
+        // Don't attempt final calc when FOB invalid
+        setCalcResult(null)
         return
       }
       const isMfn = (bestOption as any).basis === 'MFN' || (bestOption as any).agreementName == null
@@ -499,6 +512,17 @@ export function Calculator() {
         </Card>
       )}
 
+      {lookup && costs.fob <= 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>3. Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-red-600">Enter a valid FOB value greater than 0 to compute RVC and duty.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {calcResult && (
         <Card>
           <CardHeader>
@@ -514,9 +538,9 @@ export function Calculator() {
               <p className="text-lg font-semibold">{(calcResult.appliedRate * 100).toFixed(2)}%</p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Total Duty</p>
+              <p className="text-sm text-muted-foreground">Total Cost</p>
               <p className="text-lg font-semibold">
-                {formatCurrency(calcResult.totalDuty, settings.currency)}
+                {formatCurrency(calcResult.totalDuty + costs.totalValue, settings.currency)}
               </p>
             </div>
             <div className="space-y-2">
@@ -527,6 +551,27 @@ export function Calculator() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {calcResult && (
+        <div className="grid gap-6">
+          <TariffBreakdownChart
+            data={{
+              baseValue: costs.totalValue,
+              tariffAmount: calcResult.totalDuty,
+              additionalFees: 0,
+              totalCost: costs.totalValue + calcResult.totalDuty,
+              breakdown: [
+                {
+                  type: 'Duty',
+                  rate: calcResult.appliedRate,
+                  amount: calcResult.totalDuty,
+                  description: 'Tariff duty based on applied rate',
+                },
+              ],
+            }}
+          />
+        </div>
       )}
     </div>
   )
