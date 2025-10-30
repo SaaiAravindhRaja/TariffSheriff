@@ -258,7 +258,14 @@ export function Calculator() {
           })
           setUsedAgreementName('Most Favoured Nation')
         } else {
-          setCalcResult(null)
+          // Show a provisional MFN result immediately while backend RVC is loading
+          setCalcResult({
+            basis: 'MFN',
+            appliedRate: mfnRate || 0,
+            totalDuty: costs.totalValue * (mfnRate || 0),
+            rvc: backendRvc || 0,
+            rvcThreshold: null,
+          })
           setUsedAgreementName('Most Favoured Nation')
         }
         return
