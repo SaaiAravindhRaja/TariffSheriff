@@ -80,40 +80,57 @@ public class TariffRateRequestDto {
 - Calculator page (`apps/frontend/src/pages/Calculator.tsx`)
   - Keep `GET /tariff-rate/lookup` to obtain MFN and preferential options.
   - Remove the agreement selection UI and state (`selectedRateId`, selection buttons). No manual choice.
-  - Auto-select best agreement client-side, then call backend to calculate:
+  - Auto-select best agreement using backend-computed RVC; drive results from backend:
 
-1) Compute provisional RVC from costs (existing logic can be reused):
+1) Phase 1 – Request backend RVC:
 
-```39:48:apps/frontend/src/pages/Calculator.tsx
-function calculateRvc(costs: CostState): number {
-  if (costs.fob <= 0) return 0
-  const originating =
-    costs.materialCost +
-    costs.labourCost +
-    costs.overheadCost +
-    costs.profit +
-    costs.otherCosts
-  return (originating / costs.fob) * 100
+   - Call `POST /tariff-rate/calculate` with MFN only (omit `prefRate`/`rvcThreshold`) and all cost inputs. Use the returned `rvc` for eligibility.
+   - Response reference:
+```5:11:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/dto/TariffCalculationResponse.java
+public record TariffCalculationResponse(
+    String basis,
+    BigDecimal appliedRate,
+    BigDecimal totalDuty,
+    BigDecimal rvc,
+    BigDecimal rvcThreshold
+) {}
+```
+   - Frontend API method reference:
+```54:70:apps/frontend/src/services/api.ts
+export const tariffApi = {
+  calculateTariff: (data: {
+    mfnRate: number
+    prefRate: number
+    rvcThreshold?: number
+    rvc?: number
+    agreementId?: number
+    quantity: number
+    totalValue: number
+    materialCost: number
+    labourCost: number
+    overheadCost: number
+    profit: number
+    otherCosts: number
+    fob: number
+    nonOriginValue: number
+  }) => api.post('/tariff-rate/calculate', data),
 }
 ```
 
-2) Identify MFN option from lookup (e.g., `basis === 'MFN'` or where `agreementName` is null) and capture its `adValoremRate` as `mfnRate`.
+2) Identify MFN option from lookup (`basis === 'MFN'` or `agreementName` null) and capture its `adValoremRate` as `mfnRate`.
 
-3) Filter preferential options to those eligible: `option.rvcThreshold == null || rvc >= option.rvcThreshold`.
+3) Filter preferential options to those eligible using backend `rvc`: `option.rvcThreshold == null || rvc >= option.rvcThreshold`.
 
-4) Choose the best preferential option as the one with the lowest `adValoremRate`. If none eligible, no preferential option is chosen.
+4) Choose the best preferential option as the one with the lowest `adValoremRate`. If none eligible, prefer MFN.
 
-5) Build request to `POST /tariff-rate/calculate`:
+5) Phase 2 – Final calculation:
 
-       - `mfnRate`: from MFN option.
-       - If a best preferential exists: `prefRate = best.adValoremRate`, `rvcThreshold = best.rvcThreshold`, `agreementId = best.agreementId`.
-       - Else: omit `prefRate`/`rvcThreshold` (or set to null) so backend applies MFN.
-       - Include all cost inputs (`totalValue`, `materialCost`, `labourCost`, `overheadCost`, `profit`, `otherCosts`, `fob`, `nonOriginValue`, `quantity`).
+   - If best is preferential, call `POST /tariff-rate/calculate` again with `prefRate` and `rvcThreshold` from the chosen option (plus `mfnRate` and costs). If best is MFN, reuse the Phase 1 response.
 
-6) Render the backend response `TariffCalculationResponse` and display which basis/agreement was used:
-
-       - If applied basis is MFN, show "Used: MFN".
-       - If preferential applied, show "Used: {agreementName}" (from the chosen option in step 4).
+6) Render the backend response and display which basis/agreement was used:
+   - If applied basis is MFN, show "Used: MFN".
+   - If preferential applied, show "Used: {Agreement Name}".
+  - Do not compute tariff math or RVC on the client for primary output; always show backend `appliedRate`, `totalDuty`, and backend `rvc`/`rvcThreshold`.
   - Remove `computeResult`-based local totals for primary output; always show backend `appliedRate`, `totalDuty`, and backend-computed `rvc`/`rvcThreshold` for eligibility messaging.
   - Keep a small inline panel showing provisional client-side RVC for transparency; label it clearly as "preview" and bind final eligibility to backend values.
 
@@ -191,20 +208,21 @@ function calculateRvc(costs: CostState): number {
   ) : (
   ```
 
-- [ ] Compute provisional RVC client-side; display as preview only
-  - Reference: `apps/frontend/src/pages/Calculator.tsx`
+- [#] Use backend-computed RVC; remove client-side `calculateRvc` and preview
+  - Reference: remove `calculateRvc` in `apps/frontend/src/pages/Calculator.tsx`
   ```39:48:apps/frontend/src/pages/Calculator.tsx
-  function calculateRvc(costs: CostState): number {
-    if (costs.fob <= 0) return 0
-    const originating =
-      costs.materialCost +
-      costs.labourCost +
-      costs.overheadCost +
-      costs.profit +
-      costs.otherCosts
-    return (originating / costs.fob) * 100
-  }
+  function calculateRvc(costs: CostState): number { /* remove */ }
   ```
+  - Reference: backend response carries `rvc`/`rvcThreshold`
+  ```5:11:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/dto/TariffCalculationResponse.java
+  public record TariffCalculationResponse(..., BigDecimal rvc, BigDecimal rvcThreshold) {}
+  ```
+
+- [ ] Implement two-phase calculation using backend RVC to choose best agreement
+  - Reference: flow described in Calculator plan above; final call uses chosen `prefRate`/`rvcThreshold`.
+
+- [ ] Debounce API calls on input change; cancel in-flight requests
+  - Reference: `handleCostChange`/`handleFormChange` in `apps/frontend/src/pages/Calculator.tsx`
 
 - [ ] Auto-select best eligible agreement (minimum ad valorem) from lookup
   - Reference: `GET /tariff-rate/lookup` endpoint
@@ -225,8 +243,8 @@ function calculateRvc(costs: CostState): number {
   ```123:148:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/service/TariffRateServiceImpl.java
   public TariffCalculationResponse calculateTariffRate(TariffRateRequestDto rq) { ... }
   ```
-  ```10:29:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/dto/TariffRateRequestDto.java
-  public class TariffRateRequestDto { /* mfnRate, prefRate, rvcThreshold, agreementId, costs */ }
+  ```54:70:apps/frontend/src/services/api.ts
+  export const tariffApi = { calculateTariff: (data) => api.post('/tariff-rate/calculate', data) }
   ```
 
 - [ ] Bind backend appliedRate/totalDuty/RVC/rvcThreshold to results UI
@@ -263,4 +281,4 @@ function calculateRvc(costs: CostState): number {
   - Reference: current validation snippets in `Calculator.tsx` (e.g., importer/HS required), RVC zero-FOB guard
 
 - [ ] Add tests: eligible pref path, ineligible pref fallback to MFN, no-pref cases
-  - Reference: exercise `lookup` flow + `calculate` payload building and response binding
+  - Reference: exercise `lookup` flow + two-phase `calculate` calls and response binding

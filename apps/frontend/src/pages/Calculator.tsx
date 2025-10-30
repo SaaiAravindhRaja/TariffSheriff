@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,16 +36,6 @@ function parseNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function calculateRvc(costs: CostState): number {
-  if (costs.fob <= 0) return 0
-  const originating =
-    costs.materialCost +
-    costs.labourCost +
-    costs.overheadCost +
-    costs.profit +
-    costs.otherCosts
-  return (originating / costs.fob) * 100
-}
 
 function resolveSelection(
   options: TariffRateOption[],
@@ -110,19 +100,65 @@ export function Calculator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const rvcPercentage = useMemo(() => calculateRvc(costs), [costs])
+  const [backendRvc, setBackendRvc] = useState<number>(0)
+  const rvcDebounceRef = useRef<number | null>(null)
+
+  // Helper to find MFN ad valorem rate from lookup
+  const mfnRate = useMemo(() => {
+    if (!lookup?.rates?.length) return 0
+    const mfn = lookup.rates.find(
+      (r) => (r as any).basis === 'MFN' || (r as any).agreementName == null
+    )
+    return (mfn?.adValoremRate ?? 0) as number
+  }, [lookup])
+
+  // Fetch backend-computed RVC whenever lookup or costs change
+  useEffect(() => {
+    if (!lookup) return
+    if (rvcDebounceRef.current) {
+      window.clearTimeout(rvcDebounceRef.current)
+    }
+    rvcDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const response = await tariffApi.calculateTariff({
+          mfnRate: mfnRate || 0,
+          prefRate: 0,
+          rvcThreshold: undefined,
+          agreementId: undefined,
+          quantity: 0,
+          totalValue: costs.totalValue,
+          materialCost: costs.materialCost,
+          labourCost: costs.labourCost,
+          overheadCost: costs.overheadCost,
+          profit: costs.profit,
+          otherCosts: costs.otherCosts,
+          fob: costs.fob,
+          nonOriginValue: costs.nonOriginValue,
+        })
+        const rvc = Number(response?.data?.rvc ?? 0)
+        setBackendRvc(Number.isFinite(rvc) ? rvc : 0)
+      } catch {
+        setBackendRvc(0)
+      }
+    }, 300)
+    return () => {
+      if (rvcDebounceRef.current) {
+        window.clearTimeout(rvcDebounceRef.current)
+      }
+    }
+  }, [lookup, costs, mfnRate])
 
   const selection = useMemo(() => {
     if (!lookup) return null
-    // Pass null for selectedId to avoid manual selection and use fallback
-    return resolveSelection(lookup.rates, null, rvcPercentage)
-  }, [lookup, rvcPercentage])
+    // Pass null for selectedId to avoid manual selection and use backend RVC for eligibility
+    return resolveSelection(lookup.rates, null, backendRvc)
+  }, [lookup, backendRvc])
 
   // Manual selection syncing removed
 
   const result = useMemo(() => {
-    return computeResult(selection?.selected ?? null, costs, rvcPercentage)
-  }, [selection, costs, rvcPercentage])
+    return computeResult(selection?.selected ?? null, costs, backendRvc)
+  }, [selection, costs, backendRvc])
 
   const handleFormChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value.toUpperCase() }))
@@ -311,8 +347,8 @@ export function Calculator() {
                   )}
                 </div>
                 <div className="rounded-md border px-4 py-3 bg-muted/30">
-                  <p className="text-sm font-medium">Calculated RVC</p>
-                  <p className="text-2xl font-bold">{rvcPercentage.toFixed(2)}%</p>
+                  <p className="text-sm font-medium">RVC (from backend)</p>
+                  <p className="text-2xl font-bold">{backendRvc.toFixed(2)}%</p>
                   <p className="text-xs text-muted-foreground">
                     {(selection?.selected?.agreementName ?? 'Current selection')}{' '}
                     requires {selection?.selected?.rvcThreshold ?? 'N/A'}%.
