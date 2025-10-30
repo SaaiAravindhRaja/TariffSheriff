@@ -30,6 +30,17 @@ Thanks for your interest in contributing. This file describes the recommended wo
    npm run dev --workspace=frontend
    ```
 
+## Pre-commit checks
+
+Run formatting and linting before opening a PR to keep diffs clean:
+
+```bash
+# run lint (if configured)
+npm run lint || echo "no lint script configured"
+# run formatter
+npm run format || echo "no format script configured"
+```
+
 ## Tests & checks
 - Backend tests
   ```bash
