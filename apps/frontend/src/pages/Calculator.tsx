@@ -117,10 +117,20 @@ export function Calculator() {
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
     if (!lookup?.rates?.length) return 0
-    const mfn = lookup.rates.find(
+    const candidates = lookup.rates.filter(
       (r) => (r as any).basis === 'MFN' || (r as any).agreementName == null
     )
-    return (mfn?.adValoremRate ?? 0) as number
+    if (candidates.length > 0) {
+      return candidates.reduce((min, cur) => {
+        const val = Number(cur.adValoremRate ?? 0)
+        return val < min ? val : min
+      }, Number(candidates[0].adValoremRate ?? 0))
+    }
+    // Fallback: take the smallest ad valorem across all returned rates
+    return lookup.rates.reduce((min, cur) => {
+      const val = Number(cur.adValoremRate ?? 0)
+      return val < min ? val : min
+    }, Number(lookup.rates[0].adValoremRate ?? 0))
   }, [lookup])
 
   // Fetch backend-computed RVC whenever lookup or costs change
@@ -278,6 +288,16 @@ export function Calculator() {
   // Manual selection syncing removed
 
   // Local computeResult no longer used for primary output
+
+  // Optimistically keep Total Duty in sync with latest Customs Value using current appliedRate
+  useEffect(() => {
+    setCalcResult((prev) => {
+      if (!prev) return prev
+      const updatedTotalDuty = costs.totalValue * prev.appliedRate
+      if (updatedTotalDuty === prev.totalDuty) return prev
+      return { ...prev, totalDuty: updatedTotalDuty }
+    })
+  }, [costs.totalValue])
 
   const handleFormChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value.toUpperCase() }))

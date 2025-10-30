@@ -218,23 +218,23 @@ export const tariffApi = {
   public record TariffCalculationResponse(..., BigDecimal rvc, BigDecimal rvcThreshold) {}
   ```
 
-- [ ] Implement two-phase calculation using backend RVC to choose best agreement
+- [#] Implement two-phase calculation using backend RVC to choose best agreement
   - Reference: flow described in Calculator plan above; final call uses chosen `prefRate`/`rvcThreshold`.
 
-- [ ] Debounce API calls on input change; cancel in-flight requests
+- [#] Debounce API calls on input change; cancel in-flight requests
   - Reference: `handleCostChange`/`handleFormChange` in `apps/frontend/src/pages/Calculator.tsx`
 
-- [ ] Auto-select best eligible agreement (minimum ad valorem) from lookup
+- [#] Auto-select best eligible agreement (minimum ad valorem) from lookup
   - Reference: `GET /tariff-rate/lookup` endpoint
   ```39:46:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/controller/TariffRateController.java
       @GetMapping("/lookup")
       public TariffRateLookupDto getTariffRateAndAgreement(...)
   ```
 
-- [ ] Derive MFN rate from lookup; fall back when no eligible preferential option
+- [#] Derive MFN rate from lookup; fall back when no eligible preferential option
   - Reference: `TariffRateOption` fields returned by lookup (basis, adValoremRate, rvcThreshold)
 
-- [ ] Call POST /tariff-rate/calculate with chosen rates and all cost inputs
+- [#] Call POST /tariff-rate/calculate with chosen rates and all cost inputs
   - Reference: API endpoint and calculation logic
   ```46:49:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/controller/TariffRateController.java
       @PostMapping("/calculate")
@@ -247,7 +247,7 @@ export const tariffApi = {
   export const tariffApi = { calculateTariff: (data) => api.post('/tariff-rate/calculate', data) }
   ```
 
-- [ ] Bind backend appliedRate/totalDuty/RVC/rvcThreshold to results UI
+- [#] Bind backend appliedRate/totalDuty/RVC/rvcThreshold to results UI
   - Reference: `TariffCalculationResponse`
   ```5:11:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/dto/TariffCalculationResponse.java
   public record TariffCalculationResponse(
@@ -258,10 +258,6 @@ export const tariffApi = {
       BigDecimal rvcThreshold
   ) {}
   ```
-
-- [ ] Show “Used: MFN” or “Used: {Agreement Name}” in results
-  - Reference: agreement names from lookup options; basis from calculation response
-
 - [ ] Feed charts with backend totals/rates when available; keep local math
   - Reference: `apps/frontend/src/components/calculator/TariffBreakdownChart.tsx`, `CostAnalysisChart.tsx`, `ComparisonChart.tsx`, `HistoricalRatesChart.tsx`
 
