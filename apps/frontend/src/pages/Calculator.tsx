@@ -101,7 +101,18 @@ export function Calculator() {
   const [error, setError] = useState<string | null>(null)
 
   const [backendRvc, setBackendRvc] = useState<number>(0)
+  const [calcResult, setCalcResult] = useState<{
+    basis: string
+    appliedRate: number
+    totalDuty: number
+    rvc: number
+    rvcThreshold: number | null
+  } | null>(null)
+  const [usedAgreementName, setUsedAgreementName] = useState<string | null>(null)
   const rvcDebounceRef = useRef<number | null>(null)
+  const phase1AbortRef = useRef<AbortController | null>(null)
+  const phase2AbortRef = useRef<AbortController | null>(null)
+  const phase1ResultRef = useRef<any>(null)
 
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
@@ -120,6 +131,12 @@ export function Calculator() {
     }
     rvcDebounceRef.current = window.setTimeout(async () => {
       try {
+        // cancel previous in-flight phase1 request
+        if (phase1AbortRef.current) {
+          phase1AbortRef.current.abort()
+        }
+        const controller = new AbortController()
+        phase1AbortRef.current = controller
         const response = await tariffApi.calculateTariff({
           mfnRate: mfnRate || 0,
           prefRate: 0,
@@ -134,31 +151,133 @@ export function Calculator() {
           otherCosts: costs.otherCosts,
           fob: costs.fob,
           nonOriginValue: costs.nonOriginValue,
-        })
+        }, { signal: controller.signal })
         const rvc = Number(response?.data?.rvc ?? 0)
         setBackendRvc(Number.isFinite(rvc) ? rvc : 0)
-      } catch {
+        phase1ResultRef.current = response?.data ?? null
+      } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          return
+        }
         setBackendRvc(0)
+        phase1ResultRef.current = null
       }
     }, 300)
     return () => {
       if (rvcDebounceRef.current) {
         window.clearTimeout(rvcDebounceRef.current)
       }
+      if (phase1AbortRef.current) {
+        phase1AbortRef.current.abort()
+        phase1AbortRef.current = null
+      }
     }
   }, [lookup, costs, mfnRate])
 
+  // Determine best eligible option (minimum ad valorem among eligible); prefer MFN when none eligible
+  const bestOption = useMemo(() => {
+    if (!lookup?.rates?.length) return null as TariffRateOption | null
+    const eligible = lookup.rates.filter((opt) => {
+      const thr = (opt as any).rvcThreshold
+      return thr == null || backendRvc >= (thr as number)
+    })
+    if (eligible.length === 0) {
+      const mfn = lookup.rates.find(
+        (r) => (r as any).basis === 'MFN' || (r as any).agreementName == null
+      )
+      return mfn ?? lookup.rates[0]
+    }
+    return eligible.reduce((min, cur) =>
+      (cur.adValoremRate ?? 0) < (min.adValoremRate ?? 0) ? cur : min
+    , eligible[0])
+  }, [lookup, backendRvc])
+
   const selection = useMemo(() => {
     if (!lookup) return null
-    // Pass null for selectedId to avoid manual selection and use backend RVC for eligibility
-    return resolveSelection(lookup.rates, null, backendRvc)
-  }, [lookup, backendRvc])
+    const selectedId = bestOption?.id ?? null
+    return resolveSelection(lookup.rates, selectedId, backendRvc)
+  }, [lookup, backendRvc, bestOption])
+
+  // Phase 2: Final calculation using best option
+  useEffect(() => {
+    const run = async () => {
+      if (!lookup) return
+      if (!bestOption) {
+        setCalcResult(null)
+        setUsedAgreementName(null)
+        return
+      }
+      const isMfn = (bestOption as any).basis === 'MFN' || (bestOption as any).agreementName == null
+      if (isMfn) {
+        // Reuse phase 1 response
+        const data = phase1ResultRef.current
+        if (data) {
+          setCalcResult({
+            basis: data.basis,
+            appliedRate: Number(data.appliedRate ?? 0),
+            totalDuty: Number(data.totalDuty ?? 0),
+            rvc: Number(data.rvc ?? backendRvc),
+            rvcThreshold: data.rvcThreshold ?? null,
+          })
+          setUsedAgreementName('Most Favoured Nation')
+        } else {
+          setCalcResult(null)
+          setUsedAgreementName('Most Favoured Nation')
+        }
+        return
+      }
+
+      try {
+        // cancel any in-flight phase2 request
+        if (phase2AbortRef.current) {
+          phase2AbortRef.current.abort()
+        }
+        const controller = new AbortController()
+        phase2AbortRef.current = controller
+        const resp = await tariffApi.calculateTariff({
+          mfnRate: mfnRate || 0,
+          prefRate: bestOption.adValoremRate ?? 0,
+          rvcThreshold: (bestOption as any).rvcThreshold ?? undefined,
+          agreementId: (bestOption as any).agreementId ?? undefined,
+          quantity: 0,
+          totalValue: costs.totalValue,
+          materialCost: costs.materialCost,
+          labourCost: costs.labourCost,
+          overheadCost: costs.overheadCost,
+          profit: costs.profit,
+          otherCosts: costs.otherCosts,
+          fob: costs.fob,
+          nonOriginValue: costs.nonOriginValue,
+        }, { signal: controller.signal })
+        const data = resp?.data
+        setCalcResult({
+          basis: data.basis,
+          appliedRate: Number(data.appliedRate ?? 0),
+          totalDuty: Number(data.totalDuty ?? 0),
+          rvc: Number(data.rvc ?? backendRvc),
+          rvcThreshold: data.rvcThreshold ?? ((bestOption as any).rvcThreshold ?? null),
+        })
+        setUsedAgreementName((bestOption as any).agreementName ?? null)
+      } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          return
+        }
+        setCalcResult(null)
+        setUsedAgreementName((bestOption as any).agreementName ?? null)
+      }
+    }
+    run()
+    return () => {
+      if (phase2AbortRef.current) {
+        phase2AbortRef.current.abort()
+        phase2AbortRef.current = null
+      }
+    }
+  }, [lookup, bestOption, mfnRate, costs, backendRvc])
 
   // Manual selection syncing removed
 
-  const result = useMemo(() => {
-    return computeResult(selection?.selected ?? null, costs, backendRvc)
-  }, [selection, costs, backendRvc])
+  // Local computeResult no longer used for primary output
 
   const handleFormChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value.toUpperCase() }))
@@ -360,7 +479,7 @@ export function Calculator() {
         </Card>
       )}
 
-      {result && (
+      {calcResult && (
         <Card>
           <CardHeader>
             <CardTitle>3. Results</CardTitle>
@@ -368,22 +487,22 @@ export function Calculator() {
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Tariff Basis</p>
-              <p className="text-lg font-semibold">{result.basis}</p>
+              <p className="text-lg font-semibold">{calcResult.basis}{usedAgreementName ? ` • ${usedAgreementName}` : ''}</p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Applied Rate</p>
-              <p className="text-lg font-semibold">{(result.appliedRate * 100).toFixed(2)}%</p>
+              <p className="text-lg font-semibold">{(calcResult.appliedRate * 100).toFixed(2)}%</p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Total Duty</p>
               <p className="text-lg font-semibold">
-                {formatCurrency(result.totalDuty, settings.currency)}
+                {formatCurrency(calcResult.totalDuty, settings.currency)}
               </p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">RVC vs Threshold</p>
               <p className="text-lg font-semibold">
-                {result.rvc.toFixed(2)}% / {result.rvcThreshold ?? 'N/A'}%
+                {calcResult.rvc.toFixed(2)}% / {calcResult.rvcThreshold ?? 'N/A'}%
               </p>
             </div>
           </CardContent>
