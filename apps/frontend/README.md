@@ -1,34 +1,15 @@
 # TariffSheriff Frontend
 
-A modern, responsive React application for calculating and analyzing import tariffs and fees across countries, with a focus on the Electric Vehicle (EV) industry.
+Minimal React + Vite app for tariff lookup and RVC-aware duty calculation.
 
-## 🚀 Features
+## Features
 
-- **Modern UI/UX**: Clean, responsive design with dark/light mode support
-- **Real-time Calculations**: Instant tariff calculations with detailed breakdowns
-- **Interactive Visualizations**: Charts and maps for trade route analysis
-- **Comprehensive Dashboard**: Overview of trade operations and analytics
-- **Mobile-First Design**: Optimized for all device sizes
-- **Accessibility**: WCAG compliant with keyboard navigation support
+- Authentication (register/login)
+- Countries list for selectors
+- Tariff lookup (MFN + preferential candidate)
+- RVC calculator (selects MFN or preferential rate)
 
-## 🌐 Live Demo
-
-[https://tariffsheriff-frontend.vercel.app/](https://tariffsheriff-frontend.vercel.app/)
-
-## 🛠 Tech Stack
-
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS with custom design system
-- **UI Components**: Radix UI primitives with shadcn/ui
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **State Management**: TanStack Query (React Query)
-- **Routing**: React Router v6
-- **HTTP Client**: Axios
-- **Form Handling**: React Hook Form with Zod validation
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -45,7 +26,7 @@ src/
 └── types/              # TypeScript type definitions
 ```
 
-## 🎨 Design System
+## Design System
 
 ### Colors
 - **Brand**: Blue gradient (#0ea5e9 to #0369a1)
@@ -60,7 +41,7 @@ src/
 ### Components
 All components follow the shadcn/ui design system with custom TariffSheriff branding.
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
@@ -100,7 +81,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - `npm run lint` - Run ESLint
 - `npm test` - Run tests
 
-## 📱 Pages & Features
+## Pages & Features
 
 ### Dashboard
 - Overview of trade operations
@@ -122,35 +103,15 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - Filter and sort options
 - Detailed rule information
 
-### Analytics
-- Trade volume trends
-- Tariff rate analysis
-- Country comparisons
-- Market insights
+ 
 
-### Simulator
-- Policy scenario modeling
-- Impact analysis
-- Side-by-side comparisons
-- What-if scenarios
-
-### Trade Routes
-- Route optimization
-- Cost comparisons
-- Interactive map
-- Route recommendations
-
-## 🎯 Key Components
+## Key Components
 
 ### Layout Components
 - **Header**: Navigation, search, user menu, theme toggle
 - **Sidebar**: Collapsible navigation with route indicators
 
-### Dashboard Components
-- **QuickCalculator**: Instant tariff calculations
-- **RecentCalculations**: History of calculations
-- **TariffChart**: Interactive trend visualization
-- **TradeRouteMap**: Global trade route visualization
+ 
 
 ### UI Components
 - **Button**: Multiple variants with animations
@@ -158,7 +119,7 @@ All components follow the shadcn/ui design system with custom TariffSheriff bran
 - **Input**: Form inputs with focus states
 - **Badge**: Status indicators and labels
 
-## 🔧 Customization
+## Customization
 
 ### Theme Customization
 Update `tailwind.config.js` to modify:
@@ -183,14 +144,14 @@ Components use CSS variables for theming:
 2. Add route to `src/App.tsx`
 3. Update navigation in `src/components/layout/Sidebar.tsx`
 
-## 📊 Performance
+## Performance
 
 - **Bundle Size**: Optimized with tree shaking
 - **Code Splitting**: Route-based lazy loading
 - **Caching**: TanStack Query for API caching
 - **Images**: Optimized loading and formats
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run unit tests
@@ -200,7 +161,7 @@ npm test
 npm run test:watch
 
 
-## 👤 Profile (local)
+## Profile
 
 This project includes a local, client-side Profile feature for quick demos:
 
@@ -218,7 +179,7 @@ Note: This is a local demo implementation. For production, integrate with your a
 npm run test:coverage
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Build for Production
 ```bash
@@ -237,7 +198,7 @@ npm run build
 npx gh-pages -d dist
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -245,7 +206,7 @@ npx gh-pages -d dist
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 

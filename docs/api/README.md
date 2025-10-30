@@ -1,205 +1,78 @@
-# Tariff Sheriff AI Assistant API Documentation
+# TariffSheriff API Documentation
 
 ## Overview
 
-The Tariff Sheriff AI Assistant provides a conversational interface for querying tariff and trade data. The API uses OpenAI's GPT models to understand natural language queries and automatically selects appropriate tools to fetch data from the database.
+Simple REST API for tariff lookup and calculation with basic authentication.
 
-**Base URL**: `http://localhost:8080/api/chatbot`
+Base URL: `http://localhost:8080`
 
-**Authentication**: All endpoints require JWT authentication with `USER` or `ADMIN` role.
+Authentication: Most endpoints require JWT Bearer token.
 
 ---
 
 ## Endpoints
 
-### 1. Process Chat Query
+### Auth
 
-Process a natural language query and get an AI-generated response.
+- POST `/api/auth/register`
+  - Body: `{ name, email, password }`
+  - 200: `{ token, id, name, email, role, isAdmin }`
+  - Notes: Server assigns `role=USER` and `isAdmin=false`.
 
-**Endpoint**: `POST /api/chatbot/query`
+- POST `/api/auth/login`
+  - Body: `{ email, password }`
+  - 200: same response as register
 
-**Authentication**: Required (Bearer token)
+- POST `/api/auth/validate`
+  - Header: `Authorization: Bearer <token>`
+  - 200: same response as register
 
-**Request Body**:
-```json
-{
-  "query": "What's the tariff rate for importing steel from China to USA?",
-  "conversationId": "optional-conversation-id"
-}
-```
+### Reference
 
-**Request Fields**:
-- `query` (string, required): The user's natural language question (max 2000 characters)
-- `conversationId` (string, optional): ID to continue an existing conversation. If omitted, a new conversation is created.
+- GET `/api/countries?q=&page=&size=`
+  - 200: list of countries for selectors
 
-**Success Response** (200 OK):
-```json
-{
-  "response": "The tariff rate for importing steel from China to the USA depends on the specific HS code...",
-  "conversationId": "conv_abc123xyz",
-  "timestamp": "2025-10-19T14:30:00",
-  "toolsUsed": ["getTariffRateLookup"],
-  "processingTimeMs": 2340,
-  "success": true,
-  "cached": false,
-  "degraded": false,
-  "confidence": null
-}
-```
+### Tariff
 
-**Response Fields**:
-- `response` (string): The AI-generated conversational response
-- `conversationId` (string): ID for this conversation (use in subsequent queries to maintain context)
-- `timestamp` (datetime): When the response was generated
-- `toolsUsed` (array): List of tools the AI used to fetch data
-- `processingTimeMs` (number): Time taken to process the query in milliseconds
-- `success` (boolean): Whether the query was processed successfully
-- `cached` (boolean): Whether the response was served from cache
-- `degraded` (boolean): Whether the response used fallback mechanisms
-- `confidence` (number, nullable): Confidence score of the response (0-1)
+- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=`
+  - 200: `{ mfn: {...}, pref: {...}|null, agreement: {...}|null }`
+  - Notes: Simple selection (no date window logic yet).
 
-**Error Responses**:
-
-**400 Bad Request** - Invalid query:
-```json
-{
-  "error": "InvalidQueryException",
-  "message": "Query cannot be empty",
-  "suggestion": "Please provide a valid question about tariffs or trade data.",
-  "timestamp": "2025-10-19T14:30:00",
-  "conversationId": "conv_abc123xyz"
-}
-```
-
-**429 Too Many Requests** - Rate limit exceeded:
-```json
-{
-  "error": "RateLimitExceededException",
-  "message": "You have exceeded your rate limit. Please try again in 45 seconds.",
-  "suggestion": "Rate limits: 10 requests per minute, 100 requests per hour.",
-  "timestamp": "2025-10-19T14:30:00",
-  "conversationId": "conv_abc123xyz"
-}
-```
-
-**503 Service Unavailable** - LLM service error:
-```json
-{
-  "error": "LlmServiceException",
-  "message": "I'm having trouble connecting to my AI service. Please try again in a moment.",
-  "suggestion": "If the problem persists, please contact support.",
-  "timestamp": "2025-10-19T14:30:00",
-  "conversationId": "conv_abc123xyz"
-}
-```
-
-**500 Internal Server Error** - Tool execution error:
-```json
-{
-  "error": "ToolExecutionException",
-  "message": "I couldn't fetch that information. The database query failed.",
-  "suggestion": "Please try rephrasing your question or try again later.",
-  "timestamp": "2025-10-19T14:30:00",
-  "conversationId": "conv_abc123xyz"
-}
-```
+- POST `/api/tariff-rate/calculate`
+  - Body: `{ totalValue, mfnRate, prefRate, rvcThreshold, materialCost, labourCost, overheadCost, profit, otherCosts, fob }`
+  - 200: `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`
+  - Logic: `RVC = (material+labour+overhead+profit+other)/fob*100`; if `RVC >= rvcThreshold` and `prefRate` present then `basis=PREF`, else `basis=MFN`.
 
 ---
 
-### 2. Get Service Health
+## Usage Examples
 
-Check the health status of the chatbot service.
+```bash
+# Register
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Alice","email":"alice@example.com","password":"secret123"}'
 
-**Endpoint**: `GET /api/chatbot/health`
+# Login
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","password":"secret123"}'
 
-**Authentication**: Required (Bearer token)
+# Countries
+curl -s http://localhost:8080/api/countries \
+  -H "Authorization: Bearer YOUR_JWT"
 
-**Success Response** (200 OK):
-```json
-{
-  "healthy": true,
-  "message": "Chatbot service is healthy",
-  "availableTools": 9,
-  "trackedUsers": 42
-}
-```
+# Lookup (seeded example)
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+  -H "Authorization: Bearer YOUR_JWT"
 
-**Response Fields**:
-- `healthy` (boolean): Whether the service is operational
-- `message` (string): Health status message
-- `availableTools` (number): Number of tools available to the AI
-- `trackedUsers` (number): Number of users currently tracked for rate limiting
+# Calculator
+curl -s -X POST http://localhost:8080/api/tariff-rate/calculate \
+  -H 'Content-Type: application/json' -H "Authorization: Bearer YOUR_JWT" \
+  -d '{"mfnRate":0.10,"prefRate":0.00,"rvcThreshold":40,"totalValue":1000,"materialCost":20,"labourCost":10,"overheadCost":10,"profit":5,"otherCosts":5,"fob":100}'
 
-**Error Response** (503 Service Unavailable):
-```json
-{
-  "healthy": false,
-  "message": "Chatbot service is not available",
-  "availableTools": 0,
-  "trackedUsers": 0
-}
-```
-
----
-
-### 3. Get Rate Limit Status
-
-Get the current rate limit status for the authenticated user.
-
-**Endpoint**: `GET /api/chatbot/rate-limit-status`
-
-**Authentication**: Required (Bearer token)
-
-**Success Response** (200 OK):
-```json
-{
-  "requestsInLastMinute": 3,
-  "requestsInLastHour": 15,
-  "maxRequestsPerMinute": 10,
-  "maxRequestsPerHour": 100,
-  "minuteResetTime": "2025-10-19T14:31:00",
-  "hourResetTime": "2025-10-19T15:00:00"
-}
-```
-
-**Response Fields**:
-- `requestsInLastMinute` (number): Number of requests made in the last minute
-- `requestsInLastHour` (number): Number of requests made in the last hour
-- `maxRequestsPerMinute` (number): Maximum allowed requests per minute
-- `maxRequestsPerHour` (number): Maximum allowed requests per hour
-- `minuteResetTime` (datetime): When the minute counter resets
-- `hourResetTime` (datetime): When the hour counter resets
-
----
-
-### 4. Get User Conversations
-
-Get a list of all conversations for the authenticated user.
-
-**Endpoint**: `GET /api/chatbot/conversations`
-
-**Authentication**: Required (Bearer token)
-
-**Success Response** (200 OK):
-```json
-[
-  {
-    "conversationId": "conv_abc123xyz",
-    "userId": "user@example.com",
-    "messageCount": 5,
-    "createdAt": "2025-10-19T14:00:00",
-    "updatedAt": "2025-10-19T14:30:00",
-    "firstMessage": "What's the tariff rate for importing steel?"
-  },
-  {
-    "conversationId": "conv_def456uvw",
-    "userId": "user@example.com",
-    "messageCount": 3,
-    "createdAt": "2025-10-18T10:00:00",
-    "updatedAt": "2025-10-18T10:15:00",
-    "firstMessage": "Find HS code for coffee beans"
-  }
-]
+# Response example
+{"basis":"PREF","appliedRate":0.00,"totalDuty":0.00,"rvc":50.00,"rvcThreshold":40}
 ```
 
 ---

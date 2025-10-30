@@ -1,6 +1,6 @@
 # Backend
 
-Spring Boot application for TariffSheriff with AI-powered chatbot assistant.
+Spring Boot application for TariffSheriff (REST API).
 
 ## Database & Migrations
 
@@ -22,14 +22,6 @@ DATABASE_URL=jdbc:postgresql://localhost:5432/tariffsheriff
 DATABASE_USERNAME=your_db_user
 DATABASE_PASSWORD=your_db_password
 
-# OpenAI Configuration (Required for AI Assistant)
-OPENAI_API_KEY=your-openai-api-key-here
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TEMPERATURE=0.7
-OPENAI_MAX_TOKENS=1000
-OPENAI_TIMEOUT_MS=30000
-OPENAI_MAX_RETRIES=2
-
 # JWT Configuration
 JWT_SECRET=your-jwt-secret-here
 
@@ -37,12 +29,7 @@ JWT_SECRET=your-jwt-secret-here
 SERVER_PORT=8080
 ```
 
-3. **Get OpenAI API Key**: 
-   - Sign up at https://platform.openai.com/
-   - Create an API key in your account settings
-   - Add the key to your `.env` file
-
-4. **Start the application**: 
+3. **Start the application**: 
 ```bash
 cd apps/backend
 ./mvnw spring-boot:run
@@ -75,139 +62,86 @@ LIMIT 1;
 SELECT standard_rate FROM vat WHERE importer_id = 1;
 ```
 
-### Running backend tests
+### API (Minimal)
 
-These tests use Testcontainers to launch PostgreSQL automatically. Ensure Docker is running (Docker Desktop or Colima).
+All endpoints use JSON and require a Bearer token, except `/api/auth/**` and health/docs.
 
-```bash
-# if you are using Colima, expose the socket for JVM-based tools
-export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"
+- POST `/api/auth/register` → 200 `{ token, id, name, email, role, isAdmin }` or 400
+- POST `/api/auth/login` → same as register
+- POST `/api/auth/validate` → same as register
+- GET `/api/countries?q=&page=&size=` → list of countries
+- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=` → `{ mfn, pref, agreement }`
+- POST `/api/tariff-rate/calculate` → `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`
 
-cd apps/backend
-mvn test
-```
-
-The Maven build disables Ryuk cleanup (via `TESTCONTAINERS_RYUK_DISABLED=true`) so Testcontainers works with rootless Docker setups such as Colima. Containers are still stopped at the end of the test run.
-
-## AI Assistant
-
-The backend includes an AI-powered chatbot assistant that can answer natural language queries about tariffs, trade agreements, HS codes, and more.
-
-### Features
-
-- **Natural Language Processing**: Ask questions in plain English
-- **Automatic Tool Selection**: AI automatically selects the right data source
-- **Conversation Context**: Maintains context across multiple messages
-- **9 Specialized Tools**: Tariff lookup, HS code search, trade agreements, country info, and more
-- **Rate Limiting**: 10 requests/minute, 100 requests/hour per user
-- **Error Handling**: User-friendly error messages with helpful suggestions
-
-### Quick Start
-
-1. **Configure OpenAI**: Add your OpenAI API key to `.env` (see setup instructions above)
-
-2. **Start the backend**: The AI Assistant is automatically available at `/api/chatbot`
-
-3. **Test the API**: Use curl or Postman to send queries:
+Example usage:
 
 ```bash
-# Login first to get JWT token
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password"}'
+# Register
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Alice","email":"alice@example.com","password":"secret123"}'
 
-# Query the AI Assistant
-curl -X POST http://localhost:8080/api/chatbot/query \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What is the tariff rate for importing steel from China to USA?"}'
+# Login
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","password":"secret123"}'
+
+# Countries
+curl -s http://localhost:8080/api/countries \
+  -H "Authorization: Bearer YOUR_JWT"
+
+# Lookup (seeded example)
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+  -H "Authorization: Bearer YOUR_JWT"
+
+# Calculator
+curl -s -X POST http://localhost:8080/api/tariff-rate/calculate \
+  -H 'Content-Type: application/json' -H "Authorization: Bearer YOUR_JWT" \
+  -d '{"mfnRate":0.10,"prefRate":0.00,"rvcThreshold":40,"totalValue":1000,"materialCost":20,"labourCost":10,"overheadCost":10,"profit":5,"otherCosts":5,"fob":100}'
+
+# Response example
+{"basis":"PREF","appliedRate":0.00,"totalDuty":0.00,"rvc":50.00,"rvcThreshold":40}
 ```
 
-4. **Check health**: Verify the AI Assistant is running:
+OpenAPI/Swagger: http://localhost:8080/swagger-ui.html
+
+### Docker Compose (backend + Postgres)
+
+From `apps/backend`, you can run the backend together with Postgres using Docker Compose:
+
+1. Start services
+```bash
+docker compose up --build -d
+```
+
+2. Access the API
+- Backend: http://localhost:8080
+- Swagger UI: http://localhost:8080/swagger-ui.html
+
+3. Stop and remove containers
+```bash
+docker compose down -v
+```
+
+Notes
+- Runs with `SPRING_PROFILES_ACTIVE=dev` for Swagger and relaxed CORS in development.
+- A demo Base64 JWT secret is included for local use; change if needed.
+
+### Connecting to Neon (hosted Postgres)
+
+The backend reads its datasource settings from standard environment variables, so you can point it at a Neon database without code changes. Example:
 
 ```bash
-curl http://localhost:8080/api/chatbot/health \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+# Required
+export DATABASE_URL="jdbc:postgresql://YOUR_NEON_HOST:5432/tariffsheriff?sslmode=require"
+export DATABASE_USERNAME="app_dev"
+export DATABASE_PASSWORD="your-neon-password"
+
+# Recommended tuning for serverless Postgres
+export DATABASE_SSL=true                 # enables driver SSL flag
+export DATABASE_SSLMODE=require          # redundant but explicit
+export DATABASE_MAX_POOL_SIZE=5          # Neon limits session counts
+export DATABASE_MIN_IDLE=0
 ```
 
-### Available Endpoints
-
-- `POST /api/chatbot/query` - Process a natural language query
-- `GET /api/chatbot/health` - Check service health
-- `GET /api/chatbot/rate-limit-status` - Check your rate limit status
-- `GET /api/chatbot/conversations` - Get conversation history
-- `GET /api/chatbot/conversations/{id}` - Get specific conversation
-- `DELETE /api/chatbot/conversations/{id}` - Delete conversation
-
-### Example Queries
-
-The AI Assistant can answer questions like:
-
-- "What's the tariff rate for importing steel from China to USA?"
-- "Find HS code for coffee beans"
-- "What trade agreements does the US have?"
-- "Compare tariff rates for electronics from China vs Mexico"
-- "List all available countries"
-- "What are the compliance requirements for importing from Japan?"
-
-### Documentation
-
-- **API Documentation**: See [docs/api/README.md](../../docs/api/README.md) for complete API reference
-- **Tools Documentation**: See [docs/api/TOOLS.md](../../docs/api/TOOLS.md) for details on available tools
-- **OpenAPI/Swagger**: Visit http://localhost:8080/swagger-ui.html when running
-
-### Configuration
-
-The AI Assistant can be configured in `application.properties`:
-
-```properties
-# OpenAI Configuration
-openai.api-key=${OPENAI_API_KEY}
-openai.model=${OPENAI_MODEL:gpt-4o-mini}
-openai.temperature=${OPENAI_TEMPERATURE:0.7}
-openai.max-tokens=${OPENAI_MAX_TOKENS:1000}
-openai.timeout-ms=${OPENAI_TIMEOUT_MS:30000}
-openai.max-retries=${OPENAI_MAX_RETRIES:2}
-
-# Tool Configuration
-chatbot.tools.default-timeout-ms=10000
-chatbot.tools.max-concurrent-executions=5
-chatbot.tools.enable-health-checks=false
-```
-
-### Architecture
-
-The AI Assistant uses a simple 3-phase flow:
-
-1. **Understand**: LLM analyzes query and selects appropriate tool
-2. **Execute**: Selected tool fetches data from database
-3. **Respond**: LLM generates conversational response
-
-**Key Components**:
-- `ChatbotService` - Main orchestrator
-- `LlmClient` - OpenAI integration
-- `ToolRegistry` - Tool management and discovery
-- `ConversationService` - Conversation history
-- `RateLimitService` - Rate limiting
-- `Tools` - Data access layer (9 specialized tools)
-
-### Troubleshooting
-
-**"LLM service error"**:
-- Check that `OPENAI_API_KEY` is set correctly
-- Verify your OpenAI account has credits
-- Check network connectivity to OpenAI API
-
-**"Tool execution error"**:
-- Verify database is running and accessible
-- Check database migrations have run successfully
-- Review logs for specific error details
-
-**"Rate limit exceeded"**:
-- Wait for the rate limit window to reset
-- Check your current status at `/api/chatbot/rate-limit-status`
-
-**No response or timeout**:
-- Increase `OPENAI_TIMEOUT_MS` in configuration
-- Check OpenAI API status at https://status.openai.com/
-- Review application logs for errors
+Then start the backend as usual (`./mvnw spring-boot:run` or `mvn spring-boot:run`). Flyway will apply the migrations on first run; if you want to skip them for a pre-provisioned schema you can set `SPRING_FLYWAY_ENABLED=false`.

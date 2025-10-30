@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { authApi } from '@/services/api'
 
 // Types for our authentication system
 export interface User {
@@ -7,7 +8,7 @@ export interface User {
   email: string
   aboutMe?: string
   role: 'USER' | 'ADMIN'
-  admin: boolean
+  isAdmin: boolean
 }
 
 export interface AuthContextType {
@@ -66,101 +67,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      const { data } = await authApi.login({ email, password })
 
-      if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          console.error('Login error response:', errorData)
-          throw new Error(errorData.message || 'Login failed')
-        } catch (jsonError) {
-          // If response is not JSON, use status text
-          console.error('Login error - non-JSON response:', response.status, response.statusText)
-          throw new Error(`Login failed: ${response.status}`)
-        }
-      }
-
-      const data = await response.json()
-      
-      // Create user object from response data
-      const user = {
+      const nextUser: User = {
         id: data.id,
         name: data.name,
         email: data.email,
-        aboutMe: '', // Not returned in login response
+        aboutMe: '',
         role: data.role,
-        admin: data.isAdmin
+        isAdmin: data.isAdmin,
       }
-      
-      // Store token and user data
+
       localStorage.setItem('auth_token', data.token)
-      localStorage.setItem('auth_user', JSON.stringify(user))
-      
+      localStorage.setItem('auth_user', JSON.stringify(nextUser))
+
       setToken(data.token)
-      setUser(user)
-    } catch (error) {
-      console.error('Login error:', error)
-      throw error
+      setUser(nextUser)
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || 'Login failed'
+      console.error('Login error:', message)
+      throw new Error(message)
     }
   }
 
   // Register function
   const register = async (name: string, email: string, password: string, aboutMe?: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:8080/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          name, 
-          email, 
-          password, 
-          aboutMe: aboutMe || '', 
-          role: 'USER',
-          isAdmin: false 
-        }),
-      })
+      const { data } = await authApi.register({ name, email, password, aboutMe })
 
-      if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          console.error('Registration error response:', errorData)
-          throw new Error(errorData.message || 'Registration failed')
-        } catch (jsonError) {
-          // If response is not JSON, use status text
-          console.error('Registration error - non-JSON response:', response.status, response.statusText)
-          throw new Error(`Registration failed: ${response.status}`)
-        }
-      }
-
-      const data = await response.json()
-      
-      // Create user object from response data
-      const user = {
+      const nextUser: User = {
         id: data.id,
         name: data.name,
         email: data.email,
-        aboutMe: '', // Not returned in register response
+        aboutMe: '',
         role: data.role,
-        admin: data.isAdmin
+        isAdmin: data.isAdmin,
       }
-      
-      // Store token and user data
+
       localStorage.setItem('auth_token', data.token)
-      localStorage.setItem('auth_user', JSON.stringify(user))
-      
+      localStorage.setItem('auth_user', JSON.stringify(nextUser))
+
       setToken(data.token)
-      setUser(user)
-    } catch (error) {
-      console.error('Registration error:', error)
-      throw error
+      setUser(nextUser)
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || 'Registration failed'
+      console.error('Registration error:', message)
+      throw new Error(message)
     }
   }
 

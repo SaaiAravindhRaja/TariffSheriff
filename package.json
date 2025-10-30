@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/frontend",
-    "packages/*"
+    "apps/frontend"
   ],
   "scripts": {
     "install:all": "npm install",

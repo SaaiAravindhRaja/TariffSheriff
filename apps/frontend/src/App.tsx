@@ -8,20 +8,16 @@ import { AuthPage } from '@/pages/AuthPage'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Dashboard } from '@/pages/Dashboard'
-import { AiAssistantPage } from '@/pages/AiAssistantPage'
 import { Calculator } from '@/pages/Calculator'
 import { Database } from '@/pages/Database'
-import { Analytics } from '@/pages/Analytics'
-import { Simulator } from '@/pages/Simulator'
-import { Routes as TradeRoutes } from '@/pages/Routes'
-import { Reports } from '@/pages/Reports'
+ 
 import { Settings } from '@/pages/Settings'
 import Profile from '@/pages/Profile'
 import { About } from '@/pages/About'
 import { Privacy } from '@/pages/Privacy'
 import { Team } from '@/pages/Team'
 import { Contact } from '@/pages/Contact'
-import { CountryDashboard } from '@/pages/CountryDashboard'
+ 
 import '@/styles/globals.css'
 import Footer from '@/components/layout/Footer'
 
@@ -73,20 +69,16 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/ai-assistant" element={<AiAssistantPage />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/database" element={<Database />} />
-              <Route path="/routes" element={<TradeRoutes />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/simulator" element={<Simulator />} />
-              <Route path="/reports" element={<Reports />} />
+              {/* Simplified navigation: dashboard, calculator, database, settings/profile */}
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/team" element={<Team />} />
               <Route path="/contact" element={<Contact />} />
-              <Route path="/country/:countryCode" element={<CountryDashboard />} />
+              
             </Routes>
           </ProtectedRoute>
         </main>

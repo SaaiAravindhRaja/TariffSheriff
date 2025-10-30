@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Settings as SettingsIcon, 
-  Sun, 
-  Moon, 
-  Monitor,
   User,
   Bell,
   Globe,
@@ -25,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { useTheme } from '@/hooks/useTheme';
 import { useCountries } from '@/hooks/useCountries';
 import safeLocalStorage from '@/lib/safeLocalStorage';
 import { appConfig } from '@/config/app';
@@ -91,7 +87,6 @@ const defaultSettings: UserSettings = {
 };
 
 export function Settings() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
   const { regions, currencies } = useCountries();
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [saved, setSaved] = useState(false);
@@ -389,41 +384,13 @@ export function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Palette className="w-5 h-5 mr-2" />
-                Theme & Display
+                Display Preferences
               </CardTitle>
               <CardDescription>
-                Customize the appearance and behavior of the application
+                Adjust layout and interface details to match your workflow
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium mb-3">Theme</label>
-                <div className="flex gap-3">
-                  {[
-                    { value: 'light', icon: Sun, label: 'Light' },
-                    { value: 'dark', icon: Moon, label: 'Dark' },
-                    { value: 'system', icon: Monitor, label: 'System' }
-                  ].map(({ value, icon: Icon, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setTheme(value as any)}
-                      className={`flex items-center space-x-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                        theme === value
-                          ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="font-medium">{label}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Current: {resolvedTheme === 'light' ? 'Light' : 'Dark'} mode
-                </p>
-              </div>
-
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -610,10 +577,6 @@ export function Settings() {
                 <div>
                   <span className="text-muted-foreground">Environment:</span>
                   <Badge variant="secondary">{process.env.NODE_ENV}</Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Theme:</span>
-                  <Badge variant="outline">{resolvedTheme}</Badge>
                 </div>
               </div>
             </CardContent>

@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    container_name: tariffsheriff_db
+    environment:
+      POSTGRES_DB: tariffsheriff
+      POSTGRES_USER: tariff_sheriff
+      POSTGRES_PASSWORD: tariff_sheriff
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tariff_sheriff"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    container_name: tariffsheriff_backend
+    build:
+      context: .
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DATABASE_URL: jdbc:postgresql://db:5432/tariffsheriff
+      DATABASE_USERNAME: tariff_sheriff
+      DATABASE_PASSWORD: tariff_sheriff
+      # Base64-encoded JWT secret for local/dev use only
+      JWT_SECRET: c2VjcmV0LXNlY3JldC1zZWNyZXQtc2VjcmV0LXNlY3JldA==
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

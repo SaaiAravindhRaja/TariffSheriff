@@ -12,9 +12,9 @@ We recommend the following support policy (common practice): support the latest 
 
 | Version | Supported |
 | ------- | --------- |
-| `v0.2.x` | :white_check_mark: (current stable) |
-| `v0.1.x` | :white_check_mark: (security fixes only) |
-| `< v0.1` | :x: (unsupported) |
+| v0.2.x | Yes (current stable) |
+| v0.1.x | Yes (security fixes only) |
+| < v0.1 | No (unsupported) |
 
 If your installation is running an unsupported version, we recommend upgrading to the nearest supported release (for example, upgrade from `v0.1.x` to `v0.2.x`).
 

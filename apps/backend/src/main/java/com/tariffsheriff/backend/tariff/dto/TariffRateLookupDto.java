@@ -1,10 +1,13 @@
 package com.tariffsheriff.backend.tariff.dto;
 
-import com.tariffsheriff.backend.tariff.model.Agreement;
-import com.tariffsheriff.backend.tariff.model.TariffRate;
+import java.util.List;
 
+/**
+ * Response payload for tariff lookup requests.
+ */
 public record TariffRateLookupDto(
-    TariffRate tariffRateMfn,
-    TariffRate tariffRatePref,
-    Agreement agreement
+    String importerIso2,
+    String originIso2,
+    String hsCode,
+    List<TariffRateOptionDto> rates
 ) {}

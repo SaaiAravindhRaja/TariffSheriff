@@ -2,11 +2,13 @@ package com.tariffsheriff.backend.tariff.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
+import com.tariffsheriff.backend.tariff.dto.TariffRateOptionDto;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import com.tariffsheriff.backend.tariff.model.Agreement;
@@ -102,26 +104,65 @@ public class TariffRateServiceImpl implements TariffRateService {
             agreement = agreements.findById(tariffRatePref.getAgreementId()).orElse(null);
         }
 
-        return new TariffRateLookupDto(tariffRateMfn, tariffRatePref, agreement);
+        List<TariffRateOptionDto> options = new ArrayList<>();
+        options.add(toOptionDto(tariffRateMfn, null));
+
+        if (tariffRatePref != null) {
+            options.add(toOptionDto(tariffRatePref, agreement));
+        }
+
+        return new TariffRateLookupDto(
+            importerIso2,
+            originIso2,
+            hsCode,
+            options
+        );
     }
 
-    public BigDecimal calculateTariffRate(TariffRateRequestDto rq) {
+
+    public com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse calculateTariffRate(TariffRateRequestDto rq) {
         BigDecimal mfnRate = rq.getMfnRate();
         BigDecimal prefRate = rq.getPrefRate();
-        BigDecimal rvcDefined = rq.getRvc(); 
-        BigDecimal RVC = rq.getMaterialCost()
-                        .add(rq.getLabourCost())
-                        .add(rq.getOverheadCost())
-                        .add(rq.getProfit())
-                        .add(rq.getOtherCosts())
-                        .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100));
-    
-        BigDecimal avRate = RVC.compareTo(rvcDefined) >= 0 ? prefRate : mfnRate; // apply pref if rvc >= defined
-        BigDecimal totalValue = rq.getTotalValue();
-        BigDecimal totalTariff = BigDecimal.ZERO;
-        totalTariff = totalValue.multiply(avRate);
-        return totalTariff;
+        BigDecimal threshold = rq.getRvcThreshold();
+
+        BigDecimal rvc = rq.getMaterialCost()
+                .add(rq.getLabourCost())
+                .add(rq.getOverheadCost())
+                .add(rq.getProfit())
+                .add(rq.getOtherCosts())
+                .divide(rq.getFob(), 6, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+
+        boolean canApplyPref = prefRate != null && threshold != null && rvc.compareTo(threshold) >= 0;
+        BigDecimal appliedRate = (canApplyPref ? prefRate : mfnRate);
+        String basis = (canApplyPref ? "PREF" : "MFN");
+
+        BigDecimal totalDuty = rq.getTotalValue().multiply(appliedRate);
+
+        return new com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse(
+                basis,
+                appliedRate,
+                totalDuty,
+                rvc,
+                threshold
+        );
+    }
+
+    private TariffRateOptionDto toOptionDto(TariffRate rate, Agreement agreement) {
+        BigDecimal rvcThreshold = agreement != null ? agreement.getRvcThreshold() : null;
+        String agreementName = agreement != null ? agreement.getName() : null;
+        Long agreementId = agreement != null ? agreement.getId() : rate.getAgreementId();
+
+        return new TariffRateOptionDto(
+            rate.getId(),
+            rate.getBasis(),
+            rate.getAdValoremRate(),
+            rate.getSpecificAmount(),
+            rate.getSpecificUnit(),
+            agreementId,
+            agreementName,
+            rvcThreshold
+        );
     }
     
 }

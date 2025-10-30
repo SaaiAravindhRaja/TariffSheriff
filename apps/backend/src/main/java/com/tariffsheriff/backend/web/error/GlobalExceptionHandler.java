@@ -1,11 +1,5 @@
 package com.tariffsheriff.backend.web.error;
 
-import com.tariffsheriff.backend.chatbot.exception.ChatbotException;
-import com.tariffsheriff.backend.chatbot.exception.RateLimitExceededException;
-import com.tariffsheriff.backend.chatbot.exception.InvalidQueryException;
-import com.tariffsheriff.backend.chatbot.exception.LlmServiceException;
-import com.tariffsheriff.backend.chatbot.exception.ToolExecutionException;
-import com.tariffsheriff.backend.service.exception.NotFoundException;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -23,77 +17,13 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex, HttpServletRequest req) {
-        ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-    }
-
     @ExceptionHandler(TariffRateNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleTariffRateNotFound(TariffRateNotFoundException ex, HttpServletRequest req) {
         ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest req) {
-        log.warn("Rate limit exceeded on {}: {}", req.getRequestURI(), ex.getMessage());
-        // Use user-friendly message with suggestions
-        String fullMessage = ex.getUserFriendlyMessage();
-        if (ex.getSuggestion() != null) {
-            fullMessage += ex.getSuggestion();
-        }
-        ErrorResponse body = build(HttpStatus.TOO_MANY_REQUESTS, fullMessage, req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
-    }
-
-    @ExceptionHandler(InvalidQueryException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidQuery(InvalidQueryException ex, HttpServletRequest req) {
-        log.warn("Invalid query on {}: {}", req.getRequestURI(), ex.getMessage());
-        // Use user-friendly message with suggestions
-        String fullMessage = ex.getUserFriendlyMessage();
-        if (ex.getSuggestion() != null) {
-            fullMessage += ex.getSuggestion();
-        }
-        ErrorResponse body = build(HttpStatus.BAD_REQUEST, fullMessage, req.getRequestURI());
-        return ResponseEntity.badRequest().body(body);
-    }
-
-    @ExceptionHandler(LlmServiceException.class)
-    public ResponseEntity<ErrorResponse> handleLlmServiceError(LlmServiceException ex, HttpServletRequest req) {
-        log.error("LLM service error on {}: {}", req.getRequestURI(), ex.getMessage());
-        // Use user-friendly message with suggestions
-        String fullMessage = ex.getUserFriendlyMessage();
-        if (ex.getSuggestion() != null) {
-            fullMessage += ex.getSuggestion();
-        }
-        ErrorResponse body = build(HttpStatus.SERVICE_UNAVAILABLE, fullMessage, req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
-    }
-
-    @ExceptionHandler(ToolExecutionException.class)
-    public ResponseEntity<ErrorResponse> handleToolExecutionError(ToolExecutionException ex, HttpServletRequest req) {
-        log.error("Tool execution error on {}: {}", req.getRequestURI(), ex.getMessage());
-        // Use user-friendly message with suggestions
-        String fullMessage = ex.getUserFriendlyMessage();
-        if (ex.getSuggestion() != null) {
-            fullMessage += ex.getSuggestion();
-        }
-        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, fullMessage, req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
-    }
-
-    @ExceptionHandler(ChatbotException.class)
-    public ResponseEntity<ErrorResponse> handleChatbotError(ChatbotException ex, HttpServletRequest req) {
-        log.error("Chatbot error on {}: {}", req.getRequestURI(), ex.getMessage());
-        // Use user-friendly message with suggestions
-        String fullMessage = ex.getUserFriendlyMessage();
-        if (ex.getSuggestion() != null) {
-            fullMessage += ex.getSuggestion();
-        }
-        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, fullMessage, req.getRequestURI());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
-    }
+    // Chatbot/AI-specific exception handlers removed for simplicity
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
@@ -154,4 +84,3 @@ public class GlobalExceptionHandler {
         return ex.getMessage();
     }
 }
-

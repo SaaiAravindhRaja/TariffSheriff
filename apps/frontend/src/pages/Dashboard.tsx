@@ -1,23 +1,11 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Globe,
-  Calculator,
-  Zap,
-  ArrowUpRight,
-  ArrowDownRight,
-  MoreHorizontal
-} from 'lucide-react'
+import { DollarSign, Globe, Calculator, Zap, ArrowUpRight, ArrowDownRight, MoreHorizontal } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatPercentage, getCountryFlag } from '@/lib/utils'
-import { TariffChart } from '@/components/charts/TariffChart'
-import { TradeRouteMap } from '@/components/charts/TradeRouteMap'
+import { formatCurrency, getCountryFlag } from '@/lib/utils'
 import { RecentCalculations } from '@/components/dashboard/RecentCalculations'
 import { QuickCalculator } from '@/components/dashboard/QuickCalculator'
 
@@ -135,7 +123,7 @@ export function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Tariff Trends Chart */}
+        {/* Tariff Trends Summary */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -148,7 +136,7 @@ export function Dashboard() {
                 <div>
                   <CardTitle>Tariff Trends</CardTitle>
                   <CardDescription>
-                    Monthly tariff rates and trade volume analysis
+                    Historical charts will appear here once data is connected.
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="icon">
@@ -157,7 +145,9 @@ export function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <TariffChart />
+              <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                Chart pending data connection.
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -237,7 +227,9 @@ export function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <TradeRouteMap />
+            <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+              Map pending data connection.
+            </div>
           </CardContent>
         </Card>
       </motion.div>

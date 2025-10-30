@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"})
 public class UserController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(UserController.class);
 
@@ -63,7 +62,7 @@ public class UserController {
             user.setName(request.getName());
             user.setEmail(request.getEmail());
             user.setAboutMe(request.getAboutMe());
-            user.setRole(request.getRole());
+            user.setRole(request.getRole() != null && !request.getRole().isBlank() ? request.getRole() : "USER");
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setIsAdmin(request.getIsAdmin() != null ? request.getIsAdmin() : false);
 
