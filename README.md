@@ -1,6 +1,6 @@
 # TariffSheriff
 
-[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
+[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.4-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
 
 A full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the **Electric Vehicle (EV) industry**.
 
@@ -79,82 +79,58 @@ graph TB
     subgraph CLIENT["Client Applications"]
         WEB["Web Dashboard<br/>React + TypeScript<br/>Tailwind CSS"]
         MOBILE["Mobile App<br/>Responsive Design<br/>PWA Support"]
-        API_CLIENT["API Clients<br/>Third-party Integrations"]
     end
 
     %% Load Balancer & Gateway
     subgraph GATEWAY["API Gateway Layer"]
-        ALB["Application Load Balancer<br/>AWS ALB<br/>SSL Termination"]
-        RATE_LIMIT["Rate Limiting<br/>DDoS Protection<br/>CORS Handling"]
+        ALB["Load Balancer<br/>SSL Termination<br/>CORS Handling"]
     end
 
     %% Core Application Services
-    subgraph BACKEND["Backend"]
-        AUTH_SVC["Auth<br/>JWT + Spring Security"]
-        CALC_ENGINE["Tariff Engine<br/>Core Logic + HS Codes"]
-        SWAGGER_UI["OpenAPI/Swagger"]
+    subgraph BACKEND["Backend Services"]
+        AUTH_SVC["Authentication Service<br/>JWT + Spring Security"]
+        CALC_ENGINE["Tariff Calculation Engine<br/>HS Code Resolution<br/>MFN & Preferential Rates"]
+        API_DOCS["API Documentation<br/>OpenAPI/Swagger"]
     end
 
     %% Data Storage Layer
-    subgraph DATA_LAYER["Data Management Layer"]
-        PRIMARY_DB[("PostgreSQL<br/>Primary Database<br/>Tariff Rules & Users")]
-        
-        CACHE_LAYER[("Redis Cache<br/>Session Storage<br/>Query Optimization")]
-        
-        FILE_STORAGE[("AWS S3<br/>Document Storage<br/>Export Files")]
+    subgraph DATA_LAYER["Data Storage"]
+        PRIMARY_DB[("PostgreSQL<br/>Tariff Rules<br/>Trade Agreements<br/>User Data")]
+        CACHE_LAYER[("Redis<br/>Session Cache<br/>Query Cache")]
     end
 
     %% External Data Sources
-    subgraph EXTERNAL["External Data Sources"]
-        WITS_API["WITS Database<br/>World Trade Statistics<br/>Historical Data"]
-        
-        HS_CODE_API["HS Code Services<br/>Product Classification<br/>SimplyDuty/Mooah API"]
-        
-        REGIONAL_API["Regional Trade Portals<br/>Country-Specific Data<br/>Legal Citations"]
-        
-        TRADE_AGREEMENTS["Trade Agreement APIs<br/>Bilateral Agreements<br/>MFN Rates"]
+    subgraph EXTERNAL["External APIs"]
+        WITS_API["WITS Database<br/>Trade Statistics"]
+        HS_CODE_API["HS Code Services<br/>Product Classification"]
+        REGIONAL_API["Regional Trade Portals<br/>Country Data"]
     end
 
     %% Infrastructure & DevOps
-    subgraph INFRA["Infrastructure"]
-        CICD["GitHub Actions<br/>Build + Test"]
+    subgraph INFRA["CI/CD"]
+        CICD["GitHub Actions<br/>Automated Testing<br/>Deployment"]
     end
 
     %% Data Flow Connections
     WEB --> ALB
     MOBILE --> ALB
-    API_CLIENT --> ALB
-    
-    ALB --> RATE_LIMIT
-    RATE_LIMIT --> AUTH_SVC
-    RATE_LIMIT --> CALC_ENGINE
-    RATE_LIMIT --> ADMIN_SVC
-    RATE_LIMIT --> REC_ENGINE
-    RATE_LIMIT --> SIM_ENGINE
-    
+
+    ALB --> AUTH_SVC
+    ALB --> CALC_ENGINE
+    ALB --> API_DOCS
+
     AUTH_SVC --> PRIMARY_DB
     AUTH_SVC --> CACHE_LAYER
-    
+
     CALC_ENGINE --> PRIMARY_DB
     CALC_ENGINE --> CACHE_LAYER
-    CALC_ENGINE --> WITS_API
-    CALC_ENGINE --> HS_CODE_API
-    CALC_ENGINE --> REGIONAL_API
-    CALC_ENGINE --> TRADE_AGREEMENTS
-    
-    ADMIN_SVC --> PRIMARY_DB
-    ADMIN_SVC --> FILE_STORAGE
-    
-    REC_ENGINE --> PRIMARY_DB
-    REC_ENGINE --> CACHE_LAYER
-    REC_ENGINE --> CALC_ENGINE
-    
-    SIM_ENGINE --> PRIMARY_DB
-    SIM_ENGINE --> CALC_ENGINE
-    SIM_ENGINE --> FILE_STORAGE
-    
+    CALC_ENGINE -.-> WITS_API
+    CALC_ENGINE -.-> HS_CODE_API
+    CALC_ENGINE -.-> REGIONAL_API
+
     CICD --> BACKEND
-    
+    CICD --> DATA_LAYER
+
     %% Styling
     classDef clientStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
     classDef gatewayStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
@@ -162,13 +138,13 @@ graph TB
     classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
     classDef externalStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
     classDef infraStyle fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
-    
-    class WEB,MOBILE,API_CLIENT clientStyle
-    class ALB,RATE_LIMIT gatewayStyle
-    class AUTH_SVC,CALC_ENGINE,ADMIN_SVC,REC_ENGINE,SIM_ENGINE,SWAGGER_UI backendStyle
-    class PRIMARY_DB,CACHE_LAYER,FILE_STORAGE dataStyle
-    class WITS_API,HS_CODE_API,REGIONAL_API,TRADE_AGREEMENTS externalStyle
-    class CONTAINER_REGISTRY,ORCHESTRATION,MONITORING,CICD infraStyle
+
+    class WEB,MOBILE clientStyle
+    class ALB gatewayStyle
+    class AUTH_SVC,CALC_ENGINE,API_DOCS backendStyle
+    class PRIMARY_DB,CACHE_LAYER dataStyle
+    class WITS_API,HS_CODE_API,REGIONAL_API externalStyle
+    class CICD infraStyle
 ```
 
 ## Project Structure
@@ -192,29 +168,38 @@ sequenceDiagram
     participant T as Tariff Engine
     participant D as Database
     participant E as External APIs
-    participant R as Recommender
 
-    U->>F: Input tariff calculation request
+    U->>F: Access application
     F->>A: Authenticate user
+    A->>D: Validate credentials
+    D-->>A: User data
     A-->>F: JWT token
-    
-    F->>T: Calculate tariff (product, origin, destination, date)
-    T->>D: Query existing tariff rules
-    T->>E: Fetch HS codes & trade data
-    E-->>T: Return classification & rates
-    
-    T->>T: Apply business logic:<br/>• MFN rates<br/>• Trade agreements<br/>• Certificates<br/>• Defense measures
-    
-    T-->>F: Return calculation result:<br/>• Total charges<br/>• Rule citations<br/>• Breakdown
-    
-    opt Recommendation Request
-        F->>R: Request optimal routes
-        R->>D: Query all country pairs
-        R->>T: Calculate multiple scenarios
-        R-->>F: Recommend best routes
+
+    U->>F: Input calculation request<br/>(HS code, origin, destination)
+    F->>T: Request tariff calculation
+
+    T->>D: Query HS product
+    D-->>T: Product details
+
+    T->>D: Query MFN rates
+    D-->>T: MFN rate data
+
+    T->>D: Query preferential rates<br/>(if applicable)
+    D-->>T: Preferential rate data
+
+    T->>D: Query VAT rates
+    D-->>T: VAT data
+
+    opt External Data Needed
+        T->>E: Request additional trade data
+        E-->>T: Trade statistics & classifications
     end
-    
-    F-->>U: Display results & recommendations
+
+    T->>T: Apply calculation logic:<br/>• Rules of Origin (RVC)<br/>• Trade agreements<br/>• MFN vs Preferential
+
+    T-->>F: Return calculation:<br/>• Applied rate<br/>• Total duty<br/>• Breakdown<br/>• Citations
+
+    F-->>U: Display results with<br/>transparent breakdown
 ```
 
 ## Core Business Logic
@@ -231,6 +216,21 @@ sequenceDiagram
 - **Time-Sensitive Rules**: Applies correct rates based on transaction dates
 - **MFN Treatment**: Most-Favored-Nation rate calculations
 - **Certificate Handling**: Processes origin certificates and special conditions
+
+---
+
+## Key Features & Capabilities
+
+- **Accurate Tariff Calculations**: Real-time import duty calculations with support for MFN and preferential rates
+- **Smart Rate Selection**: Automatic Rules of Origin (RVC) calculations to determine optimal tariff rates
+- **Comprehensive Database**: Extensive trade agreement data with validity windows and legal citations
+- **Hosted Database Support**: Full compatibility with cloud-hosted PostgreSQL (Neon, AWS RDS, Google Cloud SQL)
+- **Modern Authentication**: Secure JWT-based authentication with axios API client integration
+- **Enhanced User Experience**: Streamlined calculator interface with improved form validation and error handling
+- **API Documentation**: Complete OpenAPI/Swagger documentation for all endpoints
+- **Progressive Web App**: PWA capabilities for mobile-friendly access and offline support
+- **CI/CD Integration**: Automated testing and deployment via GitHub Actions
+- **Optional AI Assistant**: Intelligent tariff lookup and compliance analysis (enable via backend profile `ai`)
 
 ---
 
@@ -353,4 +353,4 @@ npm run build
 
 ## License
 
-This project is private and not yet licensed for public use.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
