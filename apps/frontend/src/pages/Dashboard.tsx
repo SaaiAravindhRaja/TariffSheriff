@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, getCountryFlag } from '@/lib/utils'
 import { RecentCalculations } from '@/components/dashboard/RecentCalculations'
-import { QuickCalculator } from '@/components/dashboard/QuickCalculator'
 
 const statsData = [
   {
@@ -194,15 +193,6 @@ export function Dashboard() {
 
       {/* Bottom Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Quick Calculator */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <QuickCalculator />
-        </motion.div>
-
         {/* Recent Calculations */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
