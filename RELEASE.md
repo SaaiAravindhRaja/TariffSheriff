@@ -68,3 +68,19 @@ git tag -a v0.3.0 -m "Release v0.3.0"
 # push tag
 git push origin v0.3.0
 ```
+
+## Changelog
+
+### Latest Updates
+
+**Recent Improvements**
+- Enhanced tariff calculator user experience with streamlined workflow and better form validation
+- Full support for cloud-hosted PostgreSQL databases (Neon, AWS RDS, Google Cloud SQL) with optimized connection handling
+- Refactored frontend authentication to use axios API client for consistent request/error handling
+- Docker Compose v2 compatibility with updated configuration
+- Optional AI assistant integration powered by GPT-4o-mini (enable via backend profile `ai`)
+- Improved Flyway migrations with comprehensive seed data for EV-focused trade scenarios
+- Enhanced data visualization charts, accessibility updates, and PWA capabilities
+- Optimized query performance and caching strategies
+- Better error handling, logging, and monitoring throughout the application
+

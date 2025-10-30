@@ -3,26 +3,26 @@
 
 ## Supported Versions
 
-TariffSheriff uses semantic versioning for releases. Current Git tags in this repository (as of this update) are:
-
-- `v0.2.0` (latest)
-- `v0.1.0`
-
-We recommend the following support policy (common practice): support the latest minor series and the previous minor series for security fixes.
+TariffSheriff uses semantic versioning for releases. We recommend the following support policy: support the latest minor series and the previous minor series for security fixes.
 
 | Version | Supported |
 | ------- | --------- |
-| v0.2.x | Yes (current stable) |
-| v0.1.x | Yes (security fixes only) |
-| < v0.1 | No (unsupported) |
+| v1.0.x | ✅ Yes (current stable) |
+| v0.9.x | ✅ Yes (security fixes only) |
+| v0.8.x | ⚠️ Limited (critical security fixes only) |
+| < v0.8 | ❌ No (unsupported) |
 
-If your installation is running an unsupported version, we recommend upgrading to the nearest supported release (for example, upgrade from `v0.1.x` to `v0.2.x`).
+**Note**: If your installation is running an unsupported version, we strongly recommend upgrading to the latest v1.0.x release for the best security posture and latest features.
 
 ---
 
 ## Reporting a Vulnerability
 
-Please report suspected vulnerabilities privately to the security team at: security@yourdomain.example (replace with an actual address / GitHub Security Advisory via the repository settings).
+Please report suspected vulnerabilities privately using one of these methods:
+
+1. **GitHub Security Advisories** (Recommended): Navigate to the Security tab in our repository and click "Report a vulnerability"
+2. **Email**: security@tariffsheriff.org
+3. **Direct Contact**: Contact maintainers via GitHub (@SaaiAravindhRaja)
 
 When reporting, include the following information (as applicable):
 
@@ -77,8 +77,39 @@ PGP key fingerprint: <replace-with-key-or-instructions>
 
 ---
 
+## Security Best Practices
+
+When deploying TariffSheriff:
+
+1. **Environment Variables**: Never commit sensitive credentials to version control
+   - Use `.env` files locally (already in `.gitignore`)
+   - Use secure secret management in production (AWS Secrets Manager, Vault, etc.)
+
+2. **Database Security**:
+   - Use SSL/TLS for all database connections (`sslmode=require`)
+   - Rotate database passwords regularly
+   - Use least-privilege database users
+
+3. **API Security**:
+   - Rotate JWT secrets regularly
+   - Use strong, randomly generated JWT secrets (minimum 256 bits)
+   - Enable rate limiting in production
+
+4. **Dependencies**:
+   - Regularly update dependencies to patch known vulnerabilities
+   - Monitor GitHub Dependabot alerts
+   - Run `npm audit` and `mvn dependency-check` regularly
+
+5. **Network Security**:
+   - Use HTTPS for all production deployments
+   - Configure CORS appropriately for your domain
+   - Enable security headers (CSP, HSTS, X-Frame-Options)
+
+---
+
 ## Contact
 
-security@yourdomain.example (replace with the actual security contact email)
+**Security Email**: security@tariffsheriff.org
+**GitHub Security Advisories**: https://github.com/SaaiAravindhRaja/TariffSheriff/security/advisories
 
 Thank you for helping keep TariffSheriff secure.

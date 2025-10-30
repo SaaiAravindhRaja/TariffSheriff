@@ -1,7 +1,5 @@
 # TariffSheriff API Documentation
 
-**Last Updated**: 2025-10-30
-
 ## Overview
 
 Simple REST API for tariff lookup and calculation with JWT-based authentication.
