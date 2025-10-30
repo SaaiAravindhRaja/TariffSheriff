@@ -74,77 +74,69 @@ ___
 ## System Architecture
 
 ```mermaid
-graph TB
-    %% Client Layer
-    subgraph CLIENT["Client Applications"]
-        WEB["Web Dashboard<br/>React + TypeScript<br/>Tailwind CSS"]
-        MOBILE["Mobile App<br/>Responsive Design<br/>PWA Support"]
+flowchart TB
+    subgraph clients [" Client Layer "]
+        web[Web Dashboard<br/>React + TypeScript + Tailwind]
+        mobile[Mobile PWA<br/>Responsive Design]
     end
 
-    %% Load Balancer & Gateway
-    subgraph GATEWAY["API Gateway Layer"]
-        ALB["Load Balancer<br/>SSL Termination<br/>CORS Handling"]
+    subgraph gateway [" API Gateway "]
+        lb[Load Balancer<br/>SSL + CORS]
     end
 
-    %% Core Application Services
-    subgraph BACKEND["Backend Services"]
-        AUTH_SVC["Authentication Service<br/>JWT + Spring Security"]
-        CALC_ENGINE["Tariff Calculation Engine<br/>HS Code Resolution<br/>MFN & Preferential Rates"]
-        API_DOCS["API Documentation<br/>OpenAPI/Swagger"]
+    subgraph backend [" Backend Services "]
+        auth[Authentication<br/>JWT + Spring Security]
+        calc[Tariff Calculator<br/>HS Code + MFN/Pref Rates]
+        docs[API Docs<br/>Swagger/OpenAPI]
     end
 
-    %% Data Storage Layer
-    subgraph DATA_LAYER["Data Storage"]
-        PRIMARY_DB[("PostgreSQL<br/>Tariff Rules<br/>Trade Agreements<br/>User Data")]
-        CACHE_LAYER[("Redis<br/>Session Cache<br/>Query Cache")]
+    subgraph storage [" Data Storage "]
+        db[(PostgreSQL<br/>Tariff Rules + Users)]
+        cache[(Redis<br/>Session + Query Cache)]
     end
 
-    %% External Data Sources
-    subgraph EXTERNAL["External APIs"]
-        WITS_API["WITS Database<br/>Trade Statistics"]
-        HS_CODE_API["HS Code Services<br/>Product Classification"]
-        REGIONAL_API["Regional Trade Portals<br/>Country Data"]
+    subgraph external [" External APIs "]
+        wits[WITS<br/>Trade Stats]
+        hscode[HS Codes<br/>Classification]
+        regional[Regional<br/>Country Data]
     end
 
-    %% Infrastructure & DevOps
-    subgraph INFRA["CI/CD"]
-        CICD["GitHub Actions<br/>Automated Testing<br/>Deployment"]
+    subgraph cicd [" CI/CD Pipeline "]
+        actions[GitHub Actions<br/>Build + Test + Deploy]
     end
 
-    %% Data Flow Connections
-    WEB --> ALB
-    MOBILE --> ALB
+    web --> lb
+    mobile --> lb
 
-    ALB --> AUTH_SVC
-    ALB --> CALC_ENGINE
-    ALB --> API_DOCS
+    lb --> auth
+    lb --> calc
+    lb --> docs
 
-    AUTH_SVC --> PRIMARY_DB
-    AUTH_SVC --> CACHE_LAYER
+    auth --> db
+    auth --> cache
 
-    CALC_ENGINE --> PRIMARY_DB
-    CALC_ENGINE --> CACHE_LAYER
-    CALC_ENGINE -.-> WITS_API
-    CALC_ENGINE -.-> HS_CODE_API
-    CALC_ENGINE -.-> REGIONAL_API
+    calc --> db
+    calc --> cache
+    calc -.-> wits
+    calc -.-> hscode
+    calc -.-> regional
 
-    CICD --> BACKEND
-    CICD --> DATA_LAYER
+    actions -.-> backend
+    actions -.-> storage
 
-    %% Styling
-    classDef clientStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-    classDef gatewayStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef backendStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
-    classDef externalStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
-    classDef infraStyle fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
+    classDef clientClass fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef gatewayClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef backendClass fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef storageClass fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef externalClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef cicdClass fill:#f1f8e9,stroke:#689f38,stroke-width:2px
 
-    class WEB,MOBILE clientStyle
-    class ALB gatewayStyle
-    class AUTH_SVC,CALC_ENGINE,API_DOCS backendStyle
-    class PRIMARY_DB,CACHE_LAYER dataStyle
-    class WITS_API,HS_CODE_API,REGIONAL_API externalStyle
-    class CICD infraStyle
+    class web,mobile clientClass
+    class lb gatewayClass
+    class auth,calc,docs backendClass
+    class db,cache storageClass
+    class wits,hscode,regional externalClass
+    class actions cicdClass
 ```
 
 ## Project Structure
