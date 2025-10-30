@@ -1,12 +1,22 @@
 # TariffSheriff API Documentation
 
+**Last Updated**: 2025-10-30
+
 ## Overview
 
-Simple REST API for tariff lookup and calculation with basic authentication.
+Simple REST API for tariff lookup and calculation with JWT-based authentication.
 
 Base URL: `http://localhost:8080`
 
 Authentication: Most endpoints require JWT Bearer token.
+
+**Key Features**:
+- RESTful design with JSON request/response format
+- JWT-based stateless authentication
+- Comprehensive error handling with consistent error format
+- OpenAPI/Swagger documentation for interactive exploration
+- Support for both local and cloud-hosted PostgreSQL databases
+- Rate limiting and CORS configuration for production deployments
 
 ---
 
@@ -398,11 +408,14 @@ For issues or questions about the API:
 
 ---
 
-## Changelog
+## Recent Improvements
 
-### Version 1.0 (Current)
-- Initial release with 9 available tools
-- OpenAI GPT-4o-mini integration
-- Conversation history management
-- Rate limiting
-- Comprehensive error handling
+- Enhanced tariff calculator API with improved validation and detailed error messages
+- Optimized database queries for both local and cloud-hosted PostgreSQL environments
+- Improved authentication flow with better error handling and JWT validation
+- Better connection pooling for serverless and cloud database providers
+- Optional AI Assistant endpoints with specialized tools for tariff analysis
+- OpenAI integration for intelligent query processing and recommendations
+- Conversation history management for contextual assistance
+- Rate limiting capabilities for production deployments
+- Comprehensive API documentation with OpenAPI/Swagger specifications

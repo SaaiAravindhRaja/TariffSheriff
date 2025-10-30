@@ -2,6 +2,10 @@
 
 Spring Boot application for TariffSheriff (REST API).
 
+## Overview
+
+The backend provides a RESTful API for tariff calculations, user authentication, and trade data management. Built with Spring Boot and PostgreSQL, it supports both local development and cloud-hosted database deployments.
+
 ## Database & Migrations
 
 - Uses PostgreSQL with Flyway. The core schema lives in `src/main/resources/db/migration`.
