@@ -422,7 +422,7 @@ jobs:
 
     steps:
     - name: Download All Test Results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v6
 
     - name: Generate Test Summary
       run: |
