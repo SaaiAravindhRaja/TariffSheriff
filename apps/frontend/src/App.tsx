@@ -9,7 +9,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Calculator } from '@/pages/Calculator'
 import { Database } from '@/pages/Database'
 import { AuthPage } from '@/pages/Auth'
- 
+import { AiAssistant } from '@/pages/AiAssistant'
 import { Settings } from '@/pages/Settings'
 import Profile from '@/pages/Profile'
 import { About } from '@/pages/About'
@@ -65,6 +65,7 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/database" element={<Database />} />
+            <Route path="/ai-assistant" element={<AiAssistant />} />
             {/* Simplified navigation: dashboard, calculator, database, settings/profile */}
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />

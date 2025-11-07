@@ -70,7 +70,7 @@ export default function Profile() {
               <ProfileEditModal>
                 <Button variant="secondary">Edit Profile</Button>
               </ProfileEditModal>
-              <Button onClick={() => { safeLocalStorage.remove(STORAGE_KEY); try { if (typeof window !== 'undefined') window.location.reload() } catch {} }}>Sign Out</Button>
+              <Button onClick={() => { safeLocalStorage.remove(STORAGE_KEY); try { if (typeof window !== 'undefined') window.location.reload() } catch { /* Ignore reload errors */ } }}>Sign Out</Button>
             </div>
           </div>
         </CardHeader>
