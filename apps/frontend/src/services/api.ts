@@ -28,12 +28,23 @@ export const api = axios.create({
   },
 })
 
+// Global token setter - will be called by useAuth hook
+let getAccessTokenSilently: (() => Promise<string>) | null = null
+
+export const setAuth0TokenGetter = (getter: () => Promise<string>) => {
+  getAccessTokenSilently = getter
+}
+
 api.interceptors.request.use(
-  (config) => {
-    const token = typeof window !== 'undefined' ? window.localStorage.getItem('auth_token') : null
-    if (token) {
-      config.headers = config.headers ?? {}
-      config.headers.Authorization = `Bearer ${token}`
+  async (config) => {
+    try {
+      if (getAccessTokenSilently) {
+        const token = await getAccessTokenSilently()
+        config.headers = config.headers ?? {}
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    } catch (error) {
+      console.error('Failed to get Auth0 token:', error)
     }
     return config
   },
@@ -44,8 +55,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      window.localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      // Auth0 will handle re-authentication
+      console.error('Unauthorized request - please login again')
     }
     return Promise.reject(error)
   },
@@ -80,13 +91,6 @@ export const tariffApi = {
     originIso2?: string
     hsCode: string
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
-}
-
-export const authApi = {
-  login: (credentials: { email: string; password: string }) =>
-    api.post('/auth/login', credentials),
-  register: (userData: { name: string; email: string; password: string; aboutMe?: string }) =>
-    api.post('/auth/register', userData),
 }
 
 export default api

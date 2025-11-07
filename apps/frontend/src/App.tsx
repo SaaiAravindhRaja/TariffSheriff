@@ -2,14 +2,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsProvider } from '@/contexts/SettingsContext'
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { AuthPage } from '@/pages/AuthPage'
+import { useAuth } from '@/hooks/useAuth'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Dashboard } from '@/pages/Dashboard'
 import { Calculator } from '@/pages/Calculator'
 import { Database } from '@/pages/Database'
+import { AuthPage } from '@/pages/Auth'
  
 import { Settings } from '@/pages/Settings'
 import Profile from '@/pages/Profile'
@@ -33,7 +32,7 @@ const queryClient = new QueryClient({
 
 // Main App Content - only rendered when authenticated
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, login } = useAuth()
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -47,13 +46,9 @@ function AppContent() {
     )
   }
 
-  // Show auth page if not authenticated
+  // Show login button if not authenticated
   if (!isAuthenticated) {
-    return (
-      <Routes>
-        <Route path="/*" element={<AuthPage />} />
-      </Routes>
-    )
+    return <AuthPage onLogin={login} />
   }
 
   // Show main app if authenticated
@@ -65,22 +60,19 @@ function AppContent() {
       <div className="flex">
         <Sidebar />
         <main id="main-content" className="flex-1 ml-64 transition-all duration-300">
-          <ProtectedRoute>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/calculator" element={<Calculator />} />
-              <Route path="/database" element={<Database />} />
-              {/* Simplified navigation: dashboard, calculator, database, settings/profile */}
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/team" element={<Team />} />
-              <Route path="/contact" element={<Contact />} />
-              
-            </Routes>
-          </ProtectedRoute>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/calculator" element={<Calculator />} />
+            <Route path="/database" element={<Database />} />
+            {/* Simplified navigation: dashboard, calculator, database, settings/profile */}
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/contact" element={<Contact />} />
+          </Routes>
         </main>
       </div>
       <Footer />
@@ -91,13 +83,11 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SettingsProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </SettingsProvider>
-      </AuthProvider>
+      <SettingsProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </SettingsProvider>
     </QueryClientProvider>
   )
 }

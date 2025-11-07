@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { CountrySearch } from '@/components/search/CountrySearch'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 interface HeaderProps {
@@ -28,7 +28,6 @@ export function Header({ className }: HeaderProps) {
   const handleLogout = () => {
     logout()
     setShowUserMenu(false)
-    navigate('/', { replace: true })
   }
 
   // Close user menu when clicking outside
@@ -110,12 +109,12 @@ export function Header({ className }: HeaderProps) {
               onClick={() => setShowUserMenu(!showUserMenu)}
               aria-haspopup="true" 
               aria-expanded={showUserMenu}
-              aria-label={`Open profile menu for ${user?.name ?? 'user'}`} 
+              aria-label={`Open profile menu for ${user?.name ?? user?.email ?? 'user'}`} 
               className="flex items-center space-x-2 pl-2 border-l focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md px-2 py-1 transition-colors"
             >
               <div className="flex flex-col text-right">
-                <span className="text-sm font-medium">{user?.name || 'User'}</span>
-                <span className="text-xs text-muted-foreground capitalize">{user?.role?.toLowerCase() || 'Member'}</span>
+                <span className="text-sm font-medium">{user?.name || user?.email || 'User'}</span>
+                <span className="text-xs text-muted-foreground">Member</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
                 <User className="w-4 h-4 text-white" />
@@ -127,13 +126,8 @@ export function Header({ className }: HeaderProps) {
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || 'User'}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
-                  {user?.admin && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 mt-1">
-                      Admin
-                    </span>
-                  )}
                 </div>
                 
                 <button
