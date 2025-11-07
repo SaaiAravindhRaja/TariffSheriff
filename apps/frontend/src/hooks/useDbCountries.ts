@@ -27,7 +27,6 @@ export function useDbCountries() {
           setCountries(mapped)
         }
       } catch (e: any) {
-        // eslint-disable-next-line no-console
         console.error('Failed to load countries:', e?.response?.status, e?.response?.data || e?.message)
         if (!cancelled) {
           const status = e?.response?.status
