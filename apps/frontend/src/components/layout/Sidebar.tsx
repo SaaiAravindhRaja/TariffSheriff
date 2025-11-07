@@ -13,7 +13,8 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Bot
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -41,7 +42,12 @@ const navigationItems = [
     icon: Database,
     description: 'Browse Tariff Rules'
   },
- 
+  {
+    title: 'AI Assistant',
+    href: '/ai-assistant',
+    icon: Bot,
+    description: 'Ask Trade Questions'
+  },
   {
     title: 'Settings',
     href: '/settings',

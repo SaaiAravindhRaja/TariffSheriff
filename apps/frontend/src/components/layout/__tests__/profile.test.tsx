@@ -18,7 +18,7 @@ describe('Profile flow', () => {
       </MemoryRouter>
     )
 
-  expect(screen.getByText(/John Doe/i)).toBeTruthy()
-  expect(screen.getByText(/Trade Analyst/i)).toBeTruthy()
+  expect(screen.getByText(/User/i)).toBeTruthy()
+  expect(screen.getByText(/Member/i)).toBeTruthy()
   })
 })

@@ -22,7 +22,9 @@ export function ProfileEditModal({ children }: { children: React.ReactNode }) {
     if (raw) {
       try {
         setProfile(JSON.parse(raw))
-      } catch (e) {}
+      } catch (e) {
+        // Ignore parse errors
+      }
     }
   }, [])
 
