@@ -52,13 +52,13 @@ infrastructure/
   - Security: BCrypt for passwords; JWT (HS256). Protect `/api/**` except `/api/auth/**`, `/v3/api-docs/**`, `/swagger-ui/**`, and health.
   - Validation: email format, password min length 6; duplicate email returns 400 with `{ message }`.
 - Tariff
-  - Entities: `Country`, `Agreement`, `AgreementParty`, `HsProduct`, `TariffRate`, `Vat`, `RooRule`.
+  - Entities: `Country`, `Agreement`, `AgreementParty`, `HsProduct`, `TariffRate`.
   - Lookup algorithm (server returns both MFN and PREF candidates):
-    1) Resolve importer by `iso2` (2 letters, uppercase). Resolve origin if provided (optional).
-    2) Resolve product by `(destination_id, hs_version, hs_code)`. Default `hs_version = '2022'` unless specified.
-    3) MFN candidate: find most recent row effective on date D for `(importer, product, basis='MFN')` with `origin_id IS NULL`. If an origin‑specific MFN row exists and origin was provided, return it as `mfnOriginOverride` alongside the general MFN (client can ignore if not needed).
-    4) Preferential candidate: if origin provided, find most recent row for `(importer, origin, product, basis='PREF')` effective on D; only include if the linked agreement is in force on D.
-    5) Response contains both `mfn` and `pref` (if present) so the client can decide based on RVC.
+    1) Resolve importer by ISO3 (3 letters, uppercase). Resolve origin if provided (optional).
+    2) Resolve product by `(destination_iso3, hs_version, hs_code)`. Default `hs_version = '2022'` unless specified.
+    3) MFN candidate: fetch `(importer_iso3, product, basis='MFN')` with `origin_iso3 IS NULL`. If origin-specific MFN rows exist, prefer matching origin when provided.
+    4) Preferential candidate: if origin provided, fetch `(importer_iso3, origin_iso3, product, basis='PREF')`. Agreements are assumed active; eligibility determined by RVC only.
+    5) Response contains both MFN and PREF options so the client can compare using backend-computed RVC.
   - Calculator (server computes total duty and indicates basis):
     - Request carries: `{ totalValue, mfnRate, prefRate, rvcThreshold, materialCost, labourCost, overheadCost, profit, otherCosts, fob }`.
     - RVC formula (consistent with existing implementation):
@@ -67,12 +67,12 @@ infrastructure/
     - Rates are decimals (e.g., `0.10` for 10%). `totalDuty = totalValue * appliedRate`.
     - Response: `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`.
   - Endpoints:
-    - `GET /api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=&date=` (date optional, default today).
+    - `GET /api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=&date=` (date optional, default today).
     - `POST /api/tariff-rate/calculate` (RVC‑aware calculator).
   - Validation & errors:
-    - `importerIso2/originIso2`: exactly 2 letters; 400 on invalid or unknown code.
+    - `importerIso3/originIso3`: exactly 3 letters; 400 on invalid or unknown code.
     - `hsCode`: 4–10 digits; 400 on invalid; 404 if product not found.
-    - Date parsing: ISO‑8601 `YYYY‑MM‑DD`; defaults to `LocalDate.now()`.
+    - Date filtering removed for now (dataset is static for 2022); future enhancement can reintroduce validity windows.
 - Web/Config
   - Global exception handler: consistent JSON `{ error, message }` with appropriate status (400/404/500).
   - OpenAPI/Swagger configuration exposed in dev.
@@ -83,13 +83,13 @@ infrastructure/
 
 - V1 schema; V2 seed (small EV‑focused dataset: a few countries, HS lines, agreements, VAT).
 - Integrity constraints:
-  - `hs_product` unique `(destination_id, hs_version, hs_code)`.
+  - `hs_product` unique `(destination_iso3, hs_version, hs_code)`.
   - `tariff_rate.basis` in (`'MFN'`, `'PREF'`).
-  - For `tariff_rate`: `origin_id IS NULL` when basis=`MFN`; `agreement_id IS NOT NULL AND origin_id IS NOT NULL` when basis=`PREF`.
-  - Validity: `(valid_from <= D) AND (valid_to IS NULL OR valid_to >= D)`.
+  - For `tariff_rate`: `origin_iso3 IS NULL` when basis=`MFN`; `agreement_id IS NOT NULL AND origin_iso3 IS NOT NULL` when basis=`PREF`.
+  - Validity windows omitted in this snapshot; each rate row is assumed current.
 - Indexes:
-  - `tariff_rate(importer_id, hs_product_id, basis, valid_from DESC)`.
-  - `tariff_rate(importer_id, origin_id, hs_product_id, basis, valid_from DESC)`.
+  - `tariff_rate(importer_iso3, hs_product_id)`.
+  - `tariff_rate(importer_iso3, origin_iso3, hs_product_id)`.
 - Seeded admin/user passwords are BCrypt‑hashed (no plain text).
 
 ## API Surface
@@ -103,7 +103,7 @@ infrastructure/
   - `POST /api/tariff-rate/calculate` → 200 `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }` or 400.
 - Reference
   - `GET /api/countries` → basic list for selectors.
-  - `GET /api/products?importerIso2=&q=` (only if UI requires text search for HS lines).
+  - `GET /api/products?importerIso3=&q=` (only if UI requires text search for HS lines).
 
 ## Frontend
 

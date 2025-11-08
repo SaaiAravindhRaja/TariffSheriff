@@ -43,14 +43,14 @@ public class TariffLookupTool implements ChatbotTool {
         // Importer country parameter
         Map<String, Object> importerParam = new HashMap<>();
         importerParam.put("type", "string");
-        importerParam.put("description", "ISO2 country code of the importing country (e.g., 'US', 'CA', 'JP')");
-        properties.put("importerIso2", importerParam);
+        importerParam.put("description", "ISO3 country code of the importing country (e.g., 'USA', 'CAN', 'JPN')");
+        properties.put("importerIso3", importerParam);
         
         // Origin country parameter
         Map<String, Object> originParam = new HashMap<>();
         originParam.put("type", "string");
-        originParam.put("description", "ISO2 country code of the origin/exporting country (e.g., 'MX', 'CN', 'DE')");
-        properties.put("originIso2", originParam);
+        originParam.put("description", "ISO3 country code of the origin/exporting country (e.g., 'MEX', 'CHN', 'DEU')");
+        properties.put("originIso3", originParam);
         
         // HS Code parameter
         Map<String, Object> hsCodeParam = new HashMap<>();
@@ -59,7 +59,7 @@ public class TariffLookupTool implements ChatbotTool {
         properties.put("hsCode", hsCodeParam);
         
         parameters.put("properties", properties);
-        parameters.put("required", new String[]{"importerIso2", "originIso2", "hsCode"});
+        parameters.put("required", new String[]{"importerIso3", "originIso3", "hsCode"});
         
         return new ToolDefinition(
             getName(),
@@ -76,18 +76,18 @@ public class TariffLookupTool implements ChatbotTool {
         
         try {
             // Extract and validate parameters
-            String importerIso2 = toolCall.getStringArgument("importerIso2");
-            String originIso2 = toolCall.getStringArgument("originIso2");
+            String importerIso3 = toolCall.getStringArgument("importerIso3");
+            String originIso3 = toolCall.getStringArgument("originIso3");
             String hsCode = toolCall.getStringArgument("hsCode");
             
             // Validate required parameters
-            if (importerIso2 == null || importerIso2.trim().isEmpty()) {
+            if (importerIso3 == null || importerIso3.trim().isEmpty()) {
                 return ToolResult.error(getName(), 
-                    "I need to know which country is importing. Please specify the destination country using its 2-letter code (e.g., 'US' for United States, 'CA' for Canada).");
+                    "I need to know which country is importing. Please specify the destination country using its 3-letter ISO code (e.g., 'USA' for United States, 'CAN' for Canada).");
             }
-            if (originIso2 == null || originIso2.trim().isEmpty()) {
+            if (originIso3 == null || originIso3.trim().isEmpty()) {
                 return ToolResult.error(getName(), 
-                    "I need to know which country the product is coming from. Please specify the origin country using its 2-letter code (e.g., 'MX' for Mexico, 'CN' for China).");
+                    "I need to know which country the product is coming from. Please specify the origin country using its 3-letter ISO code (e.g., 'MEX' for Mexico, 'CHN' for China).");
             }
             if (hsCode == null || hsCode.trim().isEmpty()) {
                 return ToolResult.error(getName(), 
@@ -95,19 +95,19 @@ public class TariffLookupTool implements ChatbotTool {
             }
             
             // Normalize parameters
-            importerIso2 = importerIso2.trim().toUpperCase();
-            originIso2 = originIso2.trim().toUpperCase();
+            importerIso3 = importerIso3.trim().toUpperCase();
+            originIso3 = originIso3.trim().toUpperCase();
             hsCode = hsCode.trim();
             
             // Validate formats
-            if (importerIso2.length() != 2) {
+            if (importerIso3.length() != 3) {
                 return ToolResult.error(getName(), 
-                    String.format("The importing country code '%s' doesn't look right. Please use a 2-letter ISO code like 'US', 'CA', or 'JP'. Not sure? Ask me to list available countries.", importerIso2));
+                    String.format("The importing country code '%s' doesn't look right. Please use a 3-letter ISO code like 'USA', 'CAN', or 'JPN'. Not sure? Ask me to list available countries.", importerIso3));
             }
             
-            if (originIso2.length() != 2) {
+            if (originIso3.length() != 3) {
                 return ToolResult.error(getName(), 
-                    String.format("The origin country code '%s' doesn't look right. Please use a 2-letter ISO code like 'MX', 'CN', or 'DE'. Not sure? Ask me to list available countries.", originIso2));
+                    String.format("The origin country code '%s' doesn't look right. Please use a 3-letter ISO code like 'MEX', 'CHN', or 'DEU'. Not sure? Ask me to list available countries.", originIso3));
             }
             
             if (!hsCode.matches("\\d{4,10}")) {
@@ -115,13 +115,13 @@ public class TariffLookupTool implements ChatbotTool {
                     String.format("The HS code '%s' doesn't look valid. HS codes should be 4-10 digits (e.g., '0804' or '080440'). If you're not sure of the code, ask me to find it for you.", hsCode));
             }
             
-            logger.info("Looking up tariff rate: {} -> {} for HS code: {}", originIso2, importerIso2, hsCode);
+            logger.info("Looking up tariff rate: {} -> {} for HS code: {}", originIso3, importerIso3, hsCode);
             
             // Get tariff rate from service
-            TariffRateLookupDto result = tariffRateService.getTariffRateWithAgreement(importerIso2, originIso2, hsCode);
+            TariffRateLookupDto result = tariffRateService.getTariffRateWithAgreement(importerIso3, originIso3, hsCode);
             
             // Format result
-            String formattedResult = formatTariffResult(result, importerIso2, originIso2, hsCode);
+            String formattedResult = formatTariffResult(result, importerIso3, originIso3, hsCode);
             
             ToolResult toolResult = ToolResult.success(getName(), formattedResult);
             toolResult.setExecutionTimeMs(System.currentTimeMillis() - startTime);
@@ -132,8 +132,8 @@ public class TariffLookupTool implements ChatbotTool {
             
         } catch (Exception e) {
             logger.error("Error executing tariff lookup tool for route {} -> {}, HS code: {}", 
-                    toolCall.getStringArgument("originIso2"), 
-                    toolCall.getStringArgument("importerIso2"), 
+                    toolCall.getStringArgument("originIso3"), 
+                    toolCall.getStringArgument("importerIso3"), 
                     toolCall.getStringArgument("hsCode"), e);
             
             String userMessage = "I couldn't find the tariff information you requested. ";
@@ -158,11 +158,11 @@ public class TariffLookupTool implements ChatbotTool {
     /**
      * Format the tariff lookup result for LLM consumption
      */
-    private String formatTariffResult(TariffRateLookupDto result, String importerIso2, String originIso2, String hsCode) {
+    private String formatTariffResult(TariffRateLookupDto result, String importerIso3, String originIso3, String hsCode) {
         StringBuilder formatted = new StringBuilder();
         
         formatted.append("Tariff Rate Lookup Results:\n");
-        formatted.append("Trade Route: ").append(originIso2).append(" → ").append(importerIso2).append("\n");
+        formatted.append("Trade Route: ").append(originIso3).append(" → ").append(importerIso3).append("\n");
         formatted.append("HS Code: ").append(hsCode).append("\n\n");
         
         if (result.rates() == null || result.rates().isEmpty()) {
@@ -219,12 +219,9 @@ public class TariffLookupTool implements ChatbotTool {
             formatted.append(rate.adValoremRate()).append("%");
         }
         
-        if (rate.specificAmount() != null) {
+        if (rate.nonAdValorem()) {
             if (formatted.length() > 0) formatted.append(" + ");
-            formatted.append(rate.specificAmount());
-            if (rate.specificUnit() != null) {
-                formatted.append(" ").append(rate.specificUnit());
-            }
+            formatted.append(rate.nonAdValoremText() != null ? rate.nonAdValoremText() : "Special tariff note");
         }
         
         if (formatted.length() == 0) {

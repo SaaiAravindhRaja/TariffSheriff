@@ -10,9 +10,9 @@ import com.tariffsheriff.backend.tariff.model.TariffRate;
 @Repository
 public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
-    Optional<TariffRate> findByImporterIdAndOriginIdAndHsProductIdAndBasis(
-        Long importerId, Long originId, Long hsProductId, String basis);
+    Optional<TariffRate> findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(
+        String importerIso3, String originIso3, Long hsProductId, String basis);
 
-    Optional<TariffRate> findByImporterIdAndHsProductIdAndBasis(
-        Long importerId, Long hsProductId, String basis);
+    Optional<TariffRate> findByImporterIso3AndHsProductIdAndBasis(
+        String importerIso3, Long hsProductId, String basis);
 }

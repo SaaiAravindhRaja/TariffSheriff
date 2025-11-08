@@ -55,47 +55,47 @@ public class TariffRateServiceImpl implements TariffRateService {
     // }
 
     @Override
-    public TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode) {
+    public TariffRateLookupDto getTariffRateWithAgreement(String importerIso3, String originIso3, String hsCode) {
         if (hsCode == null || hsCode.isBlank()) {
             throw new IllegalArgumentException("hsCode must be provided");
         }
 
-        Country importer = countries.findByIso2IgnoreCase(importerIso2)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown importer ISO2: " + importerIso2));
+        Country importer = countries.findByIso3IgnoreCase(importerIso3)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown importer ISO3: " + importerIso3));
 
         Country origin = null;
-        if (originIso2 != null && !originIso2.isBlank()) {
-            origin = countries.findByIso2IgnoreCase(originIso2)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO2: " + originIso2));
+        if (originIso3 != null && !originIso3.isBlank()) {
+            origin = countries.findByIso3IgnoreCase(originIso3)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown origin ISO3: " + originIso3));
         }
 
-        HsProduct product = hsProducts
-            .findByDestinationIdAndHsCode(importer.getId(), hsCode)
-            .orElseThrow(() -> new TariffRateNotFoundException("No HS product found for importer " + importerIso2 + " and code " + hsCode));
+        String importerCode = importer.getIso3();
+        String originCode = origin != null ? origin.getIso3() : null;
 
-        Long importerId = importer.getId();
+        HsProduct product = hsProducts
+            .findByDestinationIso3IgnoreCaseAndHsCode(importerCode, hsCode)
+            .orElseThrow(() -> new TariffRateNotFoundException("No HS product found for importer " + importerCode + " and code " + hsCode));
+
         Long hsProductId = product.getId();
 
         // Determine MFN: prefer origin-specific MFN when origin provided; otherwise fall back to general MFN
         TariffRate tariffRateMfn = null;
         if (origin != null) {
-            Long originId = origin.getId();
             tariffRateMfn = tariffRates
-                .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "MFN")
+                .findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode, hsProductId, "MFN")
                 .orElse(null);
         }
         if (tariffRateMfn == null) {
             tariffRateMfn = tariffRates
-                .findByImporterIdAndHsProductIdAndBasis(importerId, hsProductId, "MFN")
-                .orElseThrow(() -> new TariffRateNotFoundException("No MFN tariff rate found for importer " + importerIso2 + " and HS code " + hsCode));
+                .findByImporterIso3AndHsProductIdAndBasis(importerCode, hsProductId, "MFN")
+                .orElseThrow(() -> new TariffRateNotFoundException("No MFN tariff rate found for importer " + importerCode + " and HS code " + hsCode));
         }
 
         // Determine preferential rate: only when origin provided and there is a matching origin-specific PREF
         TariffRate tariffRatePref = null;
         if (origin != null) {
-            Long originId = origin.getId();
             tariffRatePref = tariffRates
-                .findByImporterIdAndOriginIdAndHsProductIdAndBasis(importerId, originId, hsProductId, "PREF")
+                .findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode, hsProductId, "PREF")
                 .orElse(null);
         }
 
@@ -112,8 +112,8 @@ public class TariffRateServiceImpl implements TariffRateService {
         }
 
         return new TariffRateLookupDto(
-            importerIso2,
-            originIso2,
+            importerCode,
+            originCode,
             hsCode,
             options
         );
@@ -157,8 +157,8 @@ public class TariffRateServiceImpl implements TariffRateService {
             rate.getId(),
             rate.getBasis(),
             rate.getAdValoremRate(),
-            rate.getSpecificAmount(),
-            rate.getSpecificUnit(),
+            rate.isNonAdValorem(),
+            rate.getNonAdValoremText(),
             agreementId,
             agreementName,
             rvcThreshold

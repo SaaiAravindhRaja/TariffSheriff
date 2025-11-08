@@ -8,25 +8,22 @@ Prereqs
 Common repository calls
 ```java
 // Resolve HS product id
-var productOpt = hsProductRepository.findByDestination_IdAndHsVersionAndHsCode(importerId, "2022", "870380");
+var productOpt = hsProductRepository.findByDestinationIso3IgnoreCaseAndHsCode("USA", "870380");
 var product = productOpt.orElseThrow();
 
 // MFN rate for a date
-var mfn = tariffRateRepository.findApplicableMfn(importerId, product.getId(), shipmentDate).stream().findFirst();
+var mfn = tariffRateRepository.findApplicableMfn("USA", product.getId(), shipmentDate).stream().findFirst();
 
 // Preferential rate for a date (if origin + agreement apply)
-var pref = tariffRateRepository.findApplicablePreferential(importerId, originId, product.getId(), shipmentDate).stream().findFirst();
+var pref = tariffRateRepository.findApplicablePreferential("USA", "MEX", product.getId(), shipmentDate).stream().findFirst();
 
-// VAT by importer
-var vat = vatRepository.findByImporter_Id(importerId);
 ```
 
 Service-layer (recommended)
 ```java
 var product = hsProductService.get(productId);
-var mfnList = tariffRateService.findApplicableMfn(importerId, product.getId(), shipmentDate);
-var prefList = tariffRateService.findApplicablePreferential(importerId, originId, product.getId(), shipmentDate);
-var vat = vatService.getForImporter(importerId);
+var mfnList = tariffRateService.findApplicableMfn("USA", product.getId(), shipmentDate);
+var prefList = tariffRateService.findApplicablePreferential("USA", "MEX", product.getId(), shipmentDate);
 ```
 
 Pagination & sorting
@@ -42,7 +39,7 @@ Transactions
 Goal: decide which rate/agreement applies for importer I, origin O, HS (version/code) on date D, returning a single decision the backend can use.
 
 Inputs
-- `importer_id` (I), `origin_id` (O)
+- `importer_iso3` (I), `origin_iso3` (O)
 - `hs_version`, `hs_code`
 - `date` (D)
 
@@ -50,7 +47,7 @@ Inputs
 ```sql
 SELECT id
 FROM hs_product
-WHERE destination_id = :I
+WHERE destination_iso3 = :I
   AND hs_version = :hs_version
   AND hs_code    = :hs_code;
 ```
@@ -59,8 +56,8 @@ WHERE destination_id = :I
 ```sql
 SELECT a.id, a.name
 FROM agreement a
-JOIN agreement_party p_i ON p_i.agreement_id = a.id AND p_i.country_id = :I
-JOIN agreement_party p_o ON p_o.agreement_id = a.id AND p_o.country_id = :O
+JOIN agreement_party p_i ON p_i.agreement_id = a.id AND p_i.country_iso3 = :I
+JOIN agreement_party p_o ON p_o.agreement_id = a.id AND p_o.country_iso3 = :O
 WHERE a.status = 'in_force'
   AND (a.entered_into_force IS NULL OR a.entered_into_force <= :D);
 ```
@@ -70,15 +67,11 @@ WHERE a.status = 'in_force'
 SELECT tr.*, a.name AS agreement_name
 FROM tariff_rate tr
 JOIN agreement a ON a.id = tr.agreement_id
-WHERE tr.importer_id   = :I
-  AND tr.origin_id     = :O
+WHERE tr.importer_iso3 = :I
+  AND tr.origin_iso3   = :O
   AND tr.hs_product_id = :P
   AND tr.basis         = 'PREF'
-  AND tr.valid_from   <= :D
-  AND (tr.valid_to IS NULL OR tr.valid_to >= :D)
-  AND a.status         = 'in_force'
-  AND (a.entered_into_force IS NULL OR a.entered_into_force <= :D)
-ORDER BY tr.valid_from DESC
+ORDER BY tr.id DESC
 LIMIT 1;
 ```
 
@@ -86,40 +79,25 @@ LIMIT 1;
 ```sql
 SELECT tr.*
 FROM tariff_rate tr
-WHERE tr.importer_id   = :I
-  AND tr.origin_id     IS NULL
+WHERE tr.importer_iso3 = :I
+  AND tr.origin_iso3   IS NULL
   AND tr.hs_product_id = :P
   AND tr.basis         = 'MFN'
-  AND tr.valid_from   <= :D
-  AND (tr.valid_to IS NULL OR tr.valid_to >= :D)
-ORDER BY tr.valid_from DESC
+ORDER BY tr.id DESC
 LIMIT 1;
 ```
 
 5) Build the decision
 - If a preferential row exists in step 3, use it; otherwise use MFN from step 4.
-- Decision fields: `basis` (PREF|MFN), `rate_type`, `ad_valorem_rate`/`specific_amount`(+`specific_unit`) as applicable,
-  `agreement_id/name` (nullable for MFN), `valid_from/to`, `source_ref`.
-
-6) Optional gating and extras
-```sql
--- Rules of Origin (flag certificate/threshold)
-SELECT *
-FROM roo_rule
-WHERE agreement_id = :decision.agreement_id
-  AND hs_product_id = :P;
-
--- VAT for importer (combine downstream if needed)
-SELECT standard_rate FROM vat WHERE importer_id = :I;
-```
+- Decision fields: `basis` (PREF|MFN), `ad_valorem_rate`, `is_non_ad_valorem`, `non_ad_valorem_text`,
+  `agreement_id/name` (nullable for MFN), `source_ref`.
 
 Edge cases
 - No `hs_product` → return a clear error to the caller (unknown HS line for importer).
 - No `PREF` candidate → MFN applies.
-- Data consistency is enforced by constraints (e.g., MFN origin must be NULL; PREF requires `agreement_id` and `origin_id`).
+- Data consistency is enforced by constraints (e.g., MFN origin must be NULL; PREF requires `agreement_id` and `origin_iso3`).
 
 Performance
-- The following indexes support lookups: `idx_tariff_lookup` on `(importer_id, hs_product_id, valid_from DESC)` and
-  `idx_pref_lookup` on `(importer_id, origin_id, hs_product_id, valid_from DESC)`.
+- The following indexes support lookups: `idx_tariff_lookup_iso3` on `(importer_iso3, hs_product_id)` and
+  `idx_pref_lookup_iso3` on `(importer_iso3, origin_iso3, hs_product_id)`.
 - Parameterize queries and cache `hs_product` resolution when appropriate.
-

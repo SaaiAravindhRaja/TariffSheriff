@@ -12,16 +12,16 @@ interface CountryTradeAgreementsProps {
 type AgreementDto = {
   id: number;
   name: string;
-  type: string;
-  status: string;
+  type?: string | null;
+  status?: string | null;
   enteredIntoForce?: string | null;
   rvc?: number | null;
 };
 
 type TariffRateDto = {
   id: number;
-  importer?: { iso2?: string };
-  origin?: { iso2?: string } | null;
+  importerIso3?: string;
+  originIso3?: string | null;
   basis?: string;
 };
 
@@ -75,9 +75,9 @@ export const CountryTradeAgreements: React.FC<CountryTradeAgreementsProps> = ({ 
 
         const rates: TariffRateDto[] = Array.isArray(ratesRes.data) ? ratesRes.data : [];
         const mfnForImporter = rates.find(r =>
-          (r.importer?.iso2 || '').toUpperCase() === countryCode.toUpperCase() &&
+          (r.importerIso3 || '').toUpperCase() === countryCode.toUpperCase() &&
           (r.basis || '').toUpperCase() === 'MFN' &&
-          (!r.origin || !r.origin.iso2)
+          (!r.originIso3)
         );
         if (!cancelled) setHasMfn(Boolean(mfnForImporter));
       } catch (e: any) {

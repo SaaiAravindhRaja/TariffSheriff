@@ -14,8 +14,7 @@ public interface AgreementRepository extends JpaRepository<Agreement, Long> {
 
     @Query(value = "SELECT DISTINCT a.* FROM agreement a " +
            "JOIN agreement_party ap ON a.id = ap.agreement_id " +
-           "JOIN country c ON ap.country_id = c.id " +
-           "WHERE UPPER(c.iso2) = UPPER(:countryIso2)", nativeQuery = true)
-    List<Agreement> findAgreementsByCountryIso2(@Param("countryIso2") String countryIso2);
+           "WHERE UPPER(ap.country_iso3) = UPPER(:countryIso3)", nativeQuery = true)
+    List<Agreement> findAgreementsByCountryIso3(@Param("countryIso3") String countryIso3);
 
 }

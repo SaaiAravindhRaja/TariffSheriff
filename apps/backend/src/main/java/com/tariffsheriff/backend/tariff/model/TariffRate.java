@@ -1,8 +1,6 @@
 package com.tariffsheriff.backend.tariff.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
@@ -25,11 +23,11 @@ public class TariffRate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "importer_id", nullable = false)
-    private Long importerId;
+    @Column(name = "importer_iso3", nullable = false, columnDefinition = "varchar(3)")
+    private String importerIso3;
 
-    @Column(name = "origin_id")
-    private Long originId;
+    @Column(name = "origin_iso3", columnDefinition = "varchar(3)")
+    private String originIso3;
 
     @Column(name = "hs_product_id", nullable = false)
     private Long hsProductId;
@@ -40,23 +38,14 @@ public class TariffRate {
     @Column(name = "agreement_id")
     private Long agreementId;
 
-    @Column(name = "rate_type", nullable = false)
-    private String rateType;
-
     @Column(name = "ad_valorem_rate", precision = 9, scale = 6)
     private BigDecimal adValoremRate;
 
-    @Column(name = "specific_amount", precision = 19, scale = 4)
-    private BigDecimal specificAmount;
+    @Column(name = "is_non_ad_valorem", nullable = false)
+    private boolean nonAdValorem;
 
-    @Column(name = "specific_unit", length = 32)
-    private String specificUnit;
-
-    @Column(name = "valid_from")
-    private LocalDate validFrom;
-
-    @Column(name = "valid_to")
-    private LocalDate validTo;
+    @Column(name = "non_ad_valorem_text")
+    private String nonAdValoremText;
 
     @Column(name = "source_ref")
     private String sourceRef;

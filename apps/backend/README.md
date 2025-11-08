@@ -9,10 +9,9 @@ The backend provides a RESTful API for tariff calculations, user authentication,
 ## Database & Migrations
 
 - Uses PostgreSQL with Flyway. The core schema lives in `src/main/resources/db/migration`.
-- `V1__schema.sql` creates the canonical tariff tables (countries, HS products, tariff rates, VAT, etc.).
-- `V2__seed_mock.sql` inserts a small EV-focused dataset (EU importer, Korea preference) for smoke testing.
-- MFN rates always exist with `origin_id` `NULL` (applies to any origin). Preferential rates require an `agreement_id` and only replace MFN when RoO + certificate checks are satisfied in the UI/business logic.
-- All rates are valid-date bounded (`valid_from`, optional `valid_to`) and VAT is stored separately in the `vat` table.
+- `V1__schema.sql` creates the canonical tariff tables (countries, HS products, tariff rates, agreements, users).
+- MFN rates always exist with `origin_iso3` `NULL` (applies to any origin). Preferential rates require an `agreement_id` and only replace MFN when RoO + certificate checks are satisfied in the UI/business logic.
+- Rates are snapshot values (2022 dataset); no validity windows or VAT table yet.
 
 ### Running locally
 
@@ -44,26 +43,20 @@ On startup Flyway runs the migrations automatically. You can verify the seed dat
 ```sql
 -- Resolve HS product for EU importer, HS 870380 (version 2022)
 SELECT id FROM hs_product
-WHERE destination_id = 1 AND hs_version = '2022' AND hs_code = '870380';
+WHERE destination_iso3 = 'EU' AND hs_version = '2022' AND hs_code = '870380';
 
--- MFN lookup on 2024-03-01
+-- MFN lookup
 SELECT * FROM tariff_rate
-WHERE importer_id = 1 AND hs_product_id = 1 AND basis = 'MFN'
-  AND origin_id IS NULL AND valid_from <= DATE '2024-03-01'
-  AND (valid_to IS NULL OR valid_to >= DATE '2024-03-01')
-ORDER BY valid_from DESC
+WHERE importer_iso3 = 'EU' AND hs_product_id = 1 AND basis = 'MFN'
+  AND origin_iso3 IS NULL
+ORDER BY id DESC
 LIMIT 1;
 
 -- Preferential lookup for Korea origin
 SELECT * FROM tariff_rate
-WHERE importer_id = 1 AND origin_id = 2 AND hs_product_id = 1 AND basis = 'PREF'
-  AND valid_from <= DATE '2024-03-01'
-  AND (valid_to IS NULL OR valid_to >= DATE '2024-03-01')
-ORDER BY valid_from DESC
+WHERE importer_iso3 = 'EU' AND origin_iso3 = 'KR' AND hs_product_id = 1 AND basis = 'PREF'
+ORDER BY id DESC
 LIMIT 1;
-
--- VAT for EU importer
-SELECT standard_rate FROM vat WHERE importer_id = 1;
 ```
 
 ### API (Minimal)
@@ -74,7 +67,7 @@ All endpoints use JSON and require a Bearer token, except `/api/auth/**` and hea
 - POST `/api/auth/login` → same as register
 - POST `/api/auth/validate` → same as register
 - GET `/api/countries?q=&page=&size=` → list of countries
-- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=` → `{ mfn, pref, agreement }`
+- GET `/api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=` → `{ mfn, pref, agreement }`
 - POST `/api/tariff-rate/calculate` → `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`
 
 Example usage:
@@ -95,7 +88,7 @@ curl -s http://localhost:8080/api/countries \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Lookup (seeded example)
-curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso3=EU&originIso3=KR&hsCode=870380" \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Calculator

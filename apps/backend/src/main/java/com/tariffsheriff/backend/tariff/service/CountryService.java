@@ -34,7 +34,6 @@ public class CountryService {
 
     public Country update(Long id, Country update) {
         Country existing = get(id);
-        existing.setIso2(update.getIso2());
         existing.setIso3(update.getIso3());
         existing.setName(update.getName());
         return countryRepository.save(existing);

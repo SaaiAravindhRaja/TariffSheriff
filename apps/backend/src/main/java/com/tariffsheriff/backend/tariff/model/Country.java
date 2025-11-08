@@ -21,11 +21,7 @@ public class Country {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "iso2", nullable = false, columnDefinition = "char(2)")
-    @JdbcTypeCode(SqlTypes.CHAR)
-    private String iso2;
-
-    @Column(name = "iso3", nullable = false, columnDefinition = "char(3)")
+    @Column(name = "iso3", nullable = false, columnDefinition = "varchar(3)")
     @JdbcTypeCode(SqlTypes.CHAR)
     private String iso3;
 

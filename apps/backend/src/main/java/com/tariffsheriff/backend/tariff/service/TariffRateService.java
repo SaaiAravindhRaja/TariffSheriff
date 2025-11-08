@@ -12,7 +12,7 @@ public interface TariffRateService {
 
     TariffRate getTariffRateById(Long id);
 
-    TariffRateLookupDto getTariffRateWithAgreement(String importerIso2, String originIso2, String hsCode);
+    TariffRateLookupDto getTariffRateWithAgreement(String importerIso3, String originIso3, String hsCode);
 
     TariffCalculationResponse calculateTariffRate(TariffRateRequestDto tariffCalculationData);
 }

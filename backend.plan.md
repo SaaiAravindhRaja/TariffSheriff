@@ -6,10 +6,10 @@
 - Endpoints used by the calculator:
 ```39:49:apps/backend/src/main/java/com/tariffsheriff/backend/tariff/controller/TariffRateController.java
     @GetMapping("/lookup")
-    public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam String importerIso2,
-                                                         @RequestParam(required = false) String originIso2,
+    public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam String importerIso3,
+                                                         @RequestParam(required = false) String originIso3,
                                                          @RequestParam String hsCode) {
-        return tariffRateService.getTariffRateWithAgreement(importerIso2, originIso2, hsCode);
+        return tariffRateService.getTariffRateWithAgreement(importerIso3, originIso3, hsCode);
     }
 
     @PostMapping("/calculate")

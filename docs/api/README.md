@@ -42,7 +42,7 @@ Authentication: Most endpoints require JWT Bearer token.
 
 ### Tariff
 
-- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=`
+- GET `/api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=`
   - 200: `{ mfn: {...}, pref: {...}|null, agreement: {...}|null }`
   - Notes: Simple selection (no date window logic yet).
 
@@ -71,7 +71,7 @@ curl -s http://localhost:8080/api/countries \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Lookup (seeded example)
-curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso3=EU&originIso3=KR&hsCode=870380" \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Calculator
