@@ -9,6 +9,7 @@ The TariffSheriff CI pipeline is a comprehensive GitHub Actions workflow that au
 - Intelligent path filtering to skip unnecessary jobs
 - Dependency caching for faster builds
 - Security vulnerability scanning
+- Automated PR summary comments with results at a glance
 - Clear error messages and troubleshooting guidance
 
 ## Workflow Triggers
@@ -179,10 +180,36 @@ The CI pipeline runs on:
 - Skipped jobs (collapsed)
 - Direct link to detailed CI results
 
+**Example comment**:
+```
+🤖 CI Pipeline Results
+
+✅ All Checks Passed!
+
+Changed: Backend, Frontend
+
+✅ Passed
+- Backend Build Test
+- Frontend Build
+- Frontend Test
+
+⚠️ Warnings (non-blocking)
+- Frontend Lint Typecheck
+- Backend Security Scan
+
+⏭️ Skipped Jobs
+- Backend Package (only runs on main branch)
+
+---
+📊 View detailed results
+🔗 Commit: abc1234
+```
+
 **Benefits**:
 - See all CI results at a glance without leaving the PR
 - Understand what needs attention immediately
 - Track CI status across multiple commits (comment updates automatically)
+- Reduces context switching between PR and Actions tab
 
 **Timeout**: 5 minutes
 
@@ -367,6 +394,20 @@ The pipeline uses intelligent path filtering to skip unnecessary jobs:
 
 ---
 
+#### ❌ PR Summary Not Appearing
+
+**Error**: No CI summary comment on pull request
+
+**Solution**:
+1. Check that the PR is from the same repository (not a fork)
+2. Verify the workflow has `pull-requests: write` permission
+3. Check the `pr-summary` job in the Actions tab for errors
+4. Ensure at least one CI job ran (not all skipped)
+
+**Note**: The summary only appears on pull requests, not on direct pushes to main
+
+---
+
 #### ⏱️ Job Timeout
 
 **Error**: Job exceeded timeout limit
@@ -493,6 +534,7 @@ cd apps/frontend && npm ci
 - Backend-only changes: 4-5 minutes
 - Frontend-only changes: 3-4 minutes
 - Documentation-only: <1 minute (validation only)
+- PR summary: <30 seconds (runs after other jobs)
 
 **Cache hit rates**:
 - Maven cache: >80% hit rate
