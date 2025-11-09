@@ -40,6 +40,9 @@ public class User implements UserDetails {
     @Column(name = "admin", nullable = false)
     private Boolean isAdmin = false;
 
+    @Column(name = "auth0_sub", length = 255, nullable = true, unique = false)
+    private String auth0Sub;
+
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -106,5 +109,13 @@ public class User implements UserDetails {
 
     public void setIsAdmin(Boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    public String getAuth0Sub() {
+        return auth0Sub;
+    }
+
+    public void setAuth0Sub(String auth0Sub) {
+        this.auth0Sub = auth0Sub;
     }
 }
