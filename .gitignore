@@ -2,10 +2,12 @@ node_modules/
 dist/
 target/
 .env
+.ssh/
 *.log
 .DS_Store
 .vscode/
 .idea/
+secrets/
 
 # Environment files (ignore real secrets everywhere)
 **/.env
