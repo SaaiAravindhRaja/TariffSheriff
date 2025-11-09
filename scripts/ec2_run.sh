@@ -51,22 +51,59 @@ pull_image() {
   docker pull "${uri}"
 }
 
+backend_env_args() {
+  # Build -e KEY=VALUE args from exported env vars when no env-file is used.
+  # Required: DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, JWT_SECRET
+  local -a args=()
+  local required=(DATABASE_URL DATABASE_USERNAME DATABASE_PASSWORD JWT_SECRET)
+  local optional=(SPRING_PROFILES_ACTIVE SERVER_PORT CORS_ALLOWED_ORIGIN_PATTERNS AUTH0_ISSUER AUTH0_AUDIENCE OPENAI_API_KEY)
+
+  local missing=0
+  for k in "${required[@]}"; do
+    local v="${!k-}"
+    if [[ -z "${v}" ]]; then
+      echo "Missing required env: $k" >&2
+      missing=1
+    else
+      args+=(-e "$k=$v")
+    fi
+  done
+  if [[ $missing -eq 1 ]]; then
+    return 2
+  fi
+  for k in "${optional[@]}"; do
+    local v="${!k-}"
+    if [[ -n "${v}" ]]; then
+      args+=(-e "$k=$v")
+    fi
+  done
+  printf '%s\0' "${args[@]}"
+}
+
 restart_backend() {
   local repo="${BACKEND_REPO:?BACKEND_REPO not set}"
   local uri="${ECR_DOMAIN}/${repo}:${IMAGE_TAG}"
 
-  if [[ ! -f "${BACKEND_ENV_FILE}" ]]; then
-    echo "Backend env file not found at ${BACKEND_ENV_FILE}"
-    exit 1
-  fi
-
   docker rm -f tariffsheriff-backend >/dev/null 2>&1 || true
   echo "==> Starting backend container"
-  docker run -d --name tariffsheriff-backend \
-    --restart unless-stopped \
-    -p 8080:8080 \
-    --env-file "${BACKEND_ENV_FILE}" \
-    "${uri}"
+  if [[ -f "${BACKEND_ENV_FILE}" ]]; then
+    docker run -d --name tariffsheriff-backend \
+      --restart unless-stopped \
+      -p 8080:8080 \
+      --env-file "${BACKEND_ENV_FILE}" \
+      "${uri}"
+  else
+    # Build inline -e args
+    mapfile -d '' env_args < <(backend_env_args) || {
+      echo "Provide required envs (DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, JWT_SECRET) when not using BACKEND_ENV_FILE." >&2
+      exit 1
+    }
+    docker run -d --name tariffsheriff-backend \
+      --restart unless-stopped \
+      -p 8080:8080 \
+      "${env_args[@]}" \
+      "${uri}"
+  fi
 }
 
 restart_frontend() {
