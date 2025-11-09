@@ -96,11 +96,16 @@ restart_backend() {
 
   docker rm -f tariffsheriff-backend >/dev/null 2>&1 || true
   echo "==> Starting backend container"
+  # If DOMAIN is set (Caddy in front), don't publish host port 8080
+  local -a publish_args=()
+  if [[ -z "${DOMAIN:-}" ]]; then
+    publish_args=(-p 8080:8080)
+  fi
   if [[ -f "${BACKEND_ENV_FILE}" ]]; then
     docker run -d --name tariffsheriff-backend \
       --restart unless-stopped \
       --network "${NETWORK_NAME}" \
-      -p 8080:8080 \
+      "${publish_args[@]}" \
       --env-file "${BACKEND_ENV_FILE}" \
       "${uri}"
   else
@@ -112,7 +117,7 @@ restart_backend() {
     docker run -d --name tariffsheriff-backend \
       --restart unless-stopped \
       --network "${NETWORK_NAME}" \
-      -p 8080:8080 \
+      "${publish_args[@]}" \
       "${env_args[@]}" \
       "${uri}"
   fi
@@ -124,10 +129,15 @@ restart_frontend() {
 
   docker rm -f tariffsheriff-frontend >/dev/null 2>&1 || true
   echo "==> Starting frontend container"
+  # If DOMAIN is set (Caddy in front), don't publish host port 80
+  local -a publish_args=()
+  if [[ -z "${DOMAIN:-}" ]]; then
+    publish_args=(-p 80:80)
+  fi
   docker run -d --name tariffsheriff-frontend \
     --restart unless-stopped \
     --network "${NETWORK_NAME}" \
-    -p 80:80 \
+    "${publish_args[@]}" \
     "${uri}"
 }
 
