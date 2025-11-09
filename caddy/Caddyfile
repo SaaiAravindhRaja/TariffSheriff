@@ -1,7 +1,12 @@
 tariffsheriff.app {
   encode zstd gzip
-  reverse_proxy /api* tariffsheriff-backend:8080
-  reverse_proxy       tariffsheriff-frontend:80
+
+  @api path /api*, /v3/api-docs*, /swagger-ui*, /actuator/health
+  reverse_proxy @api tariffsheriff-backend:8080
+
+  handle {
+    reverse_proxy tariffsheriff-frontend:80
+  }
 }
 
 www.tariffsheriff.app {
