@@ -40,11 +40,11 @@ public class AgreementTool implements ChatbotTool {
         // Country parameter
         Map<String, Object> countryParam = new HashMap<>();
         countryParam.put("type", "string");
-        countryParam.put("description", "ISO2 country code to get trade agreements for (e.g., 'US', 'JP', 'CA')");
-        properties.put("countryIso2", countryParam);
+        countryParam.put("description", "ISO3 country code to get trade agreements for (e.g., 'USA', 'JPN', 'CAN')");
+        properties.put("countryIso3", countryParam);
         
         parameters.put("properties", properties);
-        parameters.put("required", new String[]{"countryIso2"});
+        parameters.put("required", new String[]{"countryIso3"});
         
         return new ToolDefinition(
             getName(),
@@ -61,30 +61,30 @@ public class AgreementTool implements ChatbotTool {
         
         try {
             // Extract and validate parameters
-            String countryIso2 = toolCall.getStringArgument("countryIso2");
+            String countryIso3 = toolCall.getStringArgument("countryIso3");
             
             // Validate required parameter
-            if (countryIso2 == null || countryIso2.trim().isEmpty()) {
+            if (countryIso3 == null || countryIso3.trim().isEmpty()) {
                 return ToolResult.error(getName(), 
-                    "I need to know which country you're asking about. Please provide a 2-letter country code (e.g., 'US', 'CA', 'JP').");
+                    "I need to know which country you're asking about. Please provide a 3-letter country code (e.g., 'USA', 'CAN', 'JPN').");
             }
             
             // Normalize parameters
-            countryIso2 = countryIso2.trim().toUpperCase();
+            countryIso3 = countryIso3.trim().toUpperCase();
             
-            // Validate ISO2 format
-            if (countryIso2.length() != 2 || !countryIso2.matches("[A-Z]{2}")) {
+            // Validate ISO3 format
+            if (countryIso3.length() != 3 || !countryIso3.matches("[A-Z]{3}")) {
                 return ToolResult.error(getName(), 
-                    String.format("The country code '%s' doesn't look right. Please use a 2-letter ISO code like 'US', 'CA', or 'JP'. Not sure? Ask me to list available countries.", countryIso2));
+                    String.format("The country code '%s' doesn't look right. Please use a 3-letter ISO code like 'USA', 'CAN', or 'JPN'. Not sure? Ask me to list available countries.", countryIso3));
             }
             
-            logger.info("Looking up trade agreements for country: {}", countryIso2);
+            logger.info("Looking up trade agreements for country: {}", countryIso3);
             
             // Get agreements from service
-            List<Agreement> agreements = agreementService.getAgreementsByCountry(countryIso2);
+            List<Agreement> agreements = agreementService.getAgreementsByCountry(countryIso3);
             
             // Format result
-            String formattedResult = formatAgreementResult(agreements, countryIso2);
+            String formattedResult = formatAgreementResult(agreements, countryIso3);
             
             ToolResult toolResult = ToolResult.success(getName(), formattedResult);
             toolResult.setExecutionTimeMs(System.currentTimeMillis() - startTime);
@@ -96,7 +96,7 @@ public class AgreementTool implements ChatbotTool {
             
         } catch (Exception e) {
             logger.error("Error executing agreement tool for country: {}", 
-                    toolCall.getStringArgument("countryIso2"), e);
+                    toolCall.getStringArgument("countryIso3"), e);
             
             String userMessage = "I couldn't retrieve trade agreement information. ";
             
@@ -108,7 +108,7 @@ public class AgreementTool implements ChatbotTool {
                 userMessage += "There's a problem connecting to the trade agreement database. Please try again in a moment.";
             } else {
                 userMessage += "Please try:\n" +
-                        "• Verifying the country code is correct (e.g., 'US', 'CA', 'JP')\n" +
+                    "• Verifying the country code is correct (e.g., 'USA', 'CAN', 'JPN')\n" +
                         "• Asking me to list available countries\n" +
                         "• Rephrasing your question";
             }
@@ -122,13 +122,13 @@ public class AgreementTool implements ChatbotTool {
     /**
      * Format the agreement lookup result for LLM consumption
      */
-    private String formatAgreementResult(List<Agreement> agreements, String countryIso2) {
+    private String formatAgreementResult(List<Agreement> agreements, String countryIso3) {
         StringBuilder formatted = new StringBuilder();
         
-        formatted.append("Trade Agreements for Country: ").append(countryIso2).append("\n\n");
+        formatted.append("Trade Agreements for Country: ").append(countryIso3).append("\n\n");
         
         if (agreements == null || agreements.isEmpty()) {
-            formatted.append("No trade agreements found for ").append(countryIso2).append(".\n");
+            formatted.append("No trade agreements found for ").append(countryIso3).append(".\n");
             formatted.append("This country may:\n");
             formatted.append("- Not have any preferential trade agreements in the database\n");
             formatted.append("- Only trade under Most Favored Nation (MFN) terms\n");
@@ -141,12 +141,6 @@ public class AgreementTool implements ChatbotTool {
         for (int i = 0; i < agreements.size(); i++) {
             Agreement agreement = agreements.get(i);
             formatted.append(i + 1).append(". ").append(agreement.getName()).append("\n");
-            formatted.append("   - Type: ").append(agreement.getType()).append("\n");
-            formatted.append("   - Status: ").append(agreement.getStatus()).append("\n");
-            
-            if (agreement.getEnteredIntoForce() != null) {
-                formatted.append("   - Entered into Force: ").append(agreement.getEnteredIntoForce()).append("\n");
-            }
             
             if (agreement.getRvcThreshold() != null) {
                 formatted.append("   - RVC Threshold: ").append(agreement.getRvcThreshold()).append("%\n");
@@ -159,30 +153,10 @@ public class AgreementTool implements ChatbotTool {
         formatted.append("Summary:\n");
         formatted.append("- Total Agreements: ").append(agreements.size()).append("\n");
         
-        // Count by status
-        long activeAgreements = agreements.stream()
-            .filter(a -> "Active".equalsIgnoreCase(a.getStatus()) || "In Force".equalsIgnoreCase(a.getStatus()))
-            .count();
-        
-        if (activeAgreements > 0) {
-            formatted.append("- Active Agreements: ").append(activeAgreements).append("\n");
-        }
-        
-        // Count by type
-        Map<String, Long> typeCount = new HashMap<>();
-        agreements.forEach(agreement -> {
-            String type = agreement.getType();
-            typeCount.put(type, typeCount.getOrDefault(type, 0L) + 1);
-        });
-        
-        if (!typeCount.isEmpty()) {
-            formatted.append("- Agreement Types: ");
-            typeCount.forEach((type, count) -> 
-                formatted.append(type).append(" (").append(count).append("), "));
-            // Remove trailing comma and space
-            formatted.setLength(formatted.length() - 2);
-            formatted.append("\n");
-        }
+        long withRvc = agreements.stream()
+                .filter(a -> a.getRvcThreshold() != null)
+                .count();
+        formatted.append("- Agreements with RVC data: ").append(withRvc).append("\n");
         
         return formatted.toString();
     }

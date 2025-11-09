@@ -21,14 +21,17 @@ public class HsProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "destination_id")
+    @Column(name = "destination_iso3", nullable = false, columnDefinition = "varchar(3)")
+    private String destinationIso3;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "destination_iso3", referencedColumnName = "iso3", insertable = false, updatable = false)
     private Country destination;
 
     @Column(name = "hs_version", length = 20, nullable = false)
     private String hsVersion;
 
-    @Column(name = "hs_code", length = 10, nullable = false)
+    @Column(name = "hs_code", length = 12, nullable = false)
     private String hsCode;
 
     @Column(name = "hs_label", length = 255, nullable = false)

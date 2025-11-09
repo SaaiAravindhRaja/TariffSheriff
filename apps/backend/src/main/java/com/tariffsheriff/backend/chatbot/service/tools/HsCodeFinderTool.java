@@ -150,7 +150,7 @@ public class HsCodeFinderTool implements ChatbotTool {
             
             if (product.getDestination() != null) {
                 formatted.append("   Country: ").append(product.getDestination().getName()).append(" (")
-                         .append(product.getDestination().getIso2()).append(")\n");
+                         .append(product.getDestination().getIso3()).append(")\n");
             }
             
             formatted.append("\n");

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface HsProductRepository extends JpaRepository<HsProduct, Long> {
     Optional<HsProduct> findByHsCode(String hsCode);
 
-    Optional<HsProduct> findByDestinationIdAndHsCode(Long destinationId, String hsCode);
+    Optional<HsProduct> findByDestinationIso3IgnoreCaseAndHsCode(String destinationIso3, String hsCode);
     
     /**
      * Search for HS products by description using case-insensitive LIKE matching

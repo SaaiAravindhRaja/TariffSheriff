@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CountryRepository extends JpaRepository<Country, Long> {
-    Optional<Country> findByIso2IgnoreCase(String iso2);
+    Optional<Country> findByIso3IgnoreCase(String iso3);
 
     Page<Country> findAllByNameContainingIgnoreCase(String name, Pageable pageable);
 }

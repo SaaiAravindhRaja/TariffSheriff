@@ -9,8 +9,8 @@ public record TariffRateOptionDto(
     Long id,
     String basis,
     BigDecimal adValoremRate,
-    BigDecimal specificAmount,
-    String specificUnit,
+    boolean nonAdValorem,
+    String nonAdValoremText,
     Long agreementId,
     String agreementName,
     BigDecimal rvcThreshold
