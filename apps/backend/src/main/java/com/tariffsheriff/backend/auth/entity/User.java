@@ -40,7 +40,7 @@ public class User implements UserDetails {
     @Column(name = "admin", nullable = false)
     private Boolean isAdmin = false;
 
-    @Column(name = "auth0_sub")
+    @Column(name = "auth0_sub", length = 255, nullable = true, unique = false)
     private String auth0Sub;
 
     // UserDetails implementation
