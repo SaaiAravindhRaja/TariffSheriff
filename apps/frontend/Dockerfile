@@ -7,8 +7,25 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (include devDeps for Vite build)
+# If you later add a package-lock.json, you can switch to: RUN npm ci
+RUN npm install
+
+# Build-time envs for Vite
+ARG VITE_API_BASE_URL
+ARG VITE_AUTH0_DOMAIN
+ARG VITE_AUTH0_CLIENT_ID
+ARG VITE_AUTH0_REDIRECT_URI
+ARG VITE_AUTH0_AUDIENCE
+ARG VITE_ENABLE_ANALYTICS
+ARG VITE_ENABLE_ERROR_REPORTING
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_AUTH0_DOMAIN=$VITE_AUTH0_DOMAIN \
+    VITE_AUTH0_CLIENT_ID=$VITE_AUTH0_CLIENT_ID \
+    VITE_AUTH0_REDIRECT_URI=$VITE_AUTH0_REDIRECT_URI \
+    VITE_AUTH0_AUDIENCE=$VITE_AUTH0_AUDIENCE \
+    VITE_ENABLE_ANALYTICS=$VITE_ENABLE_ANALYTICS \
+    VITE_ENABLE_ERROR_REPORTING=$VITE_ENABLE_ERROR_REPORTING
 
 # Copy source code
 COPY . .
