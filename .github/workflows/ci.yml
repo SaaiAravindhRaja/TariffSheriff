@@ -683,6 +683,147 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && always()
+    needs: [changes, validate-config, backend-build-test, backend-security-scan, backend-package, frontend-lint-typecheck, frontend-test, frontend-build, frontend-security-scan]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Generate PR Summary Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = {
+              'validate-config': '${{ needs.validate-config.result }}',
+              'backend-build-test': '${{ needs.backend-build-test.result }}',
+              'backend-security-scan': '${{ needs.backend-security-scan.result }}',
+              'backend-package': '${{ needs.backend-package.result }}',
+              'frontend-lint-typecheck': '${{ needs.frontend-lint-typecheck.result }}',
+              'frontend-test': '${{ needs.frontend-test.result }}',
+              'frontend-build': '${{ needs.frontend-build.result }}',
+              'frontend-security-scan': '${{ needs.frontend-security-scan.result }}'
+            };
+            
+            const backendChanged = '${{ needs.changes.outputs.backend }}' === 'true';
+            const frontendChanged = '${{ needs.changes.outputs.frontend }}' === 'true';
+            
+            let passed = [];
+            let warnings = [];
+            let failed = [];
+            let skipped = [];
+            
+            // Non-blocking jobs (warnings)
+            const nonBlockingJobs = ['validate-config', 'backend-security-scan', 'frontend-lint-typecheck', 'frontend-security-scan'];
+            
+            // Categorize results
+            for (const [job, result] of Object.entries(jobs)) {
+              const jobName = job.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              
+              if (result === 'success') {
+                passed.push(jobName);
+              } else if (result === 'failure') {
+                if (nonBlockingJobs.includes(job)) {
+                  warnings.push(jobName);
+                } else {
+                  failed.push(jobName);
+                }
+              } else if (result === 'skipped') {
+                skipped.push(jobName);
+              }
+            }
+            
+            // Build the comment
+            let comment = '## 🤖 CI Pipeline Results\n\n';
+            
+            // Overall status
+            if (failed.length > 0) {
+              comment += '### ❌ Build Failed\n\n';
+            } else if (warnings.length > 0) {
+              comment += '### ⚠️ Build Passed with Warnings\n\n';
+            } else {
+              comment += '### ✅ All Checks Passed!\n\n';
+            }
+            
+            // Changed files info
+            comment += '**Changed:** ';
+            const changes = [];
+            if (backendChanged) changes.push('Backend');
+            if (frontendChanged) changes.push('Frontend');
+            comment += changes.length > 0 ? changes.join(', ') : 'No code changes';
+            comment += '\n\n';
+            
+            // Passed jobs
+            if (passed.length > 0) {
+              comment += '### ✅ Passed\n';
+              passed.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Warnings
+            if (warnings.length > 0) {
+              comment += '### ⚠️ Warnings (non-blocking)\n';
+              warnings.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Failed jobs
+            if (failed.length > 0) {
+              comment += '### ❌ Failed\n';
+              failed.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Skipped jobs
+            if (skipped.length > 0) {
+              comment += '<details>\n<summary>⏭️ Skipped Jobs</summary>\n\n';
+              skipped.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n</details>\n\n';
+            }
+            
+            // Footer
+            comment += '---\n';
+            comment += `📊 [View detailed results](${context.payload.pull_request.html_url}/checks)\n`;
+            comment += `🔗 Commit: ${context.payload.pull_request.head.sha.substring(0, 7)}\n`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 CI Pipeline Results')
+            );
+            
+            // Create or update comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
   # deploy:
   #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
   #   needs:

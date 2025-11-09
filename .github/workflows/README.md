@@ -159,6 +159,35 @@ The CI pipeline runs on:
 
 ---
 
+#### 9. PR Summary
+**Purpose**: Posts a comprehensive summary comment on pull requests
+
+**When it runs**: On all pull requests, after all other jobs complete
+
+**What it does**:
+- Collects results from all CI jobs
+- Categorizes jobs as passed, warnings, or failed
+- Shows which parts of the codebase changed (backend/frontend)
+- Posts or updates a summary comment on the PR
+- Provides quick links to detailed results
+
+**Comment includes**:
+- Overall build status (✅ passed, ⚠️ warnings, ❌ failed)
+- List of passed jobs
+- List of non-blocking warnings
+- List of failed jobs (if any)
+- Skipped jobs (collapsed)
+- Direct link to detailed CI results
+
+**Benefits**:
+- See all CI results at a glance without leaving the PR
+- Understand what needs attention immediately
+- Track CI status across multiple commits (comment updates automatically)
+
+**Timeout**: 5 minutes
+
+---
+
 ## Path Filtering
 
 The pipeline uses intelligent path filtering to skip unnecessary jobs:
