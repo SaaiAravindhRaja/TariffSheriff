@@ -1,8 +1,9 @@
 tariffsheriff.app {
   encode zstd gzip
-  reverse_proxy /api tariffsheriff-backend:8080
-  reverse_proxy tariffsheriff-frontend:80
+  reverse_proxy /api* tariffsheriff-backend:8080
+  reverse_proxy       tariffsheriff-frontend:80
 }
+
 www.tariffsheriff.app {
   redir https://tariffsheriff.app{uri}
 }
