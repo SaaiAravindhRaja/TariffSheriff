@@ -1,4 +1,19 @@
-name: Backend CI
+# ⚠️ THIS WORKFLOW HAS BEEN DISABLED ⚠️
+#
+# This workflow was replaced by ci-new.yml which provides:
+# - Comprehensive backend and frontend CI in a unified workflow
+# - Testcontainers integration for database testing
+# - Enhanced security scanning with OWASP dependency check
+# - Better artifact management and error reporting
+# - Path-based filtering to skip unnecessary jobs
+#
+# This file is kept for reference only and will not execute.
+# To re-enable, remove the .disabled extension and update as needed.
+#
+# Disabled on: 2025-11-09
+# Replaced by: .github/workflows/ci-new.yml
+
+name: Backend CI (DISABLED)
 permissions:
   contents: read
 
