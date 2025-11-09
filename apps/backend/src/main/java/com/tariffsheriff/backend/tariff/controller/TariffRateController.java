@@ -1,6 +1,5 @@
 package com.tariffsheriff.backend.tariff.controller;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,10 +36,10 @@ public class TariffRateController {
     }
 
     @GetMapping("/lookup")
-    public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam String importerIso2,
-                                                         @RequestParam(required = false) String originIso2,
+    public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam String importerIso3,
+                                                         @RequestParam(required = false) String originIso3,
                                                          @RequestParam String hsCode) {
-        return tariffRateService.getTariffRateWithAgreement(importerIso2, originIso2, hsCode);
+        return tariffRateService.getTariffRateWithAgreement(importerIso3, originIso3, hsCode);
     }
 
     @PostMapping("/calculate")

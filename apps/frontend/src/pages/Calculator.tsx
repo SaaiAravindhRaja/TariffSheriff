@@ -92,8 +92,8 @@ export function Calculator() {
   const { countries, loading: countriesLoading, error: countriesError } = useDbCountries()
 
   const [form, setForm] = useState({
-    importerIso2: '',
-    originIso2: '',
+    importerIso3: '',
+    originIso3: '',
     hsCode: '',
   })
   const [costs, setCosts] = useState<CostState>(initialCosts)
@@ -345,7 +345,7 @@ export function Calculator() {
   const handleLookup = async () => {
     setError(null)
 
-    const importer = form.importerIso2.trim().toUpperCase()
+    const importer = form.importerIso3.trim().toUpperCase()
     const hsCode = form.hsCode.replace(/\./g, '').trim()
     if (!importer || !hsCode) {
       setError('Importer and HS code are required.')
@@ -355,8 +355,8 @@ export function Calculator() {
     setLoading(true)
     try {
       const response = await tariffApi.getTariffRateLookup({
-        importerIso2: importer,
-        originIso2: form.originIso2.trim() || undefined,
+        importerIso3: importer,
+        originIso3: form.originIso3.trim() || undefined,
         hsCode,
       })
       const data = response.data
@@ -394,9 +394,9 @@ export function Calculator() {
               <label className="text-sm font-medium">Importer (Destination)</label>
               <CountrySelect
                 countries={countries}
-                value={form.importerIso2}
+                value={form.importerIso3}
                 onChange={(code) =>
-                  handleFormChange('importerIso2', Array.isArray(code) ? code[0] ?? '' : code ?? '')
+                  handleFormChange('importerIso3', Array.isArray(code) ? code[0] ?? '' : code ?? '')
                 }
                 loading={countriesLoading}
                 error={countriesError}
@@ -408,9 +408,9 @@ export function Calculator() {
               <label className="text-sm font-medium">Exporter (Origin)</label>
               <CountrySelect
                 countries={countries}
-                value={form.originIso2}
+                value={form.originIso3}
                 onChange={(code) =>
-                  handleFormChange('originIso2', Array.isArray(code) ? code[0] ?? '' : code ?? '')
+                  handleFormChange('originIso3', Array.isArray(code) ? code[0] ?? '' : code ?? '')
                 }
                 loading={countriesLoading}
                 error={countriesError}

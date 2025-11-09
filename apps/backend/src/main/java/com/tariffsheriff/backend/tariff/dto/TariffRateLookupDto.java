@@ -6,8 +6,8 @@ import java.util.List;
  * Response payload for tariff lookup requests.
  */
 public record TariffRateLookupDto(
-    String importerIso2,
-    String originIso2,
+    String importerIso3,
+    String originIso3,
     String hsCode,
     List<TariffRateOptionDto> rates
 ) {}

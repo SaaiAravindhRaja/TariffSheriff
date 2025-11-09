@@ -19,5 +19,5 @@ public interface AgreementService {
 
     void deleteAgreement(Long id);
 
-    List<Agreement> getAgreementsByCountry(String countryIso2);
+    List<Agreement> getAgreementsByCountry(String countryIso3);
 }

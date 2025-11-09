@@ -1,252 +1,156 @@
 # TariffSheriff
 
-[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.4-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
-
-A full-stack web application that helps businesses calculate and analyze import tariffs and fees across countries, with a focus on the **Electric Vehicle (EV) industry**.
-
----
-
-<p align="center">
-
-<img src="https://github.com/user-attachments/assets/aafe9ae4-9f11-47c1-998c-7012a57c0e72" alt="TariffSheriff App Icon" width="150"/>
-
-</p>
+[![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions)  
+Modern trade-intelligence stack for calculating import duties, surfacing HS-product data, and exploring trade agreements with Auth0-protected APIs and a React dashboard.
 
 ---
 
-## Features
+## At a Glance
 
-- **Accurate Tariff Calculations** - Real-time import duty calculations across multiple countries
-- **EV Industry Focus** - Specialized data for Electric Vehicle trade compliance  
-- **Route Optimization** - Find the most cost-effective shipping routes
-- **Transparent Pricing** - Detailed breakdowns with legal citations
-- Optional features (AI assistant, admin/ops tooling) are not enabled by default in this branch to keep the core small for class use. AI can still be enabled via backend profile `ai`.
+| Layer      | Key Tech                                                       |
+|------------|----------------------------------------------------------------|
+| Frontend   | React 18 + TypeScript, Vite, Tailwind, Radix UI, Framer Motion |
+| Backend    | Spring Boot 3 (Java 17), JPA/Hibernate, Flyway, PostgreSQL     |
+| Security   | Auth0 (OAuth2/OIDC, JWT resource server)                       |
+| Tooling    | Maven, npm workspaces, Docker/Postgres, GitHub Actions CI      |
+
+The current schema is ISO3-based (e.g. `USA`, `KOR`) for countries and treats tariff rows as immutable snapshots with MFN/preferential basis data plus non–ad-valorem metadata.
 
 ---
 
-## Development Quickstart
+## Local Development
 
-**Prerequisites:** Node.js 18+, npm 9+, Java 17, Docker (Docker Desktop or Colima).
+### Prerequisites
+* Node.js 18+ / npm 9+
+* Java 17 (JDK) + Maven 3.9+
+* Docker (for the default Postgres dev DB)
 
+### 1. Clone + Install Node deps
 ```bash
-# 1. Install dependencies (from repo root)
+git clone https://github.com/SaaiAravindhRaja/TariffSheriff.git
+cd TariffSheriff
 npm ci
+```
 
-# 2. Start PostgreSQL once (reuse this container for future runs)
+### 2. Backend environment
+Create `apps/backend/.env` and point it at your Postgres + Auth0 tenant:
+```dotenv
+DATABASE_URL=jdbc:postgresql://localhost:5432/tariffsheriff
+DATABASE_USERNAME=tariff_sheriff
+DATABASE_PASSWORD=tariff_sheriff
+
+# Auth0 Resource Server settings
+AUTH0_ISSUER=https://<your-tenant>.us.auth0.com/
+AUTH0_AUDIENCE=https://api.tariffsheriff.com
+
+# Optional: AI assistant profile
+OPENAI_API_KEY=<if running profile 'ai'>
+```
+Start Postgres however you like. Example Docker command:
+```bash
 docker run -d --name tariffsheriff-postgres \
   -e POSTGRES_USER=tariff_sheriff \
   -e POSTGRES_PASSWORD=tariff_sheriff \
   -e POSTGRES_DB=tariffsheriff \
-  -p 5432:5432 \
-  postgres:16
-
-# 3. Start the backend (Flyway will auto-run migrations and seed data)
-# export DOCKER_HOST="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"  # only required for Colima/rootless Docker
-(cd apps/backend && mvn spring-boot:run)
-
-# 4. In another terminal (from repo root), start the frontend dev server
-npm run dev --workspace=frontend
-
-# Dev servers
-#   Frontend: http://localhost:3000
-#   Backend : http://localhost:8080
-
-# 5. Automated checks before committing
-mvn test                     # backend (Testcontainers)
-npm run test --workspace=frontend
-
-# 6. AI Assistant (optional): run with profile
-# (cd apps/backend && mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dspring.profiles.active=ai")
-
-# 7. CI builds and tests are handled by GitHub Actions (.github/workflows/ci.yml)
+  -p 5432:5432 postgres:16
 ```
 
-> Need a clean database? Stop the backend, remove any local Postgres container (e.g. `docker rm -f tariffsheriff-postgres`), then rerun `mvn spring-boot:run` to replay Flyway migrations and the mock seed.
+Then boot the API (from repo root):
+```bash
+cd apps/backend
+mvn spring-boot:run
+```
+Flyway automatically applies the ISO3 schema at startup.
+
+### 3. Frontend environment
+Create `apps/frontend/.env.local`:
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_AUTH0_DOMAIN=<your-tenant>.us.auth0.com
+VITE_AUTH0_CLIENT_ID=<spa-client-id>
+VITE_AUTH0_AUDIENCE=https://api.tariffsheriff.com
+VITE_AUTH0_REDIRECT_URI=http://localhost:3000
+```
+> Important: make sure the Auth0 application has the **TariffSheriff API permission/role** assigned; otherwise tokens will not have the scope required for `/api/tariff-rate/**` and the backend will reply with `403 insufficient_scope`.
+
+Start the Vite dev server:
+```bash
+npm run dev --workspace=frontend
+# -> http://localhost:3000
+```
+
+### 4. Useful npm / Maven scripts
+```bash
+# Frontend tests / build
+npm run test --workspace=frontend
+npm run build --workspace=frontend
+
+# Backend tests
+cd apps/backend
+mvn test
+```
 
 ---
 
-## Project Structure
-
+## Repository Layout
 ```
 apps/
-	backend/    # Spring Boot backend API
-	frontend/   # React + Vite frontend UI
-packages/     # Shared libraries (types, utils)
-docs/         # Documentation
-infrastructure/ # Docker, K8s, CI/CD configs
+  backend/   Spring Boot API + Flyway migrations
+  frontend/  React dashboard
+docs/        Product notes / architecture writeups
+start-app.sh, stop-app.sh   convenience scripts
 ```
-
-## Data Flow & Business Logic
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as Auth Service
-    participant T as Tariff Engine
-    participant D as Database
-    participant E as External APIs
-
-    U->>F: Access application
-    F->>A: Authenticate user
-    A->>D: Validate credentials
-    D-->>A: User data
-    A-->>F: JWT token
-
-    U->>F: Input calculation request<br/>(HS code, origin, destination)
-    F->>T: Request tariff calculation
-
-    T->>D: Query HS product
-    D-->>T: Product details
-
-    T->>D: Query MFN rates
-    D-->>T: MFN rate data
-
-    T->>D: Query preferential rates<br/>(if applicable)
-    D-->>T: Preferential rate data
-
-    T->>D: Query VAT rates
-    D-->>T: VAT data
-
-    opt External Data Needed
-        T->>E: Request additional trade data
-        E-->>T: Trade statistics & classifications
-    end
-
-    T->>T: Apply calculation logic:<br/>• Rules of Origin (RVC)<br/>• Trade agreements<br/>• MFN vs Preferential
-
-    T-->>F: Return calculation:<br/>• Applied rate<br/>• Total duty<br/>• Breakdown<br/>• Citations
-
-    F-->>U: Display results with<br/>transparent breakdown
-```
-
-## Core Business Logic
-
-### Tariff Calculation Engine
-- **Input Processing**: Product category (HS code), origin/destination countries, transaction details
-- **Rule Matching**: Applies appropriate tariff rules based on trade agreements and validity periods
-- **Rate Calculation**: Supports percentage-based and flat fee structures
-- **Citation Generation**: Provides transparent rule references for compliance
-
-### Key Features
-- **HS Code Resolution**: Automatic product classification using harmonized system codes
-- **Multi-Country Support**: Handles bilateral and multilateral trade agreements
-- **Time-Sensitive Rules**: Applies correct rates based on transaction dates
-- **MFN Treatment**: Most-Favored-Nation rate calculations
-- **Certificate Handling**: Processes origin certificates and special conditions
 
 ---
 
-## Key Features & Capabilities
-
-- **Accurate Tariff Calculations**: Real-time import duty calculations with support for MFN and preferential rates
-- **Smart Rate Selection**: Automatic Rules of Origin (RVC) calculations to determine optimal tariff rates
-- **Comprehensive Database**: Extensive trade agreement data with validity windows and legal citations
-- **Hosted Database Support**: Full compatibility with cloud-hosted PostgreSQL (Neon, AWS RDS, Google Cloud SQL)
-- **Modern Authentication**: Secure JWT-based authentication with axios API client integration
-- **Enhanced User Experience**: Streamlined calculator interface with improved form validation and error handling
-- **API Documentation**: Complete OpenAPI/Swagger documentation for all endpoints
-- **Progressive Web App**: PWA capabilities for mobile-friendly access and offline support
-- **CI/CD Integration**: Automated testing and deployment via GitHub Actions
-- **Optional AI Assistant**: Intelligent tariff lookup and compliance analysis (enable via backend profile `ai`)
+## Backend Highlights
+* **ISO3-first schema** – see `apps/backend/src/main/resources/db/migration/V1__schema.sql`.
+* **Auth0 resource server** – Spring Security validates JWTs against `AUTH0_ISSUER`/`AUTH0_AUDIENCE`. Any `/api/**` route requires an access token whose scope/permissions include the TariffSheriff API role.
+* **Tariff services** – `TariffRateServiceImpl` resolves HS products, MFN vs PREF rates, and RVC thresholds; `TariffRateLookupDto` now returns `importerIso3`/`originIso3` plus non–ad-valorem metadata.
+* **Trade agreements** – `AgreementController` exposes `/api/agreements` and `/api/agreements/by-country/{iso3}` with RVC thresholds only (legacy status/type fields were retired with the new schema).
 
 ---
 
-## Getting Started
+## Frontend Highlights
+* Auth0 React SDK wraps the app; Axios interceptors inject access tokens for every API call.
+* Country data pulls directly from `/api/countries` (ISO3). All selectors and API payloads pass ISO3 codes.
+* Calculator automatically selects MFN/PREF rates based on backend responses and live RVC math.
 
+---
+
+## Auth & Permissions
+1. Create an Auth0 “Regular Web App” (SPA) for the frontend and a custom API (`https://api.tariffsheriff.com`).
+2. Enable **RBAC** + **Add Permissions in the Access Token** for the API.
+3. Create a role (e.g., `tariffsheriff-user`) that grants whatever permission name you configured (e.g., `read:tariffs`). Assign this role to test users **and** enable it in the SPA’s “API Permissions”.
+4. During development, grab tokens via the browser by inspecting any request in the Network tab and copy the `Authorization: Bearer …` header.
+
+Without that role the backend will answer `/api/tariff-rate/**` with:
+```
+WWW-Authenticate: Bearer error="insufficient_scope"
+```
+
+---
+
+## Optional AI Assistant
+The chatbot endpoints remain in the codebase but are disabled by default. To experiment:
 ```bash
-# 1. Install dependencies (from repo root)
-npm ci
-
-# 2. Start the backend (Spring Boot)
-cd apps/backend && ./mvnw spring-boot:run
-
-# 3. Start the frontend (Vite)
-npm run dev --workspace=frontend
-
-# 4. Build frontend for production (from repo root)
-npm run build
+cd apps/backend
+mvn spring-boot:run -Dspring-boot.run.profiles=ai
 ```
-
-## Technology Stack
-
-### Backend
-- **Framework**: Spring Boot 3.1 with Java 17
-- **Security**: Spring Security + JWT for stateless authentication
-- **Database**: PostgreSQL with JPA/Hibernate
-- **API Documentation**: Swagger/OpenAPI 3.0
-- **Caching**: Redis for session management and query optimization
-- **Testing**: JUnit 5 + Mockito
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite for fast development and building
-- **Styling**: Tailwind CSS + Radix UI components
-- **State Management**: TanStack Query for server state
-- **Forms**: React Hook Form with Zod validation
-- **Charts**: Recharts for data visualization
-- **Animation**: Framer Motion for smooth interactions
-
-### Infrastructure & DevOps
-- **Containerization**: Docker + Docker Compose
-- **Orchestration**: AWS ECS (Elastic Container Service)
-- **CI/CD**: GitHub Actions for automated testing and deployment
-- **Monitoring**: AWS CloudWatch for logs and metrics
-- **Load Balancing**: AWS Application Load Balancer
-
-### External Integrations
-- **Trade Data**: World Integrated Trade Solution (WITS) API
-- **Product Classification**: HS Code lookup services
-- **Regional Data**: Country-specific trade portals
-
+Provide `OPENAI_API_KEY` plus any rate-limit overrides you need.
 
 ---
 
-## Contributors
-
-<table>
-	<tr>
-		<td align="center">
-			<a href="https://github.com/SaaiAravindhRaja">
-				<img src="https://github.com/SaaiAravindhRaja.png" width="80" alt="Saai"/><br/>
-				<sub><b>Saai</b></sub>
-			</a>
-		</td>
-		<td align="center">
-			<a href="https://github.com/thanh913">
-				<img src="https://github.com/thanh913.png" width="80" alt="Billy"/><br/>
-				<sub><b>Billy</b></sub>
-			</a>
-		</td>
-		<td align="center">
-			<a href="https://github.com/minyiseah">
-				<img src="https://github.com/minyiseah.png" width="80" alt="Min yi"/><br/>
-				<sub><b>Min yi</b></sub>
-			</a>
-		</td>
-		<td align="center">
-			<a href="https://github.com/LSH-Tech-tp">
-				<img src="https://github.com/LSH-Tech-tp.png" width="80" alt="Sing Ho"/><br/>
-				<sub><b>Sing Ho</b></sub>
-			</a>
-		</td>
-		<td align="center">
-			<a href="https://github.com/GarvitSobti">
-				<img src="https://github.com/GarvitSobti.png" width="80" alt="Garvit"/><br/>
-				<sub><b>Garvit</b></sub>
-			</a>
-		</td>
-		<td align="center">
-			<a href="https://github.com/nathan11474">
-				<img src="https://github.com/nathan11474.png" width="80" alt="Nathan"/><br/>
-				<sub><b>Nathan</b></sub>
-			</a>
-		</td>
-	</tr>
-</table>
+## Cleaning & Tooling Notes
+* Legacy `/api/auth/**` endpoints have been removed in favor of Auth0-only flows.
+* All country models / DTOs / repos now operate solely on ISO3 codes.
+* If you change the schema, update the single Flyway migration and reapply it (drop/recreate DB in dev).
 
 ---
 
-## License
+## Contributing
+1. Branch off `main`.
+2. Run `mvn test` and `npm run test --workspace=frontend`.
+3. Submit a PR with screenshots / curl snippets if you touched API behavior.
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+Please see `CONTRIBUTING.md` and `SECURITY.md` for more policies.

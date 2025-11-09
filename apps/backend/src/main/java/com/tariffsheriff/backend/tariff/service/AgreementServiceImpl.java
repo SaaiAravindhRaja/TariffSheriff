@@ -45,10 +45,7 @@ public class AgreementServiceImpl implements AgreementService {
     public Agreement updateAgreement(Long id, Agreement agreement) {
         Agreement existing = getAgreement(id);
         existing.setName(agreement.getName());
-        existing.setType(agreement.getType());
         existing.setRvcThreshold(agreement.getRvcThreshold());
-        existing.setStatus(agreement.getStatus());
-        existing.setEnteredIntoForce(agreement.getEnteredIntoForce());
         return agreementRepository.save(existing);
     }
 
@@ -60,7 +57,7 @@ public class AgreementServiceImpl implements AgreementService {
     }
 
     @Override
-    public List<Agreement> getAgreementsByCountry(String countryIso2) {
-        return agreementRepository.findAgreementsByCountryIso2(countryIso2);
+    public List<Agreement> getAgreementsByCountry(String countryIso3) {
+        return agreementRepository.findAgreementsByCountryIso3(countryIso3);
     }
 }

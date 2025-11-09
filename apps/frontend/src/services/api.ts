@@ -4,16 +4,16 @@ export interface TariffRateOption {
   id: number
   basis: string
   adValoremRate: number | null
-  specificAmount: number | null
-  specificUnit: string | null
+  nonAdValorem: boolean
+  nonAdValoremText: string | null
   agreementId: number | null
   agreementName: string | null
   rvcThreshold: number | null
 }
 
 export interface TariffLookupResponse {
-  importerIso2: string
-  originIso2: string | null
+  importerIso3: string
+  originIso3: string | null
   hsCode: string
   rates: TariffRateOption[]
 }
@@ -83,12 +83,12 @@ export const tariffApi = {
     api.get('/countries', { params }),
   getAgreements: (params?: { page?: number; size?: number }) =>
     api.get('/agreements', { params }),
-  getAgreementsByCountry: (countryIso2: string) =>
-    api.get(`/agreements/by-country/${countryIso2}`),
+  getAgreementsByCountry: (countryIso3: string) =>
+    api.get(`/agreements/by-country/${countryIso3}`),
   getTariffRates: () => api.get('/tariff-rate/'),
   getTariffRateLookup: (params: {
-    importerIso2: string
-    originIso2?: string
+    importerIso3: string
+    originIso3?: string
     hsCode: string
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
 }

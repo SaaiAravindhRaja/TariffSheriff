@@ -36,8 +36,8 @@ public class AgreementController {
         return agreementService.getAgreement(id);
     }
 
-    @GetMapping("/by-country/{countryIso2}")
-    public List<Agreement> getByCountry(@PathVariable String countryIso2) {
-        return agreementService.getAgreementsByCountry(countryIso2);
+    @GetMapping("/by-country/{countryIso3}")
+    public List<Agreement> getByCountry(@PathVariable String countryIso3) {
+        return agreementService.getAgreementsByCountry(countryIso3);
     }
 }

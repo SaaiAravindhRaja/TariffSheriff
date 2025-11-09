@@ -78,9 +78,19 @@ export function calculateTariffTotal(
 }
 
 export function getCountryFlag(countryCode: string): string {
-  const codePoints = countryCode
-    .toUpperCase()
+  if (!countryCode) {
+    return '🏳️'
+  }
+
+  const trimmed = countryCode.trim().toUpperCase()
+  if (trimmed.length < 2) {
+    return '🏳️'
+  }
+
+  const normalized = trimmed.length === 2 ? trimmed : trimmed.slice(0, 2)
+  const codePoints = normalized
     .split('')
-    .map(char => 127397 + char.charCodeAt(0))
+    .map((char) => 127397 + char.charCodeAt(0))
+
   return String.fromCodePoint(...codePoints)
 }

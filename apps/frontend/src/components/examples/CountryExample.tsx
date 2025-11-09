@@ -1,26 +1,41 @@
-import React, { useState } from 'react';
-import { CountrySelect } from '../ui/CountrySelect';
-import { CountryFlag } from '../ui/CountryFlag';
-import { useCountries, useCountry } from '../../hooks/useCountries';
-import type { Country } from '../../data/countries';
+import React, { useState } from 'react'
+import CountrySelect from '@/components/inputs/CountrySelect'
+import { CountryFlag } from '@/components/ui/CountryFlag'
+import { useCountries } from '@/hooks/useCountries'
+
+const resolveSelection = (value: string | string[]): string => {
+  if (Array.isArray(value)) {
+    return value[0] ?? ''
+  }
+  return value
+}
 
 export const CountryExample: React.FC = () => {
-  const [selectedOrigin, setSelectedOrigin] = useState<string>('');
-  const [selectedDestination, setSelectedDestination] = useState<string>('');
-  
-  const { regions, currencies } = useCountries();
-  const originCountry = useCountry(selectedOrigin);
-  const destinationCountry = useCountry(selectedDestination);
+  const [selectedOrigin, setSelectedOrigin] = useState<string>('')
+  const [selectedDestination, setSelectedDestination] = useState<string>('')
 
-  const handleOriginChange = (code: string, country?: Country) => {
-    setSelectedOrigin(code);
-    console.log('Origin selected:', country);
-  };
+  const {
+    activeCountries,
+    regions,
+    currencies,
+    loading,
+    error,
+  } = useCountries()
 
-  const handleDestinationChange = (code: string, country?: Country) => {
-    setSelectedDestination(code);
-    console.log('Destination selected:', country);
-  };
+  const originCountry = activeCountries.find(
+    (country) => country.code === selectedOrigin,
+  )
+  const destinationCountry = activeCountries.find(
+    (country) => country.code === selectedDestination,
+  )
+
+  const handleOriginChange = (code: string | string[]) => {
+    setSelectedOrigin(resolveSelection(code))
+  }
+
+  const handleDestinationChange = (code: string | string[]) => {
+    setSelectedDestination(resolveSelection(code))
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
@@ -35,6 +50,9 @@ export const CountryExample: React.FC = () => {
           <CountrySelect
             value={selectedOrigin}
             onChange={handleOriginChange}
+            countries={activeCountries}
+            loading={loading}
+            error={error}
             placeholder="Select origin country..."
           />
         </div>
@@ -46,6 +64,9 @@ export const CountryExample: React.FC = () => {
           <CountrySelect
             value={selectedDestination}
             onChange={handleDestinationChange}
+            countries={activeCountries}
+            loading={loading}
+            error={error}
             placeholder="Select destination country..."
           />
         </div>
@@ -63,7 +84,7 @@ export const CountryExample: React.FC = () => {
                   <CountryFlag countryCode={selectedOrigin} showName />
                   {originCountry && (
                     <span className="text-xs text-gray-500">
-                      ({originCountry.currency})
+                      ({originCountry.currency || 'N/A'})
                     </span>
                   )}
                 </div>
@@ -77,7 +98,7 @@ export const CountryExample: React.FC = () => {
                   <CountryFlag countryCode={selectedDestination} showName />
                   {destinationCountry && (
                     <span className="text-xs text-gray-500">
-                      ({destinationCountry.currency})
+                      ({destinationCountry.currency || 'N/A'})
                     </span>
                   )}
                 </div>

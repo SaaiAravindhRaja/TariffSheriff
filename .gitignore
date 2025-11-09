@@ -11,6 +11,7 @@ target/
 **/.env
 **/.env.*
 *.env
+!**/.env.example
 
 # Internal documentation and specs (Kiro IDE)
 .kiro/

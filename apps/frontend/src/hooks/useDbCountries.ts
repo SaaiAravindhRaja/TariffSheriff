@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { tariffApi } from '@/services/api'
 import type { Country as CountryDef } from '@/data/countries'
 
-export type DbCountry = { iso2: string; iso3: string; name: string }
+export type DbCountry = { iso3: string; name: string }
 
 export function useDbCountries() {
   const [countries, setCountries] = useState<CountryDef[]>([])
@@ -17,7 +17,7 @@ export function useDbCountries() {
         const list: DbCountry[] = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.content) ? res.data.content : [])
         if (!cancelled) {
           const mapped: CountryDef[] = list.map((c) => ({
-            code: c.iso2,
+            code: c.iso3,
             name: c.name,
             emoji: '',
             region: '',
@@ -45,5 +45,4 @@ export function useDbCountries() {
 }
 
 export default useDbCountries
-
 
