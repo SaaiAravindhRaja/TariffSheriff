@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency-Check Suppression File
+        
+        This file is used to suppress false positive vulnerability reports during security scans.
+        
+        HOW TO ADD SUPPRESSIONS:
+        
+        1. Run the dependency-check scan:
+           mvn org.owasp:dependency-check-maven:check
+        
+        2. Review the generated report in target/dependency-check-report.html
+        
+        3. For each false positive, add a suppression entry below with:
+           - A clear comment explaining why it's a false positive
+           - The CVE identifier or vulnerability name
+           - The affected package/file pattern
+           - An optional expiration date (until attribute)
+        
+        SUPPRESSION STRUCTURE:
+        
+        <suppress>
+            <notes>
+                Brief explanation of why this vulnerability is suppressed.
+                Include ticket/issue references if applicable.
+            </notes>
+            <packageUrl regex="true">^pkg:maven/group\.id/artifact\-id@.*$</packageUrl>
+            <cve>CVE-YYYY-NNNNN</cve>
+            <until>YYYY-MM-DD</until>
+        </suppress>
+        
+        BEST PRACTICES:
+        
+        - Always include a detailed note explaining the suppression reason
+        - Use specific package URLs rather than broad wildcards when possible
+        - Set expiration dates (until attribute) to force periodic review
+        - Link to security advisories or internal tickets in notes
+        - Review and update suppressions regularly (quarterly recommended)
+        - Remove suppressions once the underlying issue is fixed
+        
+        EXAMPLE SUPPRESSIONS:
+        
+        Example 1: False positive due to incorrect CPE matching
+        <suppress>
+            <notes>
+                CVE-2023-12345 affects a different library with similar name.
+                Our version of spring-core is not vulnerable.
+                See: https://github.com/spring-projects/spring-framework/issues/12345
+            </notes>
+            <packageUrl regex="true">^pkg:maven/org\.springframework/spring\-core@.*$</packageUrl>
+            <cve>CVE-2023-12345</cve>
+            <until>2025-12-31</until>
+        </suppress>
+        
+        Example 2: Vulnerability in test-only dependency
+        <suppress>
+            <notes>
+                CVE-2023-67890 affects testcontainers but only in production use.
+                We only use testcontainers in test scope, not in production.
+                Risk accepted by security team on 2024-01-15.
+            </notes>
+            <packageUrl regex="true">^pkg:maven/org\.testcontainers/.*@.*$</packageUrl>
+            <cve>CVE-2023-67890</cve>
+            <until>2025-06-30</until>
+        </suppress>
+        
+        Example 3: Vulnerability not applicable to our usage
+        <suppress>
+            <notes>
+                CVE-2023-11111 requires specific configuration we don't use.
+                We don't enable the vulnerable feature in our application.
+                Confirmed with security audit on 2024-02-01.
+            </notes>
+            <filePath regex="true">.*postgresql-.*\.jar</filePath>
+            <cve>CVE-2023-11111</cve>
+            <until>2025-03-31</until>
+        </suppress>
+    -->
+    
+    <!-- Add your project-specific suppressions below this line -->
+    
+</suppressions>

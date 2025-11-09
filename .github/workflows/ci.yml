@@ -1,51 +1,828 @@
-name: CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  pull-requests: write
+  checks: write
 
 jobs:
-  backend-tests:
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java
+      
+      - name: Check for file changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'apps/frontend/**'
+              - '.github/workflows/ci.yml'
+
+  validate-config:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Validate backend .env.example exists
+        continue-on-error: false
+        run: |
+          echo "🔍 Checking for apps/backend/.env.example..."
+          if [ ! -f "apps/backend/.env.example" ]; then
+            echo ""
+            echo "❌ Configuration validation failed!"
+            echo ""
+            echo "File not found: apps/backend/.env.example"
+            echo ""
+            echo "💡 To fix: Create the file with required environment variables:"
+            echo "   DATABASE_URL=jdbc:postgresql://localhost:5432/tariffsheriff"
+            echo "   DATABASE_USERNAME=your_username"
+            echo "   DATABASE_PASSWORD=your_password"
+            echo "   JWT_SECRET=your_jwt_secret"
+            echo ""
+            exit 1
+          fi
+          echo "✅ Backend .env.example exists"
+      
+      - name: Validate frontend .env.example exists
+        continue-on-error: false
+        run: |
+          echo "🔍 Checking for apps/frontend/.env.example..."
+          if [ ! -f "apps/frontend/.env.example" ]; then
+            echo ""
+            echo "❌ Configuration validation failed!"
+            echo ""
+            echo "File not found: apps/frontend/.env.example"
+            echo ""
+            echo "💡 To fix: Create the file with VITE_ prefixed variables:"
+            echo "   VITE_API_URL=http://localhost:8080"
+            echo "   VITE_APP_NAME=TariffSheriff"
+            echo ""
+            exit 1
+          fi
+          echo "✅ Frontend .env.example exists"
+      
+      - name: Validate frontend VITE_ prefixed variables
+        continue-on-error: false
+        run: |
+          echo "🔍 Checking for VITE_ prefixed variables in frontend .env.example..."
+          if ! grep -q "^VITE_" apps/frontend/.env.example; then
+            echo ""
+            echo "❌ Configuration validation failed!"
+            echo ""
+            echo "apps/frontend/.env.example must contain VITE_ prefixed variables"
+            echo ""
+            echo "💡 Vite requires environment variables to be prefixed with VITE_"
+            echo "   Example: VITE_API_URL=http://localhost:8080"
+            echo ""
+            exit 1
+          fi
+          echo "✅ Frontend .env.example contains VITE_ prefixed variables:"
+          grep "^VITE_" apps/frontend/.env.example | cut -d= -f1 | sed 's/^/  - /'
+      
+      - name: Validate backend required Spring/database variables
+        continue-on-error: false
+        run: |
+          echo "🔍 Checking for required backend environment variables..."
+          REQUIRED_VARS=("DATABASE_URL" "DATABASE_USERNAME" "DATABASE_PASSWORD" "JWT_SECRET")
+          MISSING_VARS=()
+          
+          for var in "${REQUIRED_VARS[@]}"; do
+            if ! grep -q "^${var}=" apps/backend/.env.example; then
+              MISSING_VARS+=("$var")
+            fi
+          done
+          
+          if [ ${#MISSING_VARS[@]} -ne 0 ]; then
+            echo ""
+            echo "❌ Configuration validation failed!"
+            echo ""
+            echo "apps/backend/.env.example is missing required variables:"
+            printf '  - %s\n' "${MISSING_VARS[@]}"
+            echo ""
+            echo "💡 Add these variables to apps/backend/.env.example:"
+            for var in "${MISSING_VARS[@]}"; do
+              case $var in
+                DATABASE_URL)
+                  echo "   DATABASE_URL=jdbc:postgresql://localhost:5432/tariffsheriff"
+                  ;;
+                DATABASE_USERNAME)
+                  echo "   DATABASE_USERNAME=your_username"
+                  ;;
+                DATABASE_PASSWORD)
+                  echo "   DATABASE_PASSWORD=your_password"
+                  ;;
+                JWT_SECRET)
+                  echo "   JWT_SECRET=your_jwt_secret_key"
+                  ;;
+              esac
+            done
+            echo ""
+            exit 1
+          fi
+          
+          echo "✅ Backend .env.example contains all required variables:"
+          for var in "${REQUIRED_VARS[@]}"; do
+            echo "  - $var"
+          done
+
+  backend-build-test:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 15
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
-          cache: maven
-      - name: Run backend tests
+          cache: 'maven'
+      
+      - name: Build and test with Maven
+        id: maven-verify
+        continue-on-error: false
         working-directory: apps/backend
         env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-        run: mvn -B test
+          TESTCONTAINERS_RYUK_DISABLED: true
+        run: |
+          echo "🔨 Building and testing backend application..."
+          mvn -B verify
+      
+      - name: Display test summary on failure
+        if: failure() && steps.maven-verify.outcome == 'failure'
+        working-directory: apps/backend
+        run: |
+          echo ""
+          echo "❌ Backend build or tests failed!"
+          echo ""
+          if [ -d "target/surefire-reports" ]; then
+            echo "📊 Test Results Summary:"
+            echo ""
+            # Count test results
+            TOTAL_TESTS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -h "tests=" {} \; | sed 's/.*tests="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
+            FAILED_TESTS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -h "failures=" {} \; | sed 's/.*failures="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
+            ERROR_TESTS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -h "errors=" {} \; | sed 's/.*errors="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
+            
+            echo "  Total tests: ${TOTAL_TESTS:-0}"
+            echo "  Failed: ${FAILED_TESTS:-0}"
+            echo "  Errors: ${ERROR_TESTS:-0}"
+            echo ""
+            
+            # Show failed test names
+            if [ -n "$(find target/surefire-reports -name "*.txt" 2>/dev/null)" ]; then
+              echo "❌ Failed tests:"
+              grep -h "<<< FAILURE" target/surefire-reports/*.txt 2>/dev/null | head -10 || echo "  (See test reports for details)"
+            fi
+          else
+            echo "⚠️  Build failed before tests could run"
+            echo "💡 Check the Maven build output above for compilation errors"
+          fi
+          echo ""
+          echo "💡 Test reports have been uploaded as artifacts for detailed analysis"
+          echo ""
+      
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-backend-${{ github.run_id }}
+          path: |
+            apps/backend/target/surefire-reports/
+            apps/backend/target/failsafe-reports/
+          retention-days: 7
+          if-no-files-found: warn
 
-  frontend-build:
+  backend-security-scan:
+    name: Backend Security Scan
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 10
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      
+      - name: Run OWASP dependency check
+        id: dependency-check
+        working-directory: apps/backend
+        run: |
+          echo "🔒 Running OWASP dependency security scan..."
+          mvn org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DsuppressionFiles=dependency-check-suppressions.xml || true
+      
+      - name: Check for high/critical vulnerabilities
+        continue-on-error: false
+        working-directory: apps/backend
+        run: |
+          if [ -f "target/dependency-check-report.xml" ]; then
+            # Count high and critical severity vulnerabilities
+            HIGH_COUNT=$(grep -c 'severity="HIGH"' target/dependency-check-report.xml || echo "0")
+            CRITICAL_COUNT=$(grep -c 'severity="CRITICAL"' target/dependency-check-report.xml || echo "0")
+            MEDIUM_COUNT=$(grep -c 'severity="MEDIUM"' target/dependency-check-report.xml || echo "0")
+            LOW_COUNT=$(grep -c 'severity="LOW"' target/dependency-check-report.xml || echo "0")
+            
+            echo ""
+            echo "📊 Security Scan Results:"
+            echo "  Critical: $CRITICAL_COUNT"
+            echo "  High: $HIGH_COUNT"
+            echo "  Medium: $MEDIUM_COUNT"
+            echo "  Low: $LOW_COUNT"
+            echo ""
+            
+            if [ "$HIGH_COUNT" -gt 0 ] || [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo "❌ Security scan failed: High or critical vulnerabilities detected"
+              echo ""
+              echo "💡 To fix:"
+              echo "  1. Review the security report artifact for details"
+              echo "  2. Update vulnerable dependencies in pom.xml"
+              echo "  3. If false positives, add suppressions to dependency-check-suppressions.xml"
+              echo ""
+              echo "📄 Security report uploaded as artifact: security-scan-backend-${{ github.run_id }}"
+              echo ""
+              exit 1
+            else
+              echo "✅ No high or critical vulnerabilities found"
+              if [ "$MEDIUM_COUNT" -gt 0 ] || [ "$LOW_COUNT" -gt 0 ]; then
+                echo "⚠️  Note: $MEDIUM_COUNT medium and $LOW_COUNT low severity issues found (not blocking)"
+              fi
+            fi
+          else
+            echo ""
+            echo "⚠️  Warning: dependency-check report not found"
+            echo "💡 The security scan may have failed to complete"
+            echo ""
+          fi
+      
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-backend-${{ github.run_id }}
+          path: apps/backend/target/dependency-check-report.*
+          retention-days: 30
+          if-no-files-found: warn
+
+  backend-package:
+    name: Backend Package
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.backend == 'true'
+    timeout-minutes: 15
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      
+      - name: Package application
+        id: maven-package
+        continue-on-error: false
+        working-directory: apps/backend
+        run: |
+          echo "📦 Packaging backend application..."
+          mvn -B package -DskipTests
+      
+      - name: Verify JAR artifact
+        continue-on-error: false
+        working-directory: apps/backend
+        run: |
+          echo "🔍 Verifying JAR artifact..."
+          
+          # Find JAR files (excluding original)
+          JAR_FILES=$(find target -name "*.jar" ! -name "*-original.jar" 2>/dev/null)
+          
+          if [ -z "$JAR_FILES" ]; then
+            echo ""
+            echo "❌ Packaging failed: JAR file not found in target directory"
+            echo ""
+            echo "💡 Expected to find a JAR file in apps/backend/target/"
+            echo "   Check the Maven package output above for errors"
+            echo ""
+            exit 1
+          fi
+          
+          JAR_FILE=$(echo "$JAR_FILES" | head -n 1)
+          JAR_SIZE=$(du -h "$JAR_FILE" | cut -f1)
+          JAR_SIZE_BYTES=$(stat -f%z "$JAR_FILE" 2>/dev/null || stat -c%s "$JAR_FILE" 2>/dev/null)
+          
+          echo ""
+          echo "✅ JAR artifact created successfully:"
+          echo "  File: $(basename $JAR_FILE)"
+          echo "  Size: $JAR_SIZE ($JAR_SIZE_BYTES bytes)"
+          echo "  Path: $JAR_FILE"
+          echo ""
+          
+          # Verify JAR is not empty or too small
+          if [ "$JAR_SIZE_BYTES" -lt 1000000 ]; then
+            echo "⚠️  Warning: JAR file seems unusually small (< 1MB)"
+            echo "   This might indicate an incomplete build"
+          fi
+      
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.sha }}
+          path: apps/backend/target/*.jar
+          retention-days: 7
+          if-no-files-found: error
+
+  frontend-lint-typecheck:
+    name: Frontend Lint & Type Check
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '20.19.0'
           cache: 'npm'
+      
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+      
+      - name: Run ESLint
+        id: eslint
+        continue-on-error: false
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint --workspace=frontend
+      
+      - name: Display ESLint errors on failure
+        if: failure() && steps.eslint.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ ESLint found code quality issues!"
+          echo ""
+          echo "💡 To fix:"
+          echo "  1. Run 'npm run lint --workspace=frontend' locally to see all issues"
+          echo "  2. Run 'npm run lint --workspace=frontend -- --fix' to auto-fix some issues"
+          echo "  3. Manually fix remaining issues based on ESLint output"
+          echo ""
+      
+      - name: Run TypeScript type check
+        id: typecheck
+        continue-on-error: false
+        run: |
+          echo "🔍 Running TypeScript type check..."
+          npm run type-check --workspace=frontend
+      
+      - name: Display type check errors on failure
+        if: failure() && steps.typecheck.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ TypeScript type check failed!"
+          echo ""
+          echo "💡 To fix:"
+          echo "  1. Run 'npm run type-check --workspace=frontend' locally to see all type errors"
+          echo "  2. Review the TypeScript errors in the output above"
+          echo "  3. Fix type mismatches, missing types, or incorrect type usage"
+          echo ""
+          echo "Common issues:"
+          echo "  - Missing type annotations"
+          echo "  - Incorrect prop types in React components"
+          echo "  - Using 'any' type where specific types are needed"
+          echo ""
+
+  frontend-test:
+    name: Frontend Test
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    timeout-minutes: 15
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+      
+      - name: Run tests
+        id: vitest
+        continue-on-error: false
+        run: |
+          echo "🧪 Running frontend tests..."
+          npm run test --workspace=frontend -- --run
+        env:
+          NODE_ENV: test
+      
+      - name: Display test summary on failure
+        if: failure() && steps.vitest.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ Frontend tests failed!"
+          echo ""
+          echo "💡 To fix:"
+          echo "  1. Run 'npm run test --workspace=frontend' locally to see failing tests"
+          echo "  2. Review the test output above for specific failures"
+          echo "  3. Fix the failing tests or the code they're testing"
+          echo ""
+          echo "📄 Test results and coverage have been uploaded as artifacts"
+          echo ""
+      
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-frontend-${{ github.run_id }}
+          path: |
+            apps/frontend/coverage/
+            apps/frontend/test-results/
+          retention-days: 7
+          if-no-files-found: warn
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    timeout-minutes: 15
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+      
       - name: Build frontend
-        run: npm run build --workspace=frontend
-      # - name: Upload static site artifact
-      #   uses: actions/upload-pages-artifact@v3
-      #   with:
-      #     path: apps/frontend/dist
+        id: vite-build
+        continue-on-error: false
+        run: |
+          echo "🔨 Building frontend application..."
+          npm run build --workspace=frontend
+      
+      - name: Verify build output
+        continue-on-error: false
+        run: |
+          echo "🔍 Verifying build output..."
+          
+          if [ ! -d "apps/frontend/dist" ]; then
+            echo ""
+            echo "❌ Build failed: dist directory not found"
+            echo ""
+            echo "💡 Expected to find build output in apps/frontend/dist/"
+            echo "   Check the Vite build output above for errors"
+            echo ""
+            exit 1
+          fi
+          
+          if [ -z "$(ls -A apps/frontend/dist)" ]; then
+            echo ""
+            echo "❌ Build failed: dist directory is empty"
+            echo ""
+            echo "💡 The build completed but produced no output files"
+            echo "   Check the Vite configuration and build output above"
+            echo ""
+            exit 1
+          fi
+          
+          DIST_SIZE=$(du -sh apps/frontend/dist | cut -f1)
+          FILE_COUNT=$(find apps/frontend/dist -type f | wc -l | tr -d ' ')
+          
+          echo ""
+          echo "✅ Build successful:"
+          echo "  Output directory: apps/frontend/dist"
+          echo "  Total size: $DIST_SIZE"
+          echo "  Files created: $FILE_COUNT"
+          echo ""
+          
+          # List key files
+          echo "📄 Key build files:"
+          if [ -f "apps/frontend/dist/index.html" ]; then
+            echo "  ✓ index.html"
+          fi
+          if [ -d "apps/frontend/dist/assets" ]; then
+            echo "  ✓ assets/ ($(find apps/frontend/dist/assets -type f | wc -l | tr -d ' ') files)"
+          fi
+          echo ""
+      
+      - name: Display build errors on failure
+        if: failure() && steps.vite-build.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ Frontend build failed!"
+          echo ""
+          echo "💡 To fix:"
+          echo "  1. Run 'npm run build --workspace=frontend' locally to reproduce"
+          echo "  2. Check for TypeScript errors, missing imports, or build configuration issues"
+          echo "  3. Review the Vite build output above for specific errors"
+          echo ""
+          echo "Common issues:"
+          echo "  - Missing environment variables (check .env.example)"
+          echo "  - Import errors or missing dependencies"
+          echo "  - TypeScript compilation errors"
+          echo "  - Vite configuration issues"
+          echo ""
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: apps/frontend/dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  frontend-security-scan:
+    name: Frontend Security Scan
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+      
+      - name: Run npm audit
+        id: npm-audit
+        run: |
+          echo "🔒 Running npm security audit..."
+          npm audit --audit-level=high --json > audit-report.json || true
+      
+      - name: Check for high/critical vulnerabilities
+        continue-on-error: false
+        run: |
+          if [ ! -f "audit-report.json" ]; then
+            echo ""
+            echo "⚠️  Warning: audit report not found"
+            echo "💡 The npm audit command may have failed to complete"
+            echo ""
+            exit 0
+          fi
+          
+          # Check if jq is available, if not install it
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq for JSON parsing..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+          
+          HIGH_COUNT=$(jq '.metadata.vulnerabilities.high // 0' audit-report.json)
+          CRITICAL_COUNT=$(jq '.metadata.vulnerabilities.critical // 0' audit-report.json)
+          MODERATE_COUNT=$(jq '.metadata.vulnerabilities.moderate // 0' audit-report.json)
+          LOW_COUNT=$(jq '.metadata.vulnerabilities.low // 0' audit-report.json)
+          TOTAL_COUNT=$(jq '.metadata.vulnerabilities.total // 0' audit-report.json)
+          
+          echo ""
+          echo "📊 Security Scan Results:"
+          echo "  Critical: $CRITICAL_COUNT"
+          echo "  High: $HIGH_COUNT"
+          echo "  Moderate: $MODERATE_COUNT"
+          echo "  Low: $LOW_COUNT"
+          echo "  Total: $TOTAL_COUNT"
+          echo ""
+          
+          if [ "$HIGH_COUNT" -gt 0 ] || [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "❌ Security scan failed: High or critical vulnerabilities detected"
+            echo ""
+            echo "💡 To fix:"
+            echo "  1. Run 'npm audit' locally to see detailed vulnerability information"
+            echo "  2. Run 'npm audit fix' to automatically fix compatible vulnerabilities"
+            echo "  3. For breaking changes, run 'npm audit fix --force' (review changes carefully)"
+            echo "  4. Manually update packages that cannot be auto-fixed"
+            echo ""
+            
+            # Show some vulnerable packages if available
+            VULNERABLE_PACKAGES=$(jq -r '.vulnerabilities | keys[]' audit-report.json 2>/dev/null | head -5)
+            if [ -n "$VULNERABLE_PACKAGES" ]; then
+              echo "🔍 Affected packages (first 5):"
+              echo "$VULNERABLE_PACKAGES" | sed 's/^/  - /'
+              echo ""
+            fi
+            
+            echo "📄 Full audit report uploaded as artifact: security-scan-frontend-${{ github.run_id }}"
+            echo ""
+            exit 1
+          else
+            echo "✅ No high or critical vulnerabilities found"
+            if [ "$MODERATE_COUNT" -gt 0 ] || [ "$LOW_COUNT" -gt 0 ]; then
+              echo "⚠️  Note: $MODERATE_COUNT moderate and $LOW_COUNT low severity issues found (not blocking)"
+            fi
+          fi
+      
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-frontend-${{ github.run_id }}
+          path: audit-report.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && always()
+    needs: [changes, validate-config, backend-build-test, backend-security-scan, backend-package, frontend-lint-typecheck, frontend-test, frontend-build, frontend-security-scan]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Generate PR Summary Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = {
+              'validate-config': '${{ needs.validate-config.result }}',
+              'backend-build-test': '${{ needs.backend-build-test.result }}',
+              'backend-security-scan': '${{ needs.backend-security-scan.result }}',
+              'backend-package': '${{ needs.backend-package.result }}',
+              'frontend-lint-typecheck': '${{ needs.frontend-lint-typecheck.result }}',
+              'frontend-test': '${{ needs.frontend-test.result }}',
+              'frontend-build': '${{ needs.frontend-build.result }}',
+              'frontend-security-scan': '${{ needs.frontend-security-scan.result }}'
+            };
+            
+            const backendChanged = '${{ needs.changes.outputs.backend }}' === 'true';
+            const frontendChanged = '${{ needs.changes.outputs.frontend }}' === 'true';
+            
+            let passed = [];
+            let warnings = [];
+            let failed = [];
+            let skipped = [];
+            
+            // Non-blocking jobs (warnings)
+            const nonBlockingJobs = ['validate-config', 'backend-security-scan', 'frontend-lint-typecheck', 'frontend-security-scan'];
+            
+            // Categorize results
+            for (const [job, result] of Object.entries(jobs)) {
+              const jobName = job.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              
+              if (result === 'success') {
+                passed.push(jobName);
+              } else if (result === 'failure') {
+                if (nonBlockingJobs.includes(job)) {
+                  warnings.push(jobName);
+                } else {
+                  failed.push(jobName);
+                }
+              } else if (result === 'skipped') {
+                skipped.push(jobName);
+              }
+            }
+            
+            // Build the comment
+            let comment = '## 🤖 CI Pipeline Results\n\n';
+            
+            // Overall status
+            if (failed.length > 0) {
+              comment += '### ❌ Build Failed\n\n';
+            } else if (warnings.length > 0) {
+              comment += '### ⚠️ Build Passed with Warnings\n\n';
+            } else {
+              comment += '### ✅ All Checks Passed!\n\n';
+            }
+            
+            // Changed files info
+            comment += '**Changed:** ';
+            const changes = [];
+            if (backendChanged) changes.push('Backend');
+            if (frontendChanged) changes.push('Frontend');
+            comment += changes.length > 0 ? changes.join(', ') : 'No code changes';
+            comment += '\n\n';
+            
+            // Passed jobs
+            if (passed.length > 0) {
+              comment += '### ✅ Passed\n';
+              passed.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Warnings
+            if (warnings.length > 0) {
+              comment += '### ⚠️ Warnings (non-blocking)\n';
+              warnings.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Failed jobs
+            if (failed.length > 0) {
+              comment += '### ❌ Failed\n';
+              failed.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n';
+            }
+            
+            // Skipped jobs
+            if (skipped.length > 0) {
+              comment += '<details>\n<summary>⏭️ Skipped Jobs</summary>\n\n';
+              skipped.forEach(job => {
+                comment += `- ${job}\n`;
+              });
+              comment += '\n</details>\n\n';
+            }
+            
+            // Footer
+            comment += '---\n';
+            comment += `📊 [View detailed results](${context.payload.pull_request.html_url}/checks)\n`;
+            comment += `🔗 Commit: ${context.payload.pull_request.head.sha.substring(0, 7)}\n`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 CI Pipeline Results')
+            );
+            
+            // Create or update comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
 
   # deploy:
   #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
