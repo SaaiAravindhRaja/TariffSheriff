@@ -8,6 +8,7 @@ target/
 .vscode/
 .idea/
 secrets/
+caddy/certs/*
 
 # Environment files (ignore real secrets everywhere)
 **/.env

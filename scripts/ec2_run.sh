@@ -31,6 +31,9 @@ DO_BACKEND="${DO_BACKEND:-1}"
 DO_FRONTEND="${DO_FRONTEND:-1}"
 NETWORK_NAME="${NETWORK_NAME:-app}"
 CADDYFILE_PATH="${CADDYFILE_PATH:-/opt/caddy/Caddyfile}"
+HOST_CERTS_DIR="${HOST_CERTS_DIR:-/opt/caddy/certs}"
+TLS_CERT_PATH="${TLS_CERT_PATH:-/etc/caddy/certs/origin.pem}"
+TLS_KEY_PATH="${TLS_KEY_PATH:-/etc/caddy/certs/origin.key}"
 
 if ! command -v aws >/dev/null 2>&1; then
   echo "aws CLI not found. Install AWS CLI v2."
@@ -148,18 +151,28 @@ write_caddyfile() {
     return 1
   fi
   sudo mkdir -p "$(dirname "${CADDYFILE_PATH}")"
+  sudo mkdir -p "${HOST_CERTS_DIR}"
   sudo tee "${CADDYFILE_PATH}" >/dev/null <<EOF
 {
 	$( [[ -n "${CADDY_EMAIL:-}" ]] && echo "email ${CADDY_EMAIL}" )
 }
 
 ${domain} {
+	tls ${TLS_CERT_PATH} ${TLS_KEY_PATH}
 	encode zstd gzip
-	reverse_proxy /api tariffsheriff-backend:8080
-	reverse_proxy tariffsheriff-frontend:80
+
+	# Explicit API/backend routes (prefix match)
+	@api path /api*, /v3/api-docs*, /swagger-ui*, /actuator/health
+	reverse_proxy @api tariffsheriff-backend:8080
+
+	# Everything else -> frontend (SPA)
+	handle {
+		reverse_proxy tariffsheriff-frontend:80
+	}
 }
 
 www.${domain} {
+	tls ${TLS_CERT_PATH} ${TLS_KEY_PATH}
 	redir https://${domain}{uri}
 }
 EOF
@@ -178,6 +191,7 @@ restart_caddy() {
     --network "${NETWORK_NAME}" \
     -p 80:80 -p 443:443 \
     -v "${CADDYFILE_PATH}:/etc/caddy/Caddyfile" \
+    -v "${HOST_CERTS_DIR}:/etc/caddy/certs" \
     caddy
 }
 
