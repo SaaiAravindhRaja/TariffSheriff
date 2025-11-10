@@ -161,9 +161,20 @@ ${domain} {
 	tls ${TLS_CERT_PATH} ${TLS_KEY_PATH}
 	encode zstd gzip
 
-	# Explicit API/backend routes (prefix match)
-	@api path /api*, /v3/api-docs*, /swagger-ui*, /actuator/health
-	reverse_proxy @api tariffsheriff-backend:8080
+	# API and backend routes (match before SPA)
+	handle_path /api/* {
+		header Cache-Control "no-store"
+		reverse_proxy tariffsheriff-backend:8080
+	}
+	handle_path /v3/api-docs/* {
+		reverse_proxy tariffsheriff-backend:8080
+	}
+	handle_path /swagger-ui/* {
+		reverse_proxy tariffsheriff-backend:8080
+	}
+	handle_path /actuator/health {
+		reverse_proxy tariffsheriff-backend:8080
+	}
 
 	# Everything else -> frontend (SPA)
 	handle {
