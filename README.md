@@ -1,6 +1,7 @@
 # TariffSheriff
 
-[![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions)  
+[![Live Demo](https://img.shields.io/badge/demo-vercel-000000?logo=vercel&style=for-the-badge)](https://tariffsheriff-frontend.vercel.app/) [![CI](https://github.com/SaaiAravindhRaja/TariffSheriff/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SaaiAravindhRaja/TariffSheriff/actions) [![version](https://img.shields.io/badge/version-1.0.10-blue?style=for-the-badge)](https://github.com/SaaiAravindhRaja/TariffSheriff/releases)
+
 Modern trade-intelligence stack for calculating import duties, surfacing HS-product data, and exploring trade agreements with Auth0-protected APIs and a React dashboard.
 
 ---
@@ -145,6 +146,12 @@ Provide `OPENAI_API_KEY` plus any rate-limit overrides you need.
 * Legacy `/api/auth/**` endpoints have been removed in favor of Auth0-only flows.
 * All country models / DTOs / repos now operate solely on ISO3 codes.
 * If you change the schema, update the single Flyway migration and reapply it (drop/recreate DB in dev).
+
+---
+
+## Contributors
+
+<table><tr><td align="center"><a href="https://github.com/SaaiAravindhRaja"><img src="https://github.com/SaaiAravindhRaja.png" width="80" alt="Saai"/><br/><sub><b>Saai</b></sub></a></td><td align="center"><a href="https://github.com/thanh913"><img src="https://github.com/thanh913.png" width="80" alt="Billy"/><br/><sub><b>Billy</b></sub></a></td><td align="center"><a href="https://github.com/minyiseah"><img src="https://github.com/minyiseah.png" width="80" alt="Min yi"/><br/><sub><b>Min yi</b></sub></a></td><td align="center"><a href="https://github.com/LSH-Tech-tp"><img src="https://github.com/LSH-Tech-tp.png" width="80" alt="Sing Ho"/><br/><sub><b>Sing Ho</b></sub></a></td><td align="center"><a href="https://github.com/GarvitSobti"><img src="https://github.com/GarvitSobti.png" width="80" alt="Garvit"/><br/><sub><b>Garvit</b></sub></a></td><td align="center"><a href="https://github.com/nathan11474"><img src="https://github.com/nathan11474.png" width="80" alt="Nathan"/><br/><sub><b>Nathan</b></sub></a></td></tr></table>
 
 ---
 
