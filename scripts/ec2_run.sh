@@ -184,6 +184,20 @@ restart_caddy() {
     return 0
   fi
   write_caddyfile || return 0
+  # Basic sanity checks for cert files on host when using origin certs
+  if [[ ! -f "${HOST_CERTS_DIR}/origin.pem" || ! -f "${HOST_CERTS_DIR}/origin.key" ]]; then
+    echo "Expected cert files not found in ${HOST_CERTS_DIR} (origin.pem, origin.key)."
+    echo "Place your Cloudflare origin cert and key there or override TLS_CERT_PATH/TLS_KEY_PATH appropriately."
+  fi
+  # Validate Caddyfile before starting
+  echo "==> Validating Caddyfile"
+  docker run --rm \
+    -v "${CADDYFILE_PATH}:/etc/caddy/Caddyfile" \
+    -v "${HOST_CERTS_DIR}:/etc/caddy/certs" \
+    caddy caddy validate --config /etc/caddy/Caddyfile || {
+      echo "Caddyfile validation failed. Fix /opt/caddy/Caddyfile and re-run."
+      return 1
+    }
   docker rm -f caddy >/dev/null 2>&1 || true
   echo "==> Starting Caddy (HTTPS reverse proxy for ${DOMAIN})"
   docker run -d --name caddy \

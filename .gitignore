@@ -8,7 +8,11 @@ target/
 .vscode/
 .idea/
 secrets/
-caddy/certs/*
+
+# Certificates and private keys (never commit)
+*.pem
+*.key
+caddy/certs/
 
 # Environment files (ignore real secrets everywhere)
 **/.env
