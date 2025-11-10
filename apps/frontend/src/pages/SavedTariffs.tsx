@@ -9,6 +9,7 @@ export function SavedTariffs() {
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [exportingDetails, setExportingDetails] = useState(false)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['saved-tariffs', page, size],
@@ -41,6 +42,154 @@ export function SavedTariffs() {
     enabled: expandedId != null && !!expandedDetail.data?.hsCode,
   })
 
+  const exportTableCsv = () => {
+    try {
+      if (!data?.content?.length) return
+      const rows = data.content
+      const headers = [
+        'Name',
+        'Importer ISO',
+        'Origin ISO',
+        'Total Value (USD)',
+        'Total After Tariff (USD)',
+        'Agreement',
+      ]
+      const esc = (val: any) => {
+        if (val == null) return ''
+        const s = String(val)
+        if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
+        return s
+      }
+      const toFixedOrEmpty = (num: number | null | undefined) =>
+        typeof num === 'number' && Number.isFinite(num) ? num.toFixed(2) : ''
+      const lines = [headers.join(',')]
+      for (const r of rows) {
+        lines.push([
+          esc(r.name || 'Untitled'),
+          esc(r.importerIso2 ?? ''),
+          esc(r.originIso2 ?? ''),
+          esc(toFixedOrEmpty(r.totalValue as any)),
+          esc(toFixedOrEmpty(r.totalTariff as any)),
+          esc(r.agreementName ?? ''),
+        ].join(','))
+      }
+      const csv = lines.join('\r\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `saved-tariffs-page-${page + 1}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Failed to export CSV', e)
+    }
+  }
+
+  const exportDetailsCsv = async () => {
+    try {
+      if (!data?.content?.length) return
+      setExportingDetails(true)
+      const rows = data.content
+      const headers = [
+        'Name',
+        'Notes',
+        'Importer ISO',
+        'Origin ISO',
+        'HS Code',
+        'HS Product Name',
+        'Agreement',
+        'Rate Type',
+        'Applied Rate (%)',
+        'Total Value (USD)',
+        'Total Tariff (USD)',
+        'RVC Threshold (%)',
+        'Computed RVC (%)',
+        'Material Cost (USD)',
+        'Labour Cost (USD)',
+        'Overhead Cost (USD)',
+        'Profit (USD)',
+        'Other Costs (USD)',
+        'FOB (USD)'
+      ]
+      const esc = (val: any) => {
+        if (val == null) return ''
+        const s = String(val)
+        if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
+        return s
+      }
+      const num2 = (n: any) => {
+        const v = Number(n)
+        return Number.isFinite(v) ? v.toFixed(2) : ''
+      }
+      const pct2 = (n: any) => {
+        const v = Number(n)
+        return Number.isFinite(v) ? v.toFixed(2) : ''
+      }
+      const lines: string[] = [headers.join(',')]
+      const details = await Promise.all(rows.map(async (r) => {
+        const detailResp = await savedTariffsApi.get(r.id)
+        const detail = detailResp.data as any
+        let hsLabel: string | null = null
+        try {
+          if (detail?.hsCode) {
+            const res = await tariffApi.searchHsProducts({ q: detail.hsCode, limit: 10 })
+            const list = (res.data || []) as Array<{ hsCode: string; hsLabel: string }>
+            const code = String(detail.hsCode)
+            const exact = list.find(x => x.hsCode?.replace(/\./g, '') === code.replace(/\./g, ''))
+            hsLabel = exact?.hsLabel || list[0]?.hsLabel || null
+          }
+        } catch {}
+        return { summary: r, detail, hsLabel }
+      }))
+      for (const { summary, detail, hsLabel } of details) {
+        const d = detail || {}
+        const input = d.input || {}
+        const result = d.result || {}
+        const rateType = result.rateUsed ?? result.basis ?? ''
+        const appliedRatePct = Number(result.appliedRate)
+        const appliedRateStr = Number.isFinite(appliedRatePct) ? (appliedRatePct * 100).toFixed(2) : ''
+        lines.push([
+          esc(d.name || summary.name || 'Untitled'),
+          esc(d.notes || ''),
+          esc(d.importerIso2 ?? summary.importerIso2 ?? ''),
+          esc(d.originIso2 ?? summary.originIso2 ?? ''),
+          esc(d.hsCode ?? ''),
+          esc(hsLabel ?? ''),
+          esc(summary.agreementName ?? ''),
+          esc(rateType),
+          esc(appliedRateStr),
+          esc(num2(input.totalValue)),
+          esc(num2(result.totalTariff)),
+          esc(pct2(input.rvcThreshold)),
+          esc(pct2(result.rvcComputed)),
+          esc(num2(input.materialCost)),
+          esc(num2(input.labourCost)),
+          esc(num2(input.overheadCost)),
+          esc(num2(input.profit)),
+          esc(num2(input.otherCosts)),
+          esc(num2(input.fob)),
+        ].join(','))
+      }
+      const csv = lines.join('\r\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `saved-tariffs-details-page-${page + 1}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Failed to export detailed CSV', e)
+    } finally {
+      setExportingDetails(false)
+    }
+  }
+
   const del = useMutation({
     mutationFn: async (id: number) => {
       await savedTariffsApi.delete(id)
@@ -63,7 +212,17 @@ export function SavedTariffs() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Saved Tariffs</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Saved Tariffs</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportTableCsv}>Export Table CSV</Button>
+          <Button variant="default" disabled={exportingDetails} onClick={exportDetailsCsv}>
+            {exportingDetails ? (
+              <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Exporting…</span>
+            ) : 'Export Details CSV'}
+          </Button>
+        </div>
+      </div>
 
       <div className="overflow-x-auto rounded-md border">
         <table className="min-w-full text-sm">
