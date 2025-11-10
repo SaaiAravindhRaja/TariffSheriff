@@ -93,4 +93,34 @@ export const tariffApi = {
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
 }
 
+export interface SavedTariffSummary {
+  id: number
+  name: string | null
+  createdAt: string
+  totalTariff: number | null // saved as total cost
+  rateUsed: string | null
+  appliedRate: number | null
+  rvcComputed: number | null
+  rvcThreshold: number | null
+  hsCode: string | null
+  importerIso2: string | null
+  originIso2: string | null
+}
+
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
+export const savedTariffsApi = {
+  list: (params?: { page?: number; size?: number }) =>
+    api.get<PageResponse<SavedTariffSummary>>('/tariff-calculations', { params }),
+  get: (id: number) => api.get(`/tariff-calculations/${id}`),
+  delete: (id: number) => api.delete(`/tariff-calculations/${id}`),
+  save: (payload: any) => api.post('/tariff-calculations', payload),
+}
+
 export default api

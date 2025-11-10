@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input'
 import CountrySelect from '@/components/inputs/CountrySelect'
 import { useDbCountries } from '@/hooks/useDbCountries'
 import { useSettings } from '@/contexts/SettingsContext'
-import { tariffApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
+import { tariffApi, savedTariffsApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
 import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownChart'
 import { formatCurrency } from '@/lib/utils'
+import SavedTariffs from '@/pages/SavedTariffs'
 
 type CostField =
   | 'totalValue'
@@ -110,11 +111,47 @@ export function Calculator() {
     rvc: number
     rvcThreshold: number | null
   } | null>(null)
+  const [saveName, setSaveName] = useState<string>("")
+  const [saveNotes, setSaveNotes] = useState<string>("")
+  const [saving, setSaving] = useState<boolean>(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [usedAgreementName, setUsedAgreementName] = useState<string | null>(null)
   const rvcDebounceRef = useRef<number | null>(null)
   const phase1AbortRef = useRef<AbortController | null>(null)
   const phase2AbortRef = useRef<AbortController | null>(null)
   const phase1ResultRef = useRef<any>(null)
+
+  // Minimal ISO conversion helper (iso3 -> iso2); extend as needed
+  const iso3ToIso2 = (code?: string | null): string | undefined => {
+    if (!code) return undefined
+    const map: Record<string, string> = {
+      USA: 'US',
+      CHL: 'CL',
+      CHN: 'CN',
+      KOR: 'KR',
+      JPN: 'JP',
+      CAN: 'CA',
+      MEX: 'MX',
+      AUS: 'AU',
+      NZL: 'NZ',
+      GBR: 'GB',
+      DEU: 'DE',
+      FRA: 'FR',
+      ITA: 'IT',
+      ESP: 'ES',
+      PRT: 'PT',
+      NLD: 'NL',
+      SWE: 'SE',
+      NOR: 'NO',
+      DNK: 'DK',
+      FIN: 'FI',
+      EU: 'EU',
+      EUR: 'EU',
+    }
+    const c = code.trim().toUpperCase()
+    return map[c] || undefined
+  }
+  
 
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
@@ -614,6 +651,79 @@ export function Calculator() {
               ],
             }}
           />
+          {/* Save controls */}
+          <div className="space-y-3 md:col-span-2 mt-2">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Label</label>
+                <Input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder="e.g., Chile → US EV shipment"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Notes</label>
+                <Input
+                  value={saveNotes}
+                  onChange={(e) => setSaveNotes(e.target.value)}
+                  placeholder="Optional notes"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                disabled={saving}
+                onClick={async () => {
+                  if (!calcResult || !lookup) return
+                  setSaving(true)
+                  setSaveError(null)
+                  try {
+                    const hsCode = form.hsCode.replace(/\./g, '').trim()
+                    const best = bestOption
+                    await savedTariffsApi.save({
+                      input: {
+                        mfnRate: mfnRate || 0,
+                        prefRate: best?.adValoremRate ?? 0,
+                        rvcThreshold: calcResult.rvcThreshold ?? undefined,
+                        agreementId: (best as any)?.agreementId ?? undefined,
+                        quantity: 0,
+                        totalValue: costs.totalValue,
+                        materialCost: costs.materialCost,
+                        labourCost: costs.labourCost,
+                        overheadCost: costs.overheadCost,
+                        profit: costs.profit,
+                        otherCosts: costs.otherCosts,
+                        fob: costs.fob,
+                        nonOriginValue: costs.nonOriginValue,
+                      },
+                      result: {
+                        totalCost: costs.totalValue + calcResult.totalDuty,
+                        tariffBasis: calcResult.basis,
+                        appliedRate: calcResult.appliedRate,
+                        calculatedRvc: calcResult.rvc,
+                        rvcThreshold: calcResult.rvcThreshold ?? undefined,
+                      },
+                      name: saveName,
+                      notes: saveNotes,
+                      hsCode,
+                      importerIso2: iso3ToIso2(form.importerIso3),
+                      originIso2: iso3ToIso2(form.originIso3),
+                    })
+                    setSaveName("")
+                    setSaveNotes("")
+                  } catch (e: any) {
+                    setSaveError(e?.response?.data?.message || e?.message || 'Failed to save')
+                  } finally {
+                    setSaving(false)
+                  }
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Calculation'}
+              </Button>
+              {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+            </div>
+          </div>
         </div>
       )}
     </div>
