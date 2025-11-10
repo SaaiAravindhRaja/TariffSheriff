@@ -141,7 +141,10 @@ export function SavedTariffs() {
             const exact = list.find(x => x.hsCode?.replace(/\./g, '') === code.replace(/\./g, ''))
             hsLabel = exact?.hsLabel || list[0]?.hsLabel || null
           }
-        } catch {}
+        } catch {
+          // Ignore HS label lookup failures during export
+          void 0
+        }
         return { summary: r, detail, hsLabel }
       }))
       for (const { summary, detail, hsLabel } of details) {
