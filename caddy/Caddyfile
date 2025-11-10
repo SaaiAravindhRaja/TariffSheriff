@@ -1,8 +1,20 @@
 tariffsheriff.app {
+  # Use Cloudflare Origin Certificate placed at /etc/caddy/certs/
+  tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+
   encode zstd gzip
-  reverse_proxy /api tariffsheriff-backend:8080
-  reverse_proxy tariffsheriff-frontend:80
+
+  # Proxy API and backend paths
+  @api path /api*, /v3/api-docs*, /swagger-ui*, /actuator/health
+  reverse_proxy @api tariffsheriff-backend:8080
+
+  # SPA frontend for all other routes
+  handle {
+    reverse_proxy tariffsheriff-frontend:80
+  }
 }
+
 www.tariffsheriff.app {
+  tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
   redir https://tariffsheriff.app{uri}
 }
