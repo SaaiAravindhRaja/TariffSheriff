@@ -610,7 +610,7 @@ jobs:
     name: PR Summary
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && always()
-    needs: [changes, validate-config, backend-build-test, backend-package, frontend-lint-typecheck, frontend-test, frontend-build, frontend-security-scan]
+    needs: [changes, validate-config, backend-build-test, frontend-lint-typecheck, frontend-test, frontend-build, frontend-security-scan]
     permissions:
       pull-requests: write
     steps:
@@ -621,7 +621,6 @@ jobs:
             const jobs = {
               'validate-config': '${{ needs.validate-config.result }}',
               'backend-build-test': '${{ needs.backend-build-test.result }}',
-              'backend-package': '${{ needs.backend-package.result }}',
               'frontend-lint-typecheck': '${{ needs.frontend-lint-typecheck.result }}',
               'frontend-test': '${{ needs.frontend-test.result }}',
               'frontend-build': '${{ needs.frontend-build.result }}',
@@ -636,12 +635,26 @@ jobs:
             let failed = [];
             let skipped = [];
             
-            // Non-blocking jobs (warnings)
+            // Non-blocking jobs (continue-on-error: true)
             const nonBlockingJobs = ['validate-config', 'frontend-lint-typecheck', 'frontend-security-scan'];
+            
+            // Jobs that only run on specific conditions
+            const conditionalJobs = {
+              'backend-build-test': backendChanged,
+              'frontend-lint-typecheck': frontendChanged,
+              'frontend-test': frontendChanged,
+              'frontend-build': frontendChanged,
+              'frontend-security-scan': frontendChanged
+            };
             
             // Categorize results
             for (const [job, result] of Object.entries(jobs)) {
               const jobName = job.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              
+              // Skip jobs that didn't run due to conditions (not file changes)
+              if (result === 'skipped' && conditionalJobs[job] === false) {
+                continue;
+              }
               
               if (result === 'success') {
                 passed.push(jobName);
