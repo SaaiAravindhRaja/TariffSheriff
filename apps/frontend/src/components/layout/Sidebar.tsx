@@ -43,6 +43,12 @@ const navigationItems = [
     description: 'Browse Tariff Rules'
   },
   {
+    title: 'Saved Tariffs',
+    href: '/saved-tariffs',
+    icon: FileText,
+    description: 'Your saved calculations'
+  },
+  {
     title: 'AI Assistant',
     href: '/ai-assistant',
     icon: Bot,

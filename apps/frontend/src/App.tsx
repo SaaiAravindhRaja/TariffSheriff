@@ -16,6 +16,7 @@ import { About } from '@/pages/About'
 import { Privacy } from '@/pages/Privacy'
 import { Team } from '@/pages/Team'
 import { Contact } from '@/pages/Contact'
+import { SavedTariffs } from '@/pages/SavedTariffs'
  
 import '@/styles/globals.css'
 import Footer from '@/components/layout/Footer'
@@ -73,6 +74,7 @@ function AppContent() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/team" element={<Team />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/saved-tariffs" element={<SavedTariffs />} />
           </Routes>
         </main>
       </div>
