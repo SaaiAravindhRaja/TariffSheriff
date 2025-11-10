@@ -100,6 +100,7 @@ export interface SavedTariffSummary {
   name: string | null
   createdAt: string
   totalTariff: number | null // saved as total cost
+  totalValue: number | null
   rateUsed: string | null
   appliedRate: number | null
   rvcComputed: number | null
@@ -107,6 +108,7 @@ export interface SavedTariffSummary {
   hsCode: string | null
   importerIso2: string | null
   originIso2: string | null
+  agreementName: string | null
 }
 
 export interface PageResponse<T> {
