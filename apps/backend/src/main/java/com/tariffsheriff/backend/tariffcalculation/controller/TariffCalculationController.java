@@ -4,6 +4,7 @@ import com.tariffsheriff.backend.auth.entity.User;
 import com.tariffsheriff.backend.auth.repository.UserRepository;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
 import com.tariffsheriff.backend.tariffcalculation.dto.*;
+import com.tariffsheriff.backend.tariff.repository.AgreementRepository;
 import com.tariffsheriff.backend.tariffcalculation.entity.TariffCalculation;
 import com.tariffsheriff.backend.tariffcalculation.service.TariffCalculationService;
 import org.springframework.data.domain.Page;
@@ -28,10 +29,14 @@ public class TariffCalculationController {
 
     private final TariffCalculationService service;
     private final UserRepository userRepository;
+    private final AgreementRepository agreements;
 
-    public TariffCalculationController(TariffCalculationService service, UserRepository userRepository) {
+    public TariffCalculationController(TariffCalculationService service,
+                                       UserRepository userRepository,
+                                       AgreementRepository agreements) {
         this.service = service;
         this.userRepository = userRepository;
+        this.agreements = agreements;
     }
 
     private User requireUserFromJwt(Jwt jwt) {
@@ -109,18 +114,36 @@ public class TariffCalculationController {
     }
 
     private TariffCalculationSummary toSummary(TariffCalculation tc) {
+        // Resolve agreement name (may be null)
+        String agreementName = null;
+        if (tc.getAgreementId() != null) {
+            agreementName = agreements.findById(tc.getAgreementId())
+                .map(a -> a.getName())
+                .orElse(null);
+        }
+        // Compute total value fallback if missing (legacy rows): totalTariff = totalValue * appliedRate
+        java.math.BigDecimal totalValue = tc.getTotalValue();
+        if ((totalValue == null || totalValue.compareTo(java.math.BigDecimal.ZERO) == 0)
+            && tc.getTotalTariff() != null
+            && tc.getAppliedRate() != null
+            && tc.getAppliedRate().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            totalValue = tc.getTotalTariff().divide(tc.getAppliedRate(), 2, java.math.RoundingMode.HALF_UP);
+        }
+
         return new TariffCalculationSummary(
             tc.getId(),
             tc.getName(),
             tc.getCreatedAt(),
             tc.getTotalTariff(),
+            totalValue,
             tc.getRateUsed(),
             tc.getAppliedRate(),
             tc.getRvcComputed(),
             tc.getRvc(),
             tc.getHsCode(),
             tc.getImporterIso2(),
-            tc.getOriginIso2()
+            tc.getOriginIso2(),
+            agreementName
         );
     }
 

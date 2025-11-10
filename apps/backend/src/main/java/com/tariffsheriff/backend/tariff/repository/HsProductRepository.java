@@ -38,4 +38,10 @@ public interface HsProductRepository extends JpaRepository<HsProduct, Long> {
     List<HsProduct> findByMultipleKeywords(@Param("keyword1") String keyword1, 
                                           @Param("keyword2") String keyword2, 
                                           @Param("keyword3") String keyword3);
+
+    /**
+     * Search by HS code prefix with limit
+     */
+    @Query(value = "SELECT * FROM hs_product WHERE hs_code LIKE CONCAT(:prefix, '%') ORDER BY hs_code LIMIT :limit", nativeQuery = true)
+    List<HsProduct> findByHsCodePrefix(@Param("prefix") String prefix, @Param("limit") int limit);
 }

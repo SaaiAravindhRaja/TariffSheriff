@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import CountrySelect from '@/components/inputs/CountrySelect'
+import HsCodeSelect from '@/components/inputs/HsCodeSelect'
 import { useDbCountries } from '@/hooks/useDbCountries'
 import { useSettings } from '@/contexts/SettingsContext'
 import { tariffApi, savedTariffsApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
@@ -456,10 +457,11 @@ export function Calculator() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">HS Code</label>
-              <Input
+              <HsCodeSelect
                 value={form.hsCode}
-                onChange={(event) => handleFormChange('hsCode', event.target.value)}
-                placeholder="e.g. 870380"
+                onChange={(code) => handleFormChange('hsCode', code || '')}
+                placeholder="Type code (e.g., 8703) or product name"
+                required
               />
             </div>
           </div>

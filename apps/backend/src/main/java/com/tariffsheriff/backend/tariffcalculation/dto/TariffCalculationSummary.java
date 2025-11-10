@@ -15,6 +15,7 @@ public class TariffCalculationSummary {
     private String name;
     private LocalDateTime createdAt;
     private BigDecimal totalTariff; // stores total cost as saved
+    private BigDecimal totalValue;  // input total value
     private String rateUsed;        // MFN or PREF
 
     // Extra display fields
@@ -24,4 +25,5 @@ public class TariffCalculationSummary {
     private String hsCode;
     private String importerIso2;
     private String originIso2;
+    private String agreementName;
 }

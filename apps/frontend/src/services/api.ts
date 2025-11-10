@@ -91,6 +91,8 @@ export const tariffApi = {
     originIso3?: string
     hsCode: string
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
+  searchHsProducts: (params: { q: string; limit?: number }) =>
+    api.get<{ hsCode: string; hsLabel: string }[]>('/hs-products/search', { params }),
 }
 
 export interface SavedTariffSummary {
@@ -98,6 +100,7 @@ export interface SavedTariffSummary {
   name: string | null
   createdAt: string
   totalTariff: number | null // saved as total cost
+  totalValue: number | null
   rateUsed: string | null
   appliedRate: number | null
   rvcComputed: number | null
@@ -105,6 +108,7 @@ export interface SavedTariffSummary {
   hsCode: string | null
   importerIso2: string | null
   originIso2: string | null
+  agreementName: string | null
 }
 
 export interface PageResponse<T> {
