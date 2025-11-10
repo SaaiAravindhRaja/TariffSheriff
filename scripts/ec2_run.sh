@@ -155,15 +155,8 @@ write_caddyfile() {
 
 ${domain} {
 	encode zstd gzip
-
-	# Explicit API/backend routes (prefix match)
-	@api path /api*, /v3/api-docs*, /swagger-ui*, /actuator/health
-	reverse_proxy @api tariffsheriff-backend:8080
-
-	# Everything else -> frontend (SPA)
-	handle {
-		reverse_proxy tariffsheriff-frontend:80
-	}
+	reverse_proxy /api tariffsheriff-backend:8080
+	reverse_proxy tariffsheriff-frontend:80
 }
 
 www.${domain} {
