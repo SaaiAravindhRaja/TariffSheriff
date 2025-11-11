@@ -5,10 +5,15 @@ FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies (include devDeps for Vite build)
-RUN npm install --legacy-peer-deps
+# Use clean install if lock file exists, otherwise regular install
+RUN if [ -f package-lock.json ]; then \
+      npm ci --legacy-peer-deps; \
+    else \
+      npm install --legacy-peer-deps --no-package-lock; \
+    fi
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
