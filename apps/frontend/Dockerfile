@@ -8,10 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (include devDeps for Vite build)
-# Workaround npm@10 CI bug: pin to npm@9 and use classic install
-ENV NPM_CONFIG_FUND=false NPM_CONFIG_AUDIT=false
-RUN npm i -g npm@9.9.2 && npm --version \
-    && npm install
+# Use Yarn classic via Corepack to avoid npm CI crashes
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+RUN yarn install --non-interactive --no-progress
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
