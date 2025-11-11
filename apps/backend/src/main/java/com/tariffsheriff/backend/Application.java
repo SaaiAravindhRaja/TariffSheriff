@@ -11,12 +11,14 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EntityScan(basePackages = {
         "com.tariffsheriff.backend.tariff.model",
         "com.tariffsheriff.backend.auth.entity",
-        "com.tariffsheriff.backend.tariffcalculation.entity"
+        "com.tariffsheriff.backend.tariffcalculation.entity",
+        "com.tariffsheriff.backend.news.entity"
 })
 @EnableJpaRepositories(basePackages = {
         "com.tariffsheriff.backend.tariff.repository",
         "com.tariffsheriff.backend.auth.repository",
-        "com.tariffsheriff.backend.tariffcalculation.repository"
+        "com.tariffsheriff.backend.tariffcalculation.repository",
+        "com.tariffsheriff.backend.news.repository"
 })
 public class Application {
 
