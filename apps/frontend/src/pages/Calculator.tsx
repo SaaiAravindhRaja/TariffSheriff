@@ -102,7 +102,10 @@ export function Calculator() {
   // Manual agreement selection removed; selection is now auto-determined
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [simulatedValue, setSimulatedValue] = useState<number | null>(null)
 
+  const [simulatedRate, setSimulatedRate] = useState<number | null>(null)
+  const [isSimulating, setIsSimulating] = useState<boolean>(false)
   const [backendRvc, setBackendRvc] = useState<number>(0)
   const [calcResult, setCalcResult] = useState<{
     basis: string
@@ -151,7 +154,7 @@ export function Calculator() {
     const c = code.trim().toUpperCase()
     return map[c] || undefined
   }
-  
+
 
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
@@ -252,7 +255,7 @@ export function Calculator() {
     }
     return eligible.reduce((min, cur) =>
       (cur.adValoremRate ?? 0) < (min.adValoremRate ?? 0) ? cur : min
-    , eligible[0])
+      , eligible[0])
   }, [lookup, backendRvc])
 
   const selection = useMemo(() => {
@@ -403,6 +406,9 @@ export function Calculator() {
       setCalcResult(null)
       setUsedAgreementName(null)
       setBackendRvc(0)
+      setIsSimulating(false)
+      setSimulatedRate(null)
+      setSimulatedValue(null)
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -534,11 +540,10 @@ export function Calculator() {
                       return (
                         <div
                           key={option.id}
-                          className={`w-full rounded-md border px-4 py-3 text-left ${
-                            isSelected
+                          className={`w-full rounded-md border px-4 py-3 text-left ${isSelected
                               ? 'border-brand-500 bg-brand-50'
                               : 'border-border bg-background'
-                          } ${eligible ? '' : 'opacity-50'}`}
+                            } ${eligible ? '' : 'opacity-50'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div>
@@ -569,6 +574,107 @@ export function Calculator() {
                     </p>
                   )}
                 </div>
+                {/* Tariff Simulation Controls */}
+                <div className="rounded-md border p-4 bg-blue-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-blue-900">Simulate Tariff Rate & Value</h4>
+                    <Button
+                      size="sm"
+                      variant={isSimulating ? "default" : "outline"}
+                      onClick={() => {
+                        setIsSimulating(!isSimulating)
+                        if (isSimulating) {
+                          setSimulatedRate(null)
+                          setSimulatedValue(null)
+                        }
+                      }}
+                    >
+                      {isSimulating ? 'Reset' : 'Simulate'}
+                    </Button>
+                  </div>
+
+                  {isSimulating && (
+                    <div className="space-y-4">
+                      {/* Tariff Rate Controls */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-blue-900">Tariff Rate</label>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={simulatedRate ?? ''}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value)
+                              setSimulatedRate(isNaN(val) ? 0 : Math.max(0, Math.min(100, val)))
+                            }}
+                            placeholder="Enter rate %"
+                            className="w-24"
+                          />
+                          <span className="text-sm font-medium">%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={simulatedRate ?? 0}
+                          onChange={(e) => setSimulatedRate(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                        <p className="text-xs text-blue-700">
+                          Testing a {(simulatedRate ?? 0).toFixed(1)}% tariff rate
+                        </p>
+                      </div>
+
+                      {/* Customs Value Controls */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-blue-900">Customs Value ({settings.currency})</label>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="100"
+                            value={simulatedValue ?? costs.totalValue}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value)
+                              setSimulatedValue(isNaN(val) ? costs.totalValue : Math.max(0, val))
+                            }}
+                            placeholder="Enter customs value"
+                            className="flex-1"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSimulatedValue(costs.totalValue)}
+                            className="text-xs"
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max={costs.totalValue * 2}
+                          step={costs.totalValue / 100}
+                          value={simulatedValue ?? costs.totalValue}
+                          onChange={(e) => setSimulatedValue(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                        <div className="flex justify-between text-xs text-blue-700">
+                          <span>Testing {formatCurrency(simulatedValue ?? costs.totalValue, settings.currency)}</span>
+                          <span className="text-muted-foreground">
+                            {((((simulatedValue ?? costs.totalValue) - costs.totalValue) / costs.totalValue) * 100).toFixed(0)}%
+                            {(simulatedValue ?? costs.totalValue) >= costs.totalValue ? ' increase' : ' decrease'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="rounded-md border px-4 py-3 bg-muted/30">
                   <p className="text-sm font-medium">RVC</p>
                   <p className="text-2xl font-bold">{backendRvc.toFixed(2)}%</p>
@@ -589,19 +695,19 @@ export function Calculator() {
         costs.overheadCost +
         costs.profit +
         costs.otherCosts) > costs.fob) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>3. Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {costs.fob <= 0 ? (
-              <p className="text-sm text-red-600">Enter a valid FOB value greater than 0 to compute RVC and duty.</p>
-            ) : (
-              <p className="text-sm text-red-600">Originating costs (Material + Labour + Overhead + Profit + Other) must not exceed FOB. Adjust your inputs to proceed.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {costs.fob <= 0 ? (
+                <p className="text-sm text-red-600">Enter a valid FOB value greater than 0 to compute RVC and duty.</p>
+              ) : (
+                <p className="text-sm text-red-600">Originating costs (Material + Labour + Overhead + Profit + Other) must not exceed FOB. Adjust your inputs to proceed.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       {calcResult && (
         <Card>
@@ -611,22 +717,37 @@ export function Calculator() {
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Tariff Basis</p>
-              <p className="text-lg font-semibold">{calcResult.basis}{usedAgreementName ? ` • ${usedAgreementName}` : ''}</p>
+              <p className="text-lg font-semibold">
+                {isSimulating ? 'Simulated' : calcResult.basis}
+                {!isSimulating && usedAgreementName ? ` • ${usedAgreementName}` : ''}
+              </p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Applied Rate</p>
-              <p className="text-lg font-semibold">{(calcResult.appliedRate * 100).toFixed(2)}%</p>
+              <p className="text-lg font-semibold">
+                {((isSimulating ? (simulatedRate ?? 0) / 100 : calcResult.appliedRate) * 100).toFixed(2)}%
+              </p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Total Cost</p>
               <p className="text-lg font-semibold">
-                {formatCurrency(calcResult.totalDuty + costs.totalValue, settings.currency)}
+                {formatCurrency(
+                  (isSimulating
+                    ? (simulatedValue ?? costs.totalValue) * ((simulatedRate ?? 0) / 100)
+                    : calcResult.totalDuty) + (isSimulating ? (simulatedValue ?? costs.totalValue) : costs.totalValue),
+                  settings.currency
+                )}
               </p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">RVC vs Threshold</p>
+              <p className="text-sm text-muted-foreground">
+                {isSimulating ? 'Simulated Duty' : 'RVC vs Threshold'}
+              </p>
               <p className="text-lg font-semibold">
-                {calcResult.rvc.toFixed(2)}% / {calcResult.rvcThreshold ?? 'N/A'}%
+                {isSimulating
+                  ? formatCurrency((simulatedValue ?? costs.totalValue) * ((simulatedRate ?? 0) / 100), settings.currency)
+                  : `${calcResult.rvc.toFixed(2)}% / ${calcResult.rvcThreshold ?? 'N/A'}%`
+                }
               </p>
             </div>
           </CardContent>
@@ -635,22 +756,67 @@ export function Calculator() {
 
       {calcResult && (
         <div className="grid gap-6">
-          <TariffBreakdownChart
-            data={{
-              baseValue: costs.totalValue,
-              tariffAmount: calcResult.totalDuty,
-              additionalFees: 0,
-              totalCost: costs.totalValue + calcResult.totalDuty,
-              breakdown: [
-                {
-                  type: 'Duty',
-                  rate: calcResult.appliedRate,
-                  amount: calcResult.totalDuty,
-                  description: 'Tariff duty based on applied rate',
-                },
-              ],
-            }}
-          />
+          {isSimulating ? (
+            // Show both charts side by side when simulating
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground">Original Calculation</h3>
+                <TariffBreakdownChart
+                  data={{
+                    baseValue: costs.totalValue,
+                    tariffAmount: calcResult.totalDuty,
+                    additionalFees: 0,
+                    totalCost: costs.totalValue + calcResult.totalDuty,
+                    breakdown: [
+                      {
+                        type: 'Duty',
+                        rate: calcResult.appliedRate,
+                        amount: calcResult.totalDuty,
+                        description: 'Tariff duty based on applied rate',
+                      },
+                    ],
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-blue-700">Simulated Scenario</h3>
+                <TariffBreakdownChart
+    data={{
+      baseValue: simulatedValue ?? costs.totalValue,
+      tariffAmount: (simulatedValue ?? costs.totalValue) * ((simulatedRate ?? 0) / 100),
+      additionalFees: 0,
+      totalCost: (simulatedValue ?? costs.totalValue) + ((simulatedValue ?? costs.totalValue) * ((simulatedRate ?? 0) / 100)),
+      breakdown: [
+        {
+          type: 'Duty',
+          rate: (simulatedRate ?? 0) / 100,
+          amount: (simulatedValue ?? costs.totalValue) * ((simulatedRate ?? 0) / 100),
+          description: 'Simulated tariff duty',
+        },
+      ],
+    }}
+  />
+              </div>
+            </div>
+          ) : (
+            // Show only original chart when not simulating
+            <TariffBreakdownChart
+              data={{
+                baseValue: costs.totalValue,
+                tariffAmount: calcResult.totalDuty,
+                additionalFees: 0,
+                totalCost: costs.totalValue + calcResult.totalDuty,
+                breakdown: [
+                  {
+                    type: 'Duty',
+                    rate: calcResult.appliedRate,
+                    amount: calcResult.totalDuty,
+                    description: 'Tariff duty based on applied rate',
+                  },
+                ],
+              }}
+            />
+          )}
           {/* Save controls */}
           <div className="space-y-3 md:col-span-2 mt-2">
             <div className="grid gap-3 md:grid-cols-2">
