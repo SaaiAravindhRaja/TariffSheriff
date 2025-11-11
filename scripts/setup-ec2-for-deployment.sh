@@ -56,21 +56,22 @@ echo "📁 Creating configuration directories..."
 sudo mkdir -p /etc/tariffsheriff
 sudo chown ubuntu:ubuntu /etc/tariffsheriff
 
-# Create environment file template
-cat > /etc/tariffsheriff/backend.env << 'EOF'
+# Create environment file template (secrets will be provided by GitHub Actions)
+cat > /etc/tariffsheriff/backend.env.template << 'EOF'
 # Database Configuration
-DATABASE_URL=jdbc:postgresql://ep-broad-bar-a14utknk-pooler.ap-southeast-1.aws.neon.tech:5432/tariffsheriff?sslmode=require
-DATABASE_USERNAME=app_dev
-DATABASE_PASSWORD=2vKk?uw3mhdF
+DATABASE_URL=<your-database-url>
+DATABASE_USERNAME=<your-database-username>
+DATABASE_PASSWORD=<your-database-password>
 
 # JWT Configuration
-JWT_SECRET=ff12189b52cbc92e16daaba6c45a7abda817faadf8c10b32dc1d73eebf91f8d9ef2eb143514e627a1f427beddf7c1ab3f398652e70e4abb37245879da0f02c8b
+JWT_SECRET=<your-jwt-secret>
 
 # Spring Profile
 SPRING_PROFILES_ACTIVE=prod
 EOF
 
-echo "✅ Environment file created at /etc/tariffsheriff/backend.env"
+echo "✅ Environment template created at /etc/tariffsheriff/backend.env.template"
+echo "⚠️  Note: Actual secrets will be provided by GitHub Actions during deployment"
 
 # Test ECR login
 echo "🔐 Testing ECR login..."
@@ -85,10 +86,21 @@ echo "📥 Pulling latest Docker images..."
 docker pull 229037374885.dkr.ecr.ap-southeast-1.amazonaws.com/tariffsheriff-backend:latest || echo "⚠️  Backend image not found (will be built by CI/CD)"
 docker pull 229037374885.dkr.ecr.ap-southeast-1.amazonaws.com/tariffsheriff-frontend:latest || echo "⚠️  Frontend image not found (will be built by CI/CD)"
 
-# Create deployment script
+# Create deployment script (for manual deployments only)
 cat > ~/deploy-tariffsheriff.sh << 'DEPLOY_SCRIPT'
 #!/bin/bash
 set -e
+
+# Note: This script is for manual deployments only
+# GitHub Actions will handle automated deployments with secrets
+
+# Check if environment file exists
+if [ ! -f /etc/tariffsheriff/backend.env ]; then
+  echo "❌ Environment file not found!"
+  echo "Please create /etc/tariffsheriff/backend.env with your secrets"
+  echo "See /etc/tariffsheriff/backend.env.template for reference"
+  exit 1
+fi
 
 # Load environment variables
 source /etc/tariffsheriff/backend.env
