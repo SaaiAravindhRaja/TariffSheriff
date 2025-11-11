@@ -26,6 +26,11 @@ public class SimpleNewsService {
     @Value("${thenewsapi.candidate-limit:10}")
     private int candidateLimit;
     
+    // In-memory cache for articles
+    private List<ArticleDto> cachedArticles = new ArrayList<>();
+    private long cacheTimestamp = 0;
+    private static final long CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+    
     public SimpleNewsService(TheNewsApiClient theNewsApiClient) {
         this.theNewsApiClient = theNewsApiClient;
     }
@@ -147,27 +152,98 @@ public class SimpleNewsService {
     }
     
     /**
-     * Get all articles - fetches recent tariff news
+     * Get all articles with caching - fetches 12 articles once and caches for 1 hour
+     * Pagination serves from cache (3 articles per page = 4 pages)
      */
-    public List<ArticleDto> getAllArticles() {
-        logger.info("Fetching recent tariff news articles");
+    public List<ArticleDto> getAllArticles(int page, int limit) {
+        logger.info("Fetching articles - page: {}, limit: {}", page, limit);
         
+        // Check if cache is valid
+        long now = System.currentTimeMillis();
+        boolean cacheValid = !cachedArticles.isEmpty() && (now - cacheTimestamp) < CACHE_DURATION_MS;
+        
+        if (!cacheValid) {
+            logger.info("Cache expired or empty, fetching fresh articles from API");
+            cachedArticles = fetchAndCacheArticles();
+            cacheTimestamp = now;
+        } else {
+            logger.info("Serving from cache ({} articles cached)", cachedArticles.size());
+        }
+        
+        // Apply pagination to cached articles
+        int start = page * limit;
+        int end = Math.min(start + limit, cachedArticles.size());
+        
+        if (start >= cachedArticles.size()) {
+            logger.info("Page {} is beyond available articles", page);
+            return new ArrayList<>();
+        }
+        
+        List<ArticleDto> paginatedArticles = cachedArticles.subList(start, end);
+        logger.info("Returning {} articles for page {} from cache", paginatedArticles.size(), page);
+        
+        return paginatedArticles;
+    }
+    
+    /**
+     * Fetch 12 articles from API using 4 different queries (3 articles each)
+     * This respects the free tier limit and provides variety
+     */
+    private List<ArticleDto> fetchAndCacheArticles() {
         try {
-            // Fetch recent tariff-related articles
-            List<TheNewsApiClient.NewsArticle> articles = theNewsApiClient.searchArticles(
-                "tariff trade", 
-                "business", 
-                "en",
-                20 // Get more articles for the main feed
+            // Use 4 diverse queries to get 12 articles total (3 per query)
+            List<String> searchQueries = List.of(
+                "tariff",
+                "trade war",
+                "import export",
+                "customs duty"
             );
-            logger.info("Fetched {} articles from TheNewsAPI", articles.size());
+            
+            List<TheNewsApiClient.NewsArticle> allFetchedArticles = new ArrayList<>();
+            
+            // Fetch articles with different queries
+            for (String searchQuery : searchQueries) {
+                try {
+                    List<TheNewsApiClient.NewsArticle> articles = theNewsApiClient.searchArticles(
+                        searchQuery, 
+                        "business", 
+                        "en",
+                        candidateLimit
+                    );
+                    allFetchedArticles.addAll(articles);
+                    logger.info("Fetched {} articles for query: '{}'", articles.size(), searchQuery);
+                } catch (Exception e) {
+                    logger.error("Failed to fetch articles for query '{}': {}", searchQuery, e.getMessage());
+                    // Continue with other queries even if one fails
+                }
+            }
+            
+            logger.info("Fetched total {} articles from TheNewsAPI", allFetchedArticles.size());
+            
+            if (allFetchedArticles.isEmpty()) {
+                logger.error("No articles fetched - API may have rate limit or connection issues");
+                return new ArrayList<>();
+            }
+            
+            // Remove duplicates by URL
+            List<TheNewsApiClient.NewsArticle> uniqueArticles = allFetchedArticles.stream()
+                .collect(Collectors.toMap(
+                    TheNewsApiClient.NewsArticle::getUrl,
+                    article -> article,
+                    (existing, replacement) -> existing
+                ))
+                .values()
+                .stream()
+                .collect(Collectors.toList());
+            
+            logger.info("After deduplication: {} unique articles", uniqueArticles.size());
             
             // Filter for tariff-related content
-            List<TheNewsApiClient.NewsArticle> filteredArticles = filterTariffArticles(articles);
+            List<TheNewsApiClient.NewsArticle> filteredArticles = filterTariffArticles(uniqueArticles);
             logger.info("Filtered to {} tariff-related articles", filteredArticles.size());
             
             // Convert to DTOs and sort by published date (most recent first)
-            return filteredArticles.stream()
+            List<ArticleDto> articles = filteredArticles.stream()
                 .map(article -> {
                     ArticleDto dto = new ArticleDto();
                     dto.setTitle(article.getTitle());
@@ -186,9 +262,12 @@ public class SimpleNewsService {
                     return b.getPublishedAt().compareTo(a.getPublishedAt());
                 })
                 .collect(Collectors.toList());
+            
+            logger.info("Cached {} articles for future requests", articles.size());
+            return articles;
                 
         } catch (Exception e) {
-            logger.error("Error fetching articles", e);
+            logger.error("Error fetching and caching articles", e);
             return new ArrayList<>();
         }
     }
