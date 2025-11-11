@@ -102,14 +102,16 @@ public class NewsController {
     }
 
     /**
-     * Get all stored articles
+     * Get all stored articles with pagination
      * 
-     * @return List of all articles in the database
+     * @param page Page number (0-indexed)
+     * @param limit Number of articles per page
+     * @return List of articles for the requested page
      */
     @GetMapping("/articles")
     @Operation(
         summary = "Get all articles",
-        description = "Retrieve all stored news articles from the database"
+        description = "Retrieve news articles with pagination support"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -122,13 +124,17 @@ public class NewsController {
             description = "Internal server error"
         )
     })
-    public ResponseEntity<List<ArticleDto>> getAllArticles() {
+    public ResponseEntity<List<ArticleDto>> getAllArticles(
+            @Parameter(description = "Page number (0-indexed)", required = false)
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of articles per page", required = false)
+            @RequestParam(defaultValue = "12") int limit) {
         try {
-            log.debug("Retrieving all articles");
+            log.debug("Retrieving articles - page: {}, limit: {}", page, limit);
             
-            List<ArticleDto> articleDtos = simpleNewsService.getAllArticles();
+            List<ArticleDto> articleDtos = simpleNewsService.getAllArticles(page, limit);
             
-            log.info("Retrieved {} articles", articleDtos.size());
+            log.info("Retrieved {} articles for page {}", articleDtos.size(), page);
             
             return ResponseEntity.ok(articleDtos);
             
