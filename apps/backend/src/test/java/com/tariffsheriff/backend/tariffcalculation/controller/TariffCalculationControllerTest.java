@@ -3,6 +3,7 @@ package com.tariffsheriff.backend.tariffcalculation.controller;
 import com.tariffsheriff.backend.auth.entity.User;
 import com.tariffsheriff.backend.auth.repository.UserRepository;
 import com.tariffsheriff.backend.tariff.dto.TariffRateRequestDto;
+import com.tariffsheriff.backend.tariff.repository.AgreementRepository;
 import com.tariffsheriff.backend.tariffcalculation.dto.CalculationResult;
 import com.tariffsheriff.backend.tariffcalculation.dto.FrontendCalculationResult;
 import com.tariffsheriff.backend.tariffcalculation.dto.SaveTariffCalculationRequest;
@@ -43,6 +44,14 @@ class TariffCalculationControllerTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock // <-- ADD THIS LINE
+    private AgreementRepository agreementRepository;
+
+    // It's also possible your controller uses a mapper. If you still get
+    // a NullPointerException, you may also need to mock your mapper:
+    // @Mock
+    // private AgreementMapper agreementMapper; 
 
     @InjectMocks
     private TariffCalculationController controller;
