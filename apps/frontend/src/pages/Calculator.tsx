@@ -484,6 +484,7 @@ export function Calculator() {
               <HsCodeSelect
                 value={form.hsCode}
                 onChange={(code) => handleFormChange('hsCode', code || '')}
+                importerIso3={form.importerIso3}
                 placeholder="Type code (e.g., 8703) or product name"
                 required
               />

@@ -13,6 +13,7 @@ interface HsCodeSelectProps {
   className?: string
   required?: boolean
   disabled?: boolean
+  importerIso3?: string
 }
 
 const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
@@ -22,6 +23,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   className = '',
   required = false,
   disabled = false,
+  importerIso3,
 }) => {
   const [query, setQuery] = React.useState('')
   const [open, setOpen] = React.useState(false)
@@ -45,11 +47,14 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
     return () => document.removeEventListener('click', onDoc)
   }, [])
 
-  // Debounced search
+  // Debounced search, including initial fetch when importer is selected and query is empty
   React.useEffect(() => {
     let cancelled = false
     const q = query.trim()
-    if (q.length < 2) {
+    const allowEmptyForImporter = open && importerIso3 && importerIso3.trim().length > 0 && q.length === 0
+    const isDigitsOnly = /^[0-9]*$/.test(q) // allow empty as digits-only
+    const tooShort = (!allowEmptyForImporter) && (isDigitsOnly ? q.length < 1 : q.length < 2)
+    if (tooShort) {
       setResults([])
       setError(null)
       return
@@ -58,7 +63,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
     setError(null)
     const t = setTimeout(async () => {
       try {
-        const res = await tariffApi.searchHsProducts({ q, limit: 10 })
+        const res = await tariffApi.searchHsProducts({ q, limit: 200, importerIso3 })
         if (cancelled) return
         setResults(res.data || [])
       } catch (e: any) {
@@ -73,7 +78,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
       cancelled = true
       clearTimeout(t)
     }
-  }, [query])
+  }, [query, importerIso3, open])
 
   const select = (item: HsCode) => {
     onChange?.(item.hsCode)

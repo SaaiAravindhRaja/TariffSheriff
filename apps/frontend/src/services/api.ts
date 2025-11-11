@@ -101,7 +101,7 @@ export const tariffApi = {
     originIso3?: string
     hsCode: string
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
-  searchHsProducts: (params: { q: string; limit?: number }) =>
+  searchHsProducts: (params: { q: string; limit?: number; importerIso3?: string }) =>
     api.get<{ hsCode: string; hsLabel: string }[]>('/hs-products/search', { params }),
 }
 

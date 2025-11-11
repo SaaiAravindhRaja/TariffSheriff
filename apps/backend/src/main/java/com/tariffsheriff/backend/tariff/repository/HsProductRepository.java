@@ -44,4 +44,26 @@ public interface HsProductRepository extends JpaRepository<HsProduct, Long> {
      */
     @Query(value = "SELECT * FROM hs_product WHERE hs_code LIKE CONCAT(:prefix, '%') ORDER BY hs_code LIMIT :limit", nativeQuery = true)
     List<HsProduct> findByHsCodePrefix(@Param("prefix") String prefix, @Param("limit") int limit);
+
+    /**
+     * Search by destination only with limit (for initial dropdown with no query)
+     */
+    @Query(value = "SELECT * FROM hs_product WHERE destination_iso3 = :iso3 ORDER BY hs_code LIMIT :limit", nativeQuery = true)
+    List<HsProduct> findByDestinationWithLimit(@Param("iso3") String destinationIso3, @Param("limit") int limit);
+
+    /**
+     * Destination-scoped search by HS code prefix with limit
+     */
+    @Query(value = "SELECT * FROM hs_product WHERE destination_iso3 = :iso3 AND hs_code LIKE CONCAT(:prefix, '%') ORDER BY hs_code LIMIT :limit", nativeQuery = true)
+    List<HsProduct> findByDestinationAndHsCodePrefix(@Param("iso3") String destinationIso3,
+                                                     @Param("prefix") String prefix,
+                                                     @Param("limit") int limit);
+
+    /**
+     * Destination-scoped digits-only HS code prefix (dot-insensitive)
+     */
+    @Query(value = "SELECT * FROM hs_product WHERE destination_iso3 = :iso3 AND REPLACE(hs_code, '.', '') LIKE CONCAT(:digits, '%') ORDER BY hs_code LIMIT :limit", nativeQuery = true)
+    List<HsProduct> findByDestinationAndHsCodeDigitsPrefix(@Param("iso3") String destinationIso3,
+                                                           @Param("digits") String digits,
+                                                           @Param("limit") int limit);
 }
