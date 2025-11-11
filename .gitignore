@@ -9,6 +9,11 @@ target/
 .idea/
 secrets/
 
+# Certificates and private keys (never commit)
+*.pem
+*.key
+caddy/certs/
+
 # Environment files (ignore real secrets everywhere)
 **/.env
 **/.env.*
