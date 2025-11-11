@@ -64,7 +64,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 20
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image: ${{ steps.image.outputs.image }}
       image-digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
@@ -126,6 +126,13 @@ jobs:
           cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:buildcache
           cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:buildcache,mode=max
       
+      - name: Set image output
+        id: image
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE"
+      
       - name: Image scan
         continue-on-error: true
         run: |
@@ -143,7 +150,7 @@ jobs:
     if: needs.changes.outputs.frontend == 'true'
     timeout-minutes: 20
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image: ${{ steps.image.outputs.image }}
       image-digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
@@ -202,6 +209,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:buildcache
           cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:buildcache,mode=max
+      
+      - name: Set image output
+        id: image
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE"
       
       - name: Image scan
         continue-on-error: true
@@ -268,7 +282,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: backend
-          image: ${{ needs.build-backend.outputs.image-tag }}
+          image: ${{ needs.build-backend.outputs.image }}
       
       - name: Deploy to Amazon ECS
         id: deploy
@@ -302,7 +316,7 @@ jobs:
           echo "✅ Backend deployed successfully!"
           echo "Service: ${{ env.ECS_BACKEND_SERVICE }}"
           echo "Cluster: ${{ env.ECS_CLUSTER }}"
-          echo "Image: ${{ needs.build-backend.outputs.image-tag }}"
+          echo "Image: ${{ needs.build-backend.outputs.image }}"
 
   deploy-frontend:
     name: Deploy Frontend to ECS
@@ -359,7 +373,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: frontend
-          image: ${{ needs.build-frontend.outputs.image-tag }}
+          image: ${{ needs.build-frontend.outputs.image }}
       
       - name: Deploy to Amazon ECS
         id: deploy
@@ -393,7 +407,7 @@ jobs:
           echo "✅ Frontend deployed successfully!"
           echo "Service: ${{ env.ECS_FRONTEND_SERVICE }}"
           echo "Cluster: ${{ env.ECS_CLUSTER }}"
-          echo "Image: ${{ needs.build-frontend.outputs.image-tag }}"
+          echo "Image: ${{ needs.build-frontend.outputs.image }}"
 
   health-check:
     name: Post-Deployment Health Check
