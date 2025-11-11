@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
@@ -36,8 +37,61 @@ public class TariffRateServiceImpl implements TariffRateService {
     }
 
     @Override
-    public List<TariffRate> listTariffRates() {
-        return tariffRates.findAll();
+    public List<TariffRate> listTariffRates(int limit) {
+        // Use pagination to limit database query - MUCH faster!
+        return tariffRates.findAll(PageRequest.of(0, limit)).getContent();
+    }
+
+    @Override
+    public List<TariffRate> findByCountryPair(String importerIso3, String originIso3, String hsCodePrefix, int limit) {
+        if (hsCodePrefix != null && !hsCodePrefix.isBlank()) {
+            return tariffRates.findByCountryPairAndHsCode(importerIso3, originIso3, hsCodePrefix, PageRequest.of(0, limit));
+        }
+        return tariffRates.findByCountryPair(importerIso3, originIso3, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<TariffRate> findByCountryPairAndHsCodes(String importerIso3, String originIso3, List<String> hsCodes, int limit) {
+        // Pad list to 5 elements (use empty string for unused slots)
+        String code1 = hsCodes.size() > 0 ? hsCodes.get(0) : "";
+        String code2 = hsCodes.size() > 1 ? hsCodes.get(1) : "";
+        String code3 = hsCodes.size() > 2 ? hsCodes.get(2) : "";
+        String code4 = hsCodes.size() > 3 ? hsCodes.get(3) : "";
+        String code5 = hsCodes.size() > 4 ? hsCodes.get(4) : "";
+        return tariffRates.findByCountryPairAndHsCodes(importerIso3, originIso3, code1, code2, code3, code4, code5, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<TariffRate> findByImporter(String importerIso3, String hsCodePrefix, int limit) {
+        if (hsCodePrefix != null && !hsCodePrefix.isBlank()) {
+            return tariffRates.findByImporterAndHsCode(importerIso3, hsCodePrefix, PageRequest.of(0, limit));
+        }
+        return tariffRates.findByImporter(importerIso3, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<TariffRate> findByImporterAndHsCodes(String importerIso3, List<String> hsCodes, int limit) {
+        String code1 = hsCodes.size() > 0 ? hsCodes.get(0) : "";
+        String code2 = hsCodes.size() > 1 ? hsCodes.get(1) : "";
+        String code3 = hsCodes.size() > 2 ? hsCodes.get(2) : "";
+        String code4 = hsCodes.size() > 3 ? hsCodes.get(3) : "";
+        String code5 = hsCodes.size() > 4 ? hsCodes.get(4) : "";
+        return tariffRates.findByImporterAndHsCodes(importerIso3, code1, code2, code3, code4, code5, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<TariffRate> findByHsCodes(List<String> hsCodes, int limit) {
+        String code1 = hsCodes.size() > 0 ? hsCodes.get(0) : "";
+        String code2 = hsCodes.size() > 1 ? hsCodes.get(1) : "";
+        String code3 = hsCodes.size() > 2 ? hsCodes.get(2) : "";
+        String code4 = hsCodes.size() > 3 ? hsCodes.get(3) : "";
+        String code5 = hsCodes.size() > 4 ? hsCodes.get(4) : "";
+        return tariffRates.findByHsCodes(code1, code2, code3, code4, code5, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<TariffRate> findByHsCodePrefix(String hsCodePrefix, int limit) {
+        return tariffRates.findByHsCodePrefix(hsCodePrefix, PageRequest.of(0, limit));
     }
 
     @Override

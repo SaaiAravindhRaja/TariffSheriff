@@ -31,9 +31,26 @@ public class TariffRateController {
         this.tariffRateRepository = trr;
     }
 
-    @GetMapping("/")
-    public List<TariffRate> getTariffRates() {
-        return tariffRateService.listTariffRates();
+    @GetMapping({"", "/"})
+    public List<TariffRate> getTariffRates(
+            @RequestParam(required = false) String importerIso3,
+            @RequestParam(required = false) String originIso3,
+            @RequestParam(required = false) List<String> hsCodes,
+            @RequestParam(defaultValue = "1000") int limit) {
+        // Filter by country pair and HS codes if provided
+        if (importerIso3 != null && originIso3 != null && hsCodes != null && !hsCodes.isEmpty()) {
+            return tariffRateService.findByCountryPairAndHsCodes(importerIso3, originIso3, hsCodes, limit);
+        } else if (importerIso3 != null && originIso3 != null) {
+            return tariffRateService.findByCountryPair(importerIso3, originIso3, null, limit);
+        } else if (importerIso3 != null && hsCodes != null && !hsCodes.isEmpty()) {
+            return tariffRateService.findByImporterAndHsCodes(importerIso3, hsCodes, limit);
+        } else if (importerIso3 != null) {
+            return tariffRateService.findByImporter(importerIso3, null, limit);
+        } else if (hsCodes != null && !hsCodes.isEmpty()) {
+            return tariffRateService.findByHsCodes(hsCodes, limit);
+        }
+        // Default: return first 1000 rows
+        return tariffRateService.listTariffRates(limit);
     }
 
     @GetMapping("/{id}")
