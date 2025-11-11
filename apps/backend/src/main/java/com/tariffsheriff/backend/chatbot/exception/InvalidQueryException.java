@@ -6,21 +6,22 @@ package com.tariffsheriff.backend.chatbot.exception;
 public class InvalidQueryException extends ChatbotException {
     
     public InvalidQueryException(String message) {
-        super(makeUserFriendly(message), generateHelpfulSuggestion(message));
+        super(message, makeUserFriendly(message), generateHelpfulSuggestion(message), null);
     }
     
     public InvalidQueryException(String message, String suggestion) {
-        super(makeUserFriendly(message), suggestion);
+        super(message, makeUserFriendly(message), suggestion, null);
     }
     
     public InvalidQueryException(String message, Throwable cause) {
-        super(makeUserFriendly(message), generateHelpfulSuggestion(message), cause);
+        super(message, makeUserFriendly(message), generateHelpfulSuggestion(message), cause);
     }
     
     public InvalidQueryException(String message, String suggestion, Throwable cause) {
-        super(makeUserFriendly(message), suggestion, cause);
+        super(message, makeUserFriendly(message), suggestion, cause);
     }
     
+    // ... rest of the class is unchanged ...
     /**
      * Convert technical validation errors to user-friendly messages
      */
