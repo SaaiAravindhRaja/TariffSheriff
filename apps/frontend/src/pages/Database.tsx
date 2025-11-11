@@ -389,7 +389,7 @@ export function Database() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>EV Component Categories</CardTitle>
+                <CardTitle id="ev-categories">EV Component Categories</CardTitle>
                 <CardDescription>
                   {selectedMapRoute 
                     ? `Showing tariff rates for ${selectedMapRoute.origin} → ${selectedMapRoute.importer}`
@@ -566,3 +566,4 @@ export function Database() {
     </div>
   )
 }
+

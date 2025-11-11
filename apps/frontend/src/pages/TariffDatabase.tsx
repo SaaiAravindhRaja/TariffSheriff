@@ -330,7 +330,7 @@ export function TariffDatabase() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <GlobalTradeRoutes />
+        <GlobalTradeRoutes onRouteSelect={() => { const el = document.getElementById("ev-categories"); if (el) { el.classList.remove("route-jump-animate"); el.scrollIntoView({ behavior: "smooth", block: "start" }); requestAnimationFrame(() => { el.classList.add("route-jump-animate"); setTimeout(() => el.classList.remove("route-jump-animate"), 500); }); } }} />
       </motion.div>
 
       {/* HS Code Categories Section */}
@@ -341,7 +341,7 @@ export function TariffDatabase() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>EV Component Categories</CardTitle>
+            <CardTitle id="ev-categories">EV Component Categories</CardTitle>
             <CardDescription>
               Browse tariff rates by component category
             </CardDescription>
@@ -372,11 +372,11 @@ export function TariffDatabase() {
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.name)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-brand-900/20 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-100 dark:bg-blue-900/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                          <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'}`} />
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-100 dark:bg-brand-900/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                          <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600 dark:text-brand-300' : 'text-gray-600 dark:text-gray-400'}`} />
                         </div>
                         <div className="text-left">
                           <h3 className="font-semibold text-gray-900 dark:text-white">{category.name}</h3>
@@ -408,7 +408,7 @@ export function TariffDatabase() {
                                   <h4 className="text-sm font-medium text-gray-900 dark:text-white">{subcategory.name}</h4>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {subcategory.codes.map((code) => (
-                                      <span key={code} className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                                      <span key={code} className="text-xs bg-blue-100 dark:bg-brand-900/20 text-blue-700 dark:text-brand-300 px-2 py-0.5 rounded">
                                         {code}
                                       </span>
                                     ))}
@@ -500,3 +500,4 @@ export function TariffDatabase() {
     </div>
   )
 }
+
