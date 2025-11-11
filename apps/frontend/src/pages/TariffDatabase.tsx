@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { GlobalTradeRoutes } from '@/components/dashboard/GlobalTradeRoutes'
-import { Search, ChevronDown, ChevronRight, Calculator, Battery, Zap, Cpu, ThermometerSun, Box, Gauge, Eye, Lightbulb, Magnet, X } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Calculator, Battery, Zap, Cpu, ThermometerSun, Box, Gauge, Eye, Lightbulb, Magnet } from 'lucide-react'
 import api from '@/services/api'
 
 interface TariffRate {
@@ -221,7 +221,7 @@ const hsCodeCategories: HsCodeCategory[] = [
   }
 ]
 
-export function Database() {
+export function TariffDatabase() {
   const navigate = useNavigate()
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
@@ -229,46 +229,23 @@ export function Database() {
   const [filteredRates, setFilteredRates] = useState<TariffRate[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [selectedMapRoute, setSelectedMapRoute] = useState<{importer: string, origin: string} | null>(null)
 
   useEffect(() => {
     fetchTariffRates()
-  }, [selectedMapRoute, selectedCategory]) // Re-fetch when filters change
+  }, [])
 
   useEffect(() => {
     filterRates()
-  }, [searchQuery, selectedCategory, tariffRates, selectedMapRoute])
+  }, [searchQuery, selectedCategory, tariffRates])
 
   const fetchTariffRates = async () => {
     try {
       setLoading(true)
-      
-      // Build query parameters for filtering
-      const params: any = {}
-      
-      // Add country filter if route selected
-      if (selectedMapRoute) {
-        console.log('🔍 Fetching tariff rates for route:', selectedMapRoute)
-        params.importerIso3 = selectedMapRoute.importer
-        params.originIso3 = selectedMapRoute.origin
-      } else {
-        console.log('🔍 Fetching all tariff rates (no route selected)')
-      }
-      
-      // REMOVED HS code filtering for now - just get all rates for country pair
-      
-      console.log('📤 Sending request with params:', params)
-      
-      // Fetch filtered tariff rates from backend
-      const response = await api.get('/tariff-rate', { params })
-      const data = response.data.content || response.data
-      
-      console.log('📥 Received tariff rates:', data.length, 'records')
-      console.log('📊 Sample data:', data.slice(0, 3))
-      
-      setTariffRates(data)
+      // Fetch all tariff rates
+      const response = await api.get('/tariff-rate/all')
+      setTariffRates(response.data)
     } catch (error) {
-      console.error('❌ Failed to fetch tariff rates:', error)
+      console.error('Failed to fetch tariff rates:', error)
     } finally {
       setLoading(false)
     }
@@ -277,21 +254,13 @@ export function Database() {
   const filterRates = () => {
     let filtered = tariffRates
 
-    // Filter by selected map route first
-    if (selectedMapRoute) {
-      filtered = filtered.filter(rate => 
-        rate.importerIso3 === selectedMapRoute.importer && 
-        (rate.originIso3 === selectedMapRoute.origin || !rate.originIso3)
-      )
-    }
-
     // Filter by selected category
     if (selectedCategory) {
       const category = hsCodeCategories.find(c => c.name === selectedCategory)
-      if (category && category.subcategories.length > 0) {
+      if (category) {
         const categoryCodes = category.subcategories.flatMap(sub => sub.codes)
         filtered = filtered.filter(rate => 
-          categoryCodes.some(code => rate.hsCode?.startsWith(code.replace('.', '')))
+          categoryCodes.some(code => rate.hsCode.startsWith(code))
         )
       }
     }
@@ -299,9 +268,9 @@ export function Database() {
     // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(rate =>
-        rate.hsCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rate.hsCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
         rate.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rate.importerIso3?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rate.importerIso3.toLowerCase().includes(searchQuery.toLowerCase()) ||
         rate.originIso3?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
@@ -326,20 +295,16 @@ export function Database() {
     setSelectedCategory(categoryName === selectedCategory ? null : categoryName)
   }
 
-  const transferToCalculator = (rate: any) => {
-    console.log('📋 Transferring to calculator:', rate)
-    
+  const transferToCalculator = (rate: TariffRate) => {
     // Store the selected tariff rate in sessionStorage
     sessionStorage.setItem('prefilledTariff', JSON.stringify({
       hsCode: rate.hsCode,
       description: rate.description,
       importerIso3: rate.importerIso3,
       originIso3: rate.originIso3,
-      basis: rate.basis,
-      adValoremRate: rate.adValoremRate
+      mfnRate: rate.mfnRate,
+      preferentialRate: rate.preferentialRate
     }))
-    
-    console.log('✅ Stored in sessionStorage, navigating to calculator...')
     
     // Navigate to calculator
     navigate('/calculator')
@@ -365,50 +330,21 @@ export function Database() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <GlobalTradeRoutes 
-          onRouteSelect={(route) => {
-            setSelectedMapRoute(route)
-            if (route) {
-              // Auto-scroll to categories when route is selected
-              setTimeout(() => {
-                document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }, 300)
-            }
-          }}
-        />
+        <GlobalTradeRoutes />
       </motion.div>
 
       {/* HS Code Categories Section */}
       <motion.div
-        id="categories-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>EV Component Categories</CardTitle>
-                <CardDescription>
-                  {selectedMapRoute 
-                    ? `Showing tariff rates for ${selectedMapRoute.origin} → ${selectedMapRoute.importer}`
-                    : 'Browse tariff rates by component category'
-                  }
-                </CardDescription>
-              </div>
-              {selectedMapRoute && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedMapRoute(null)}
-                  className="flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Clear Route Filter
-                </Button>
-              )}
-            </div>
+            <CardTitle>EV Component Categories</CardTitle>
+            <CardDescription>
+              Browse tariff rates by component category
+            </CardDescription>
             
             {/* Search Bar */}
             <div className="relative mt-4">
@@ -453,12 +389,10 @@ export function Database() {
                             {category.subcategories.length} subcategories
                           </span>
                         )}
-                        {category.subcategories.length > 0 && (
-                          isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                          )
+                        {isExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         )}
                       </div>
                     </button>
@@ -516,10 +450,10 @@ export function Database() {
                   </div>
                 ) : filteredRates.length === 0 ? (
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                    No tariff rates found for this category
+                    No tariff rates found
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                         <tr>
@@ -531,22 +465,22 @@ export function Database() {
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                        {filteredRates.slice(0, 100).map((rate) => (
-                          <tr key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 font-medium">{rate.hsCode}</td>
-                            <td className="px-4 py-3 text-gray-900 dark:text-white max-w-xs truncate" title={rate.description}>{rate.description}</td>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredRates.slice(0, 50).map((rate) => (
+                          <tr key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400">{rate.hsCode}</td>
+                            <td className="px-4 py-3 text-gray-900 dark:text-white max-w-xs truncate">{rate.description}</td>
                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                              <span className="font-mono text-xs">{rate.originIso3 || 'Any'} → {rate.importerIso3}</span>
+                              {rate.originIso3 || 'Any'} → {rate.importerIso3}
                             </td>
-                            <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{rate.mfnRate}%</td>
-                            <td className="px-4 py-3 text-green-600 dark:text-green-400 font-medium">{rate.preferentialRate}%</td>
+                            <td className="px-4 py-3 text-gray-900 dark:text-white">{rate.mfnRate}%</td>
+                            <td className="px-4 py-3 text-green-600 dark:text-green-400">{rate.preferentialRate}%</td>
                             <td className="px-4 py-3">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => transferToCalculator(rate)}
-                                className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-600 dark:hover:bg-blue-900/20"
+                                className="flex items-center gap-1"
                               >
                                 <Calculator className="w-3 h-3" />
                                 Calculate

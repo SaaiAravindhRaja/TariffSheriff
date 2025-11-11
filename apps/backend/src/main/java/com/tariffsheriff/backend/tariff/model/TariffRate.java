@@ -5,9 +5,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class TariffRate {
 
     @Id
@@ -31,6 +35,11 @@ public class TariffRate {
 
     @Column(name = "hs_product_id", nullable = false)
     private Long hsProductId;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "hs_product_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private HsProduct hsProduct;
 
     @Column(nullable = false)
     private String basis;
@@ -49,4 +58,15 @@ public class TariffRate {
 
     @Column(name = "source_ref")
     private String sourceRef;
+
+    // Add transient fields for frontend
+    @Transient
+    public String getHsCode() {
+        return hsProduct != null ? hsProduct.getHsCode() : null;
+    }
+
+    @Transient
+    public String getDescription() {
+        return hsProduct != null ? hsProduct.getHsLabel() : null;
+    }
 }

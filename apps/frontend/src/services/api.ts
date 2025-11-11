@@ -37,18 +37,24 @@ export const setAuth0TokenGetter = (getter: (options?: any) => Promise<string>) 
 
 api.interceptors.request.use(
   async (config) => {
-    try {
-      if (getAccessTokenSilently) {
-        const token = await getAccessTokenSilently({
-          authorizationParams: {
-            audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.tariffsheriff.com',
-          }
-        })
-        config.headers = config.headers ?? {}
-        config.headers.Authorization = `Bearer ${token}`
+    // Skip auth for public endpoints
+    const publicEndpoints = ['/tariff-rate', '/countries', '/hs-products']
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.startsWith(endpoint))
+    
+    if (!isPublicEndpoint) {
+      try {
+        if (getAccessTokenSilently) {
+          const token = await getAccessTokenSilently({
+            authorizationParams: {
+              audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.tariffsheriff.com',
+            }
+          })
+          config.headers = config.headers ?? {}
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Auth0 token:', error)
       }
-    } catch (error) {
-      console.error('Failed to get Auth0 token:', error)
     }
     return config
   },
