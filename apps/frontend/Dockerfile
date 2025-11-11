@@ -8,9 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (include devDeps for Vite build)
-# Use Yarn classic via Corepack to avoid npm CI crashes
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate
-RUN yarn install --non-interactive --no-progress
+RUN npm ci --legacy-peer-deps
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
