@@ -107,10 +107,12 @@ public class TariffCalculationController {
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id,
+    public org.springframework.http.ResponseEntity<Void> delete(@PathVariable Long id,
                        @AuthenticationPrincipal Jwt jwt) {
         User currentUser = requireUserFromJwt(jwt);
-        service.deleteForUser(id, currentUser.getId());
+        boolean deleted = service.deleteForUser(id, currentUser.getId());
+        return deleted ? org.springframework.http.ResponseEntity.noContent().build()
+                       : org.springframework.http.ResponseEntity.notFound().build();
     }
 
     private TariffCalculationSummary toSummary(TariffCalculation tc) {

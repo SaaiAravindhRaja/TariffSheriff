@@ -84,7 +84,8 @@ public class TariffCalculationServiceImpl implements TariffCalculationService {
     }
 
     @Override
-    public void deleteForUser(Long id, Long userId) {
-        repo.deleteByIdAndUser_Id(id, userId);
+    public boolean deleteForUser(Long id, Long userId) {
+        long deleted = repo.deleteByIdAndUser_Id(id, userId);
+        return deleted > 0;
     }
 }

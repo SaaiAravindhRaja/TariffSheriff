@@ -22,5 +22,5 @@ public interface TariffCalculationService {
 
     Optional<TariffCalculation> getForUser(Long id, Long userId);
 
-    void deleteForUser(Long id, Long userId);
+    boolean deleteForUser(Long id, Long userId);
 }

@@ -600,8 +600,18 @@ export function Calculator() {
                   <p className="text-sm font-medium">RVC</p>
                   <p className="text-2xl font-bold">{backendRvc.toFixed(2)}%</p>
                   <p className="text-xs text-muted-foreground">
-                    {(selection?.selected?.agreementName ?? 'Current selection')}{' '}
-                    requires {selection?.selected?.rvcThreshold ?? 'N/A'}%.
+                    {selection?.selected?.agreementName ?
+                        <>
+                            {selection.selected.agreementName}{' '}
+                            requires {selection.selected.rvcThreshold
+                                ? `${selection.selected.rvcThreshold}%` 
+                                : 'no RVC threshold' 
+                            }
+                        </>
+                        :
+                        'MFN rate does not have RVC requirement.'
+                    }.
+                    
                   </p>
                 </div>
               </div>
