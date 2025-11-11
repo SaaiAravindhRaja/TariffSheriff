@@ -6,20 +6,22 @@ package com.tariffsheriff.backend.chatbot.exception;
 public class LlmServiceException extends ChatbotException {
     
     public LlmServiceException(String message) {
-        super(makeUserFriendly(message), generateDefaultSuggestion());
+        super(message, makeUserFriendly(message), generateDefaultSuggestion(), null);
     }
     
     public LlmServiceException(String message, Throwable cause) {
-        super(makeUserFriendly(message), generateDefaultSuggestion(), cause);
+        super(message, makeUserFriendly(message), generateDefaultSuggestion(), cause);
     }
     
     public LlmServiceException(String message, String suggestion) {
-        super(makeUserFriendly(message), suggestion);
+        super(message, makeUserFriendly(message), suggestion, null);
     }
     
     public LlmServiceException(String message, String suggestion, Throwable cause) {
-        super(makeUserFriendly(message), suggestion, cause);
+        super(message, makeUserFriendly(message), suggestion, cause);
     }
+    
+    // ... rest of the class is unchanged ...
     
     /**
      * Convert technical LLM errors to user-friendly messages

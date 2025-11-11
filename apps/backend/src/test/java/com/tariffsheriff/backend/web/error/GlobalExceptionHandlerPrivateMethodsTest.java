@@ -78,4 +78,41 @@ class GlobalExceptionHandlerPrivateMethodsTest {
         assertEquals("/path", er.getPath());
         assertNotNull(er.getTimestamp());
     }
+    @Test
+    void makeUserFriendly_unknownMessage_returnsDefaultFallback() throws Exception {
+        // This test covers the final 'return' statement in makeUserFriendly
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        Method m = GlobalExceptionHandler.class.getDeclaredMethod("makeUserFriendly", String.class);
+        m.setAccessible(true);
+
+        String out = (String) m.invoke(handler, "A generic database error occurred");
+        
+        // It should not match any specific keyword and return the default fallback
+        assertEquals("I had trouble processing your request. Please check your input and try again.", out);
+    }
+
+    @Test
+    void extractMessage_returnsExceptionMessageWhenNoSpecificCause() throws Exception {
+        // This tests the 'else' path of extractMessage for a generic exception
+        Method m = GlobalExceptionHandler.class.getDeclaredMethod("extractMessage", Exception.class);
+        m.setAccessible(true);
+
+        IllegalArgumentException ex = new IllegalArgumentException("This is the main message");
+        String out = (String) m.invoke(null, ex);
+        
+        assertEquals("This is the main message", out);
+    }
+    
+    @SuppressWarnings("deprecation")
+    @Test
+    void extractMessage_returnsTopMessageWhenCauseIsNull() throws Exception {
+        // This tests the 'else' path for an HttpMessageNotReadableException that has no cause
+        Method m = GlobalExceptionHandler.class.getDeclaredMethod("extractMessage", Exception.class);
+        m.setAccessible(true);
+
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("Top level message only");
+
+        String out = (String) m.invoke(null, ex);
+        assertEquals("Top level message only", out);
+    }
 }
