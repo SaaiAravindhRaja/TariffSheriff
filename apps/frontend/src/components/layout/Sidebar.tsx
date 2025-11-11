@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Bot
+  Bot,
+  Newspaper
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -53,6 +54,12 @@ const navigationItems = [
     href: '/ai-assistant',
     icon: Bot,
     description: 'Ask Trade Questions'
+  },
+  {
+    title: 'News',
+    href: '/news',
+    icon: Newspaper,
+    description: 'Tariff News & Updates'
   },
   {
     title: 'Settings',
