@@ -59,19 +59,32 @@ class TariffRateControllerTest {
         sampleLookup = new TariffRateLookupDto("GBR", "CHN", "0101", List.of(option));
     }
 
-    @Test
+@Test
     void getTariffRates_delegatesToService() {
-        when(service.listTariffRates()).thenReturn(List.of(sampleRate));
+        // --- Arrange ---
+        // Define arguments for the 4-arg controller method
+        String importer = "GBR";
+        String origin = "CHN";
+        List<String> hsCodes = List.of("0101");
+        int limit = 20;
 
-        var result = controller.getTariffRates();
+        // Stub the *correct* service method: listTariffRates(int)
+        // This fixes the error you reported.
+        when(service.listTariffRates(limit)).thenReturn(List.of(sampleRate));
+
+        // --- Act ---
+        // Call the 4-argument controller method
+        var result = controller.getTariffRates(importer, origin, hsCodes, limit);
         
+        // --- Assert ---
         assertEquals(1, result.size());
         assertEquals(1L, result.get(0).getId());
         assertEquals("MFN", result.get(0).getBasis());
         assertEquals(new BigDecimal("0.10"), result.get(0).getAdValoremRate());
-        verify(service).listTariffRates();
-    }
 
+        // Verify the 1-argument service method was called
+        verify(service).listTariffRates(limit);
+    }
     @Test
     void calculateTariffRate_delegatesAndReturns() {
         TariffCalculationResponse expectedResponse = new TariffCalculationResponse(
