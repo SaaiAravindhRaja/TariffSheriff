@@ -82,8 +82,8 @@ public class TariffCalculationController {
             req.getName(),
             req.getNotes(),
             req.getHsCode(),
-            req.getImporterIso2(),
-            req.getOriginIso2()
+            req.getImporterIso3(),
+            req.getOriginIso3()
         );
         return toDetail(saved);
     }
@@ -141,8 +141,8 @@ public class TariffCalculationController {
             tc.getRvcComputed(),
             tc.getRvc(),
             tc.getHsCode(),
-            tc.getImporterIso2(),
-            tc.getOriginIso2(),
+            tc.getImporterIso3(),
+            tc.getOriginIso3(),
             agreementName
         );
     }
@@ -177,8 +177,8 @@ public class TariffCalculationController {
             tc.getName(),
             tc.getNotes(),
             tc.getHsCode(),
-            tc.getImporterIso2(),
-            tc.getOriginIso2(),
+            tc.getImporterIso3(),
+            tc.getOriginIso3(),
             tc.getCreatedAt()
         );
     }

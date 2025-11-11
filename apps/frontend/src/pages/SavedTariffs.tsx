@@ -66,8 +66,8 @@ export function SavedTariffs() {
       for (const r of rows) {
         lines.push([
           esc(r.name || 'Untitled'),
-          esc(r.importerIso2 ?? ''),
-          esc(r.originIso2 ?? ''),
+          esc(r.importerIso3 ?? ''),
+          esc(r.originIso3 ?? ''),
           esc(toFixedOrEmpty(r.totalValue as any)),
           esc(toFixedOrEmpty(r.totalTariff as any)),
           esc(r.agreementName ?? ''),
@@ -157,8 +157,8 @@ export function SavedTariffs() {
         lines.push([
           esc(d.name || summary.name || 'Untitled'),
           esc(d.notes || ''),
-          esc(d.importerIso2 ?? summary.importerIso2 ?? ''),
-          esc(d.originIso2 ?? summary.originIso2 ?? ''),
+          esc(d.importerIso3 ?? (summary).importerIso3 ?? ''),
+          esc(d.originIso3 ?? (summary).originIso3 ?? ''),
           esc(d.hsCode ?? ''),
           esc(hsLabel ?? ''),
           esc(summary.agreementName ?? ''),
@@ -250,8 +250,8 @@ export function SavedTariffs() {
                       <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2">{item.importerIso2 ?? '-'}</td>
-                  <td className="px-4 py-2">{item.originIso2 ?? '-'}</td>
+                  <td className="px-4 py-2">{(item).importerIso3 ?? '-'}</td>
+                  <td className="px-4 py-2">{(item).originIso3 ?? '-'}</td>
                   <td className="px-4 py-2 text-right">{item.totalValue != null ? item.totalValue.toFixed(2) : '-'}</td>
                   <td className="px-4 py-2 text-right">{item.totalTariff != null ? item.totalTariff.toFixed(2) : '-'}</td>
                   <td className="px-4 py-2">{item.agreementName ?? '-'}</td>
@@ -297,11 +297,11 @@ export function SavedTariffs() {
                                   <div className="grid gap-3 md:grid-cols-2">
                                     <div>
                                       <div className="text-xs text-muted-foreground">Importer</div>
-                                      <div className="font-medium">{expandedDetail.data.importerIso2 ?? '-'}</div>
+                                      <div className="font-medium">{expandedDetail.data.importerIso3 ?? '-'}</div>
                                     </div>
                                     <div>
                                       <div className="text-xs text-muted-foreground">Origin</div>
-                                      <div className="font-medium">{expandedDetail.data.originIso2 ?? '-'}</div>
+                                      <div className="font-medium">{expandedDetail.data.originIso3 ?? '-'}</div>
                                     </div>
                                   </div>
                                   <div className="grid gap-3 md:grid-cols-2">

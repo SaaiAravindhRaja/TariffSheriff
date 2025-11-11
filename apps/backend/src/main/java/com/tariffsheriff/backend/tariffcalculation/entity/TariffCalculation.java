@@ -35,11 +35,11 @@ public class TariffCalculation {
     @Column(name = "hs_code")
     private String hsCode;
 
-    @Column(name = "importer_iso2")
-    private String importerIso2;
+    @Column(name = "importer_iso3")
+    private String importerIso3;
 
-    @Column(name = "origin_iso2")
-    private String originIso2;
+    @Column(name = "origin_iso3")
+    private String originIso3;
 
     // Inputs from TariffRateRequestDto
     @Column(name = "mfn_rate", precision = 18, scale = 6)

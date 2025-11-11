@@ -37,10 +37,12 @@ export const setAuth0TokenGetter = (getter: (options?: any) => Promise<string>) 
 
 api.interceptors.request.use(
   async (config) => {
-    // Skip auth for public endpoints
-    const publicEndpoints = ['/tariff-rate', '/countries', '/hs-products']
-    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.startsWith(endpoint))
-    
+    // Skip auth for public endpoints (GET-only)
+    const publicEndpoints = ['/countries', '/hs-products', '/tariff-rate/lookup', '/tariff-rate/routes']
+    const rawUrl = config.url || ''
+    const path = rawUrl.startsWith('http') ? (() => { try { return new URL(rawUrl).pathname } catch { return rawUrl } })() : rawUrl
+    const isPublicEndpoint = publicEndpoints.some(endpoint => path.startsWith(endpoint))
+
     if (!isPublicEndpoint) {
       try {
         if (getAccessTokenSilently) {
@@ -50,7 +52,9 @@ api.interceptors.request.use(
             }
           })
           config.headers = config.headers ?? {}
-          config.headers.Authorization = `Bearer ${token}`
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+          }
         }
       } catch (error) {
         console.error('Failed to get Auth0 token:', error)
@@ -116,8 +120,8 @@ export interface SavedTariffSummary {
   rvcComputed: number | null
   rvcThreshold: number | null
   hsCode: string | null
-  importerIso2: string | null
-  originIso2: string | null
+  importerIso3: string | null
+  originIso3: string | null
   agreementName: string | null
 }
 

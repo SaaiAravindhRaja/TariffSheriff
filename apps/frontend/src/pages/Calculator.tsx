@@ -734,8 +734,8 @@ export function Calculator() {
                       name: saveName,
                       notes: saveNotes,
                       hsCode,
-                      importerIso2: iso3ToIso2(form.importerIso3),
-                      originIso2: iso3ToIso2(form.originIso3),
+                      importerIso3: form.importerIso3,
+                      originIso3: form.originIso3,
                     })
                     setSaveName("")
                     setSaveNotes("")
