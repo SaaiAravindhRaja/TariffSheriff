@@ -57,14 +57,17 @@ public class SimpleNewsService {
             
             // Convert to DTOs
             List<ArticleDto> articleDtos = filteredArticles.stream()
-                .map(article -> new ArticleDto(
-                    article.getTitle(),
-                    article.getUrl(),
-                    article.getDescription() != null ? article.getDescription() : "No description available",
-                    null, // No AI context
-                    "api",
-                    article.getPublishedAt()
-                ))
+                .map(article -> {
+                    ArticleDto dto = new ArticleDto();
+                    dto.setTitle(article.getTitle());
+                    dto.setUrl(article.getUrl());
+                    dto.setContent(article.getDescription() != null ? article.getDescription() : "No description available");
+                    dto.setQueryContext(null); // No AI context
+                    dto.setSource("api");
+                    dto.setPublishedAt(article.getPublishedAt());
+                    dto.setImageUrl(article.getImageUrl());
+                    return dto;
+                })
                 .collect(Collectors.toList());
             
             // Create simple summary
