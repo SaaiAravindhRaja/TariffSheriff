@@ -147,10 +147,49 @@ public class SimpleNewsService {
     }
     
     /**
-     * Get all articles - not implemented for simple version
+     * Get all articles - fetches recent tariff news
      */
     public List<ArticleDto> getAllArticles() {
-        logger.info("getAllArticles not supported in simple mode");
-        return new ArrayList<>();
+        logger.info("Fetching recent tariff news articles");
+        
+        try {
+            // Fetch recent tariff-related articles
+            List<TheNewsApiClient.NewsArticle> articles = theNewsApiClient.searchArticles(
+                "tariff trade", 
+                "business", 
+                "en",
+                20 // Get more articles for the main feed
+            );
+            logger.info("Fetched {} articles from TheNewsAPI", articles.size());
+            
+            // Filter for tariff-related content
+            List<TheNewsApiClient.NewsArticle> filteredArticles = filterTariffArticles(articles);
+            logger.info("Filtered to {} tariff-related articles", filteredArticles.size());
+            
+            // Convert to DTOs and sort by published date (most recent first)
+            return filteredArticles.stream()
+                .map(article -> {
+                    ArticleDto dto = new ArticleDto();
+                    dto.setTitle(article.getTitle());
+                    dto.setUrl(article.getUrl());
+                    dto.setContent(article.getDescription() != null ? article.getDescription() : "No description available");
+                    dto.setQueryContext(null);
+                    dto.setSource("api");
+                    dto.setPublishedAt(article.getPublishedAt());
+                    dto.setImageUrl(article.getImageUrl());
+                    return dto;
+                })
+                .sorted((a, b) -> {
+                    // Sort by published date, most recent first
+                    if (a.getPublishedAt() == null) return 1;
+                    if (b.getPublishedAt() == null) return -1;
+                    return b.getPublishedAt().compareTo(a.getPublishedAt());
+                })
+                .collect(Collectors.toList());
+                
+        } catch (Exception e) {
+            logger.error("Error fetching articles", e);
+            return new ArrayList<>();
+        }
     }
 }
