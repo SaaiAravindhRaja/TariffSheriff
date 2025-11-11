@@ -24,9 +24,9 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
     // Get distinct trade routes with counts
     @Query("SELECT tr.importerIso3, tr.originIso3, COUNT(tr.id) " +
-           "FROM TariffRate tr " +
-           "WHERE tr.originIso3 IS NOT NULL " +
-           "GROUP BY tr.importerIso3, tr.originIso3 " +
-           "ORDER BY COUNT(tr.id) DESC")
+            "FROM TariffRate tr " +
+            "WHERE tr.originIso3 IS NOT NULL " +
+            "GROUP BY tr.importerIso3, tr.originIso3 " +
+            "ORDER BY COUNT(tr.id) DESC")
     List<Object[]> findDistinctTradeRoutes();
 }

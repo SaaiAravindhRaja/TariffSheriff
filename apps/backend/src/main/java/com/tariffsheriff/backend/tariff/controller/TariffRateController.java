@@ -43,13 +43,14 @@ public class TariffRateController {
 
     @GetMapping("/lookup")
     public TariffRateLookupDto getTariffRateAndAgreement(@RequestParam String importerIso3,
-                                                         @RequestParam(required = false) String originIso3,
-                                                         @RequestParam String hsCode) {
+            @RequestParam(required = false) String originIso3,
+            @RequestParam String hsCode) {
         return tariffRateService.getTariffRateWithAgreement(importerIso3, originIso3, hsCode);
     }
 
     @PostMapping("/calculate")
-    public TariffCalculationResponse calculateTariffRate(@jakarta.validation.Valid @RequestBody TariffRateRequestDto tariffCalculationData) {
+    public TariffCalculationResponse calculateTariffRate(
+            @jakarta.validation.Valid @RequestBody TariffRateRequestDto tariffCalculationData) {
         return tariffRateService.calculateTariffRate(tariffCalculationData);
     }
 
@@ -57,7 +58,7 @@ public class TariffRateController {
     public List<Map<String, Object>> getTradeRoutes() {
         List<Object[]> routes = tariffRateRepository.findDistinctTradeRoutes();
         List<Map<String, Object>> result = new ArrayList<>();
-        
+
         for (Object[] route : routes) {
             Map<String, Object> routeMap = new HashMap<>();
             routeMap.put("importerIso3", route[0]);
@@ -65,7 +66,7 @@ public class TariffRateController {
             routeMap.put("count", route[2]);
             result.add(routeMap);
         }
-        
+
         return result;
     }
 }
