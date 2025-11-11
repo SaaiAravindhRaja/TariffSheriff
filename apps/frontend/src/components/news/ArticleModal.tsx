@@ -10,6 +10,7 @@ interface Article {
   queryContext?: string
   source?: 'db' | 'api'
   publishedAt?: string
+  imageUrl?: string
 }
 
 interface ArticleModalProps {
@@ -91,6 +92,20 @@ export function ArticleModal({ article, isOpen, onClose }: ArticleModalProps) {
 
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Article Image */}
+          {article.imageUrl && (
+            <div className="mb-6 rounded-lg overflow-hidden">
+              <img
+                src={article.imageUrl}
+                alt={article.title}
+                className="w-full h-auto max-h-96 object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </div>
+          )}
+          
           <div className="prose max-w-none">
             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
               {article.content}
