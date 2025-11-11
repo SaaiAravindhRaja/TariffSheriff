@@ -1,0 +1,474 @@
+name: CD Pipeline - AWS Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_BACKEND_REPOSITORY: tariffsheriff-backend
+  ECR_FRONTEND_REPOSITORY: tariffsheriff-frontend
+  ECS_CLUSTER: tariffsheriff-cluster
+  ECS_BACKEND_SERVICE: tariffsheriff-backend-service
+  ECS_FRONTEND_SERVICE: tariffsheriff-frontend-service
+  ECS_BACKEND_TASK_DEFINITION: tariffsheriff-backend-task
+  ECS_FRONTEND_TASK_DEFINITION: tariffsheriff-frontend-task
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Check for file changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/backend/**'
+              - '.github/workflows/cd.yml'
+            frontend:
+              - 'apps/frontend/**'
+              - '.github/workflows/cd.yml'
+
+  build-backend:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 20
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      
+      - name: Build JAR
+        working-directory: apps/backend
+        run: |
+          echo "📦 Building backend JAR..."
+          mvn -B clean package -DskipTests
+          
+          # Verify JAR exists
+          JAR_FILE=$(find target -name "*.jar" ! -name "*-original.jar" | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "❌ JAR file not found!"
+            exit 1
+          fi
+          echo "✅ JAR built: $JAR_FILE"
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}
+          tags: |
+            type=sha,prefix={{branch}}-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/backend
+          file: apps/backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:buildcache,mode=max
+      
+      - name: Image scan
+        continue-on-error: true
+        run: |
+          echo "🔍 Scanning Docker image for vulnerabilities..."
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          aws ecr start-image-scan \
+            --repository-name ${{ env.ECR_BACKEND_REPOSITORY }} \
+            --image-id imageTag=${IMAGE_TAG##*:} \
+            --region ${{ env.AWS_REGION }} || true
+
+  build-frontend:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    timeout-minutes: 20
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      
+      - name: Build frontend
+        run: |
+          echo "📦 Building frontend..."
+          npm ci
+          npm run build --workspace=frontend
+          
+          # Verify dist exists
+          if [ ! -d "apps/frontend/dist" ]; then
+            echo "❌ Build output not found!"
+            exit 1
+          fi
+          echo "✅ Frontend built successfully"
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}
+          tags: |
+            type=sha,prefix={{branch}}-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/frontend
+          file: apps/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:buildcache,mode=max
+      
+      - name: Image scan
+        continue-on-error: true
+        run: |
+          echo "🔍 Scanning Docker image for vulnerabilities..."
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          aws ecr start-image-scan \
+            --repository-name ${{ env.ECR_FRONTEND_REPOSITORY }} \
+            --image-id imageTag=${IMAGE_TAG##*:} \
+            --region ${{ env.AWS_REGION }} || true
+
+  deploy-backend:
+    name: Deploy Backend to ECS
+    runs-on: ubuntu-latest
+    needs: [build-backend]
+    if: needs.build-backend.result == 'success'
+    timeout-minutes: 15
+    continue-on-error: false
+    environment:
+      name: production
+      url: https://api.tariffsheriff.com
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download task definition
+        id: download-task-def
+        continue-on-error: true
+        run: |
+          echo "📥 Downloading current task definition..."
+          if aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_BACKEND_TASK_DEFINITION }} \
+            --query taskDefinition > task-definition.json 2>/dev/null; then
+            echo "✅ Task definition downloaded"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Task definition not found - will need to create it first"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check if deployment can proceed
+        if: steps.download-task-def.outputs.exists == 'false'
+        run: |
+          echo ""
+          echo "❌ Cannot deploy: ECS task definition '${{ env.ECS_BACKEND_TASK_DEFINITION }}' does not exist"
+          echo ""
+          echo "📚 Please create the task definition first:"
+          echo "   1. See .github/workflows/CD_README.md for task definition examples"
+          echo "   2. Run: aws ecs register-task-definition --cli-input-json file://task-def.json"
+          echo "   3. Or use the AWS Console to create the task definition"
+          echo ""
+          exit 1
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: backend
+          image: ${{ needs.build-backend.outputs.image-tag }}
+      
+      - name: Deploy to Amazon ECS
+        id: deploy
+        continue-on-error: true
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_BACKEND_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+      
+      - name: Check deployment result
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ ECS deployment failed"
+          echo ""
+          echo "📚 Common issues:"
+          echo "   1. ECS service '${{ env.ECS_BACKEND_SERVICE }}' does not exist"
+          echo "   2. ECS cluster '${{ env.ECS_CLUSTER }}' does not exist"
+          echo "   3. Service failed health checks"
+          echo "   4. Insufficient capacity in cluster"
+          echo ""
+          echo "🔍 Check ECS service events:"
+          echo "   aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_BACKEND_SERVICE }}"
+          echo ""
+          exit 1
+      
+      - name: Verify deployment
+        run: |
+          echo "✅ Backend deployed successfully!"
+          echo "Service: ${{ env.ECS_BACKEND_SERVICE }}"
+          echo "Cluster: ${{ env.ECS_CLUSTER }}"
+          echo "Image: ${{ needs.build-backend.outputs.image-tag }}"
+
+  deploy-frontend:
+    name: Deploy Frontend to ECS
+    runs-on: ubuntu-latest
+    needs: [build-frontend]
+    if: needs.build-frontend.result == 'success'
+    timeout-minutes: 15
+    continue-on-error: false
+    environment:
+      name: production
+      url: https://tariffsheriff.com
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download task definition
+        id: download-task-def
+        continue-on-error: true
+        run: |
+          echo "📥 Downloading current task definition..."
+          if aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_FRONTEND_TASK_DEFINITION }} \
+            --query taskDefinition > task-definition.json 2>/dev/null; then
+            echo "✅ Task definition downloaded"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Task definition not found - will need to create it first"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check if deployment can proceed
+        if: steps.download-task-def.outputs.exists == 'false'
+        run: |
+          echo ""
+          echo "❌ Cannot deploy: ECS task definition '${{ env.ECS_FRONTEND_TASK_DEFINITION }}' does not exist"
+          echo ""
+          echo "📚 Please create the task definition first:"
+          echo "   1. See .github/workflows/CD_README.md for task definition examples"
+          echo "   2. Run: aws ecs register-task-definition --cli-input-json file://task-def.json"
+          echo "   3. Or use the AWS Console to create the task definition"
+          echo ""
+          exit 1
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: frontend
+          image: ${{ needs.build-frontend.outputs.image-tag }}
+      
+      - name: Deploy to Amazon ECS
+        id: deploy
+        continue-on-error: true
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_FRONTEND_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+      
+      - name: Check deployment result
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ ECS deployment failed"
+          echo ""
+          echo "📚 Common issues:"
+          echo "   1. ECS service '${{ env.ECS_FRONTEND_SERVICE }}' does not exist"
+          echo "   2. ECS cluster '${{ env.ECS_CLUSTER }}' does not exist"
+          echo "   3. Service failed health checks"
+          echo "   4. Insufficient capacity in cluster"
+          echo ""
+          echo "🔍 Check ECS service events:"
+          echo "   aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_FRONTEND_SERVICE }}"
+          echo ""
+          exit 1
+      
+      - name: Verify deployment
+        run: |
+          echo "✅ Frontend deployed successfully!"
+          echo "Service: ${{ env.ECS_FRONTEND_SERVICE }}"
+          echo "Cluster: ${{ env.ECS_CLUSTER }}"
+          echo "Image: ${{ needs.build-frontend.outputs.image-tag }}"
+
+  health-check:
+    name: Post-Deployment Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always() && (needs.deploy-backend.result == 'success' || needs.deploy-frontend.result == 'success')
+    timeout-minutes: 5
+    steps:
+      - name: Check backend health
+        if: needs.deploy-backend.result == 'success'
+        run: |
+          echo "🏥 Checking backend health..."
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f -s https://api.tariffsheriff.com/actuator/health > /dev/null; then
+              echo "✅ Backend is healthy!"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 10s..."
+            sleep 10
+          done
+          
+          echo "❌ Backend health check failed after $MAX_RETRIES attempts"
+          exit 1
+      
+      - name: Check frontend health
+        if: needs.deploy-frontend.result == 'success'
+        run: |
+          echo "🏥 Checking frontend health..."
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f -s https://tariffsheriff.com > /dev/null; then
+              echo "✅ Frontend is healthy!"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 10s..."
+            sleep 10
+          done
+          
+          echo "❌ Frontend health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend, health-check]
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.deploy-backend.result }}" == "success" ]; then
+            echo "✅ **Backend:** Deployed successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.deploy-backend.result }}" == "skipped" ]; then
+            echo "⏭️ **Backend:** Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Backend:** Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+            echo "✅ **Frontend:** Deployed successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.deploy-frontend.result }}" == "skipped" ]; then
+            echo "⏭️ **Frontend:** Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Frontend:** Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Health Check:** ${{ needs.health-check.result }}" >> $GITHUB_STEP_SUMMARY
