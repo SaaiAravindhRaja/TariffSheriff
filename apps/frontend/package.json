@@ -8,8 +8,8 @@
     "build": "vite build",
     "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
     "preview": "vite preview",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
+    "test": "vitest run --passWithNoTests --reporter=basic --watch=false",
+    "test:coverage": "vitest run --coverage --reporter=basic --watch=false",
     "test:unit": "vitest run --config vitest.config.ts tests/unit",
     "test:integration": "vitest run --config vitest.config.ts tests/integration",
     "test:performance": "vitest run --config vitest.config.ts tests/performance",
@@ -57,6 +57,7 @@
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.3.1",
+    "tariff-sheriff": "file:../..",
     "zod": "^4.1.12"
   },
   "devDependencies": {

@@ -5,6 +5,27 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'framer-motion',
+      'lucide-react',
+      '@auth0/auth0-react',
+      '@tanstack/react-query',
+      'axios',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-slot',
+      'recharts',
+      'class-variance-authority',
+      'clsx',
+      'tailwind-merge',
+    ],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
