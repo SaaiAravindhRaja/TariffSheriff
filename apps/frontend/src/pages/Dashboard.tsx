@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, getCountryFlag } from '@/lib/utils'
 import { RecentCalculations } from '@/components/dashboard/RecentCalculations'
-import { GlobalTradeRoutes } from '@/components/dashboard/GlobalTradeRoutes'
 import { DashboardStats, CalculationPeriod } from '@/types/dashboard'
 import api from '@/services/api'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,8 @@ interface TariffTrendData {
   total: number
 }
 
+type TrendPeriod = 'week' | 'month' | '6months' | 'year'
+
 function Dashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -36,11 +38,31 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([])
   const [newsLoading, setNewsLoading] = useState(true)
+  const [trendsData, setTrendsData] = useState<TariffTrendData[]>([])
   const [trendsLoading, setTrendsLoading] = useState(true)
+  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('month')
+
+  // Add print styles
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.innerHTML = `
+      @media print {
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        body { background: white; }
+        .card-hover { box-shadow: none !important; border: 1px solid #ddd !important; }
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
 
   useEffect(() => {
     fetchDashboardStats()
-  }, [period])
+    fetchTariffTrends()
+  }, [period, trendPeriod])
 
   useEffect(() => {
     fetchLatestNews()
@@ -73,6 +95,78 @@ function Dashboard() {
     }
   }
 
+  const fetchTariffTrends = async () => {
+    try {
+      setTrendsLoading(true)
+      const response = await api.get('/tariff-calculations', {
+        params: { page: 0, size: 1000 } // Get enough data for yearly trends
+      })
+      
+      // Determine number of days based on period
+      let numDays = 30
+      let dateFormat: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+      
+      switch (trendPeriod) {
+        case 'week':
+          numDays = 7
+          dateFormat = { weekday: 'short', month: 'numeric', day: 'numeric' }
+          break
+        case 'month':
+          numDays = 30
+          dateFormat = { month: 'short', day: 'numeric' }
+          break
+        case '6months':
+          numDays = 180
+          dateFormat = { month: 'short', year: 'numeric' }
+          break
+        case 'year':
+          numDays = 365
+          dateFormat = { month: 'short', year: 'numeric' }
+          break
+      }
+      
+      // Group calculations by date and sum tariffs
+      const calculations = response.data.content || []
+      const trendsMap = new Map<string, number>()
+      
+      // Initialize days
+      const daysData: TariffTrendData[] = []
+      const today = new Date()
+      for (let i = numDays - 1; i >= 0; i--) {
+        const date = new Date(today)
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toLocaleDateString('en-US', dateFormat)
+        daysData.push({ date: dateStr, total: 0 })
+        trendsMap.set(dateStr, 0)
+      }
+      
+      // Add calculation data
+      calculations.forEach((calc: any) => {
+        const calcDate = new Date(calc.createdAt)
+        const daysDiff = Math.floor((today.getTime() - calcDate.getTime()) / (1000 * 60 * 60 * 24))
+        
+        // Only include if within selected period
+        if (daysDiff >= 0 && daysDiff < numDays) {
+          const dateStr = calcDate.toLocaleDateString('en-US', dateFormat)
+          const current = trendsMap.get(dateStr) || 0
+          trendsMap.set(dateStr, current + (calc.totalTariff || 0))
+        }
+      })
+      
+      // Update the daysData array with actual values
+      const trends = daysData.map(day => ({
+        date: day.date,
+        total: trendsMap.get(day.date) || 0
+      }))
+      
+      setTrendsData(trends)
+    } catch (error) {
+      console.error('Failed to fetch tariff trends:', error)
+    } finally {
+      setTrendsLoading(false)
+    }
+  }
+
   const formatRevenue = (value: number) => {
     if (value >= 1000000) {
       return `$${(value / 1000000).toFixed(2)}M`
@@ -88,6 +182,16 @@ function Dashboard() {
       case 'month': return 'This Month'
       case 'year': return 'This Year'
       default: return 'Today'
+    }
+  }
+
+  const getTrendPeriodLabel = () => {
+    switch (trendPeriod) {
+      case 'week': return 'Last 7 Days'
+      case 'month': return 'Last 30 Days'
+      case '6months': return 'Last 6 Months'
+      case 'year': return 'Last Year'
+      default: return 'Last 30 Days'
     }
   }
 
@@ -138,11 +242,11 @@ function Dashboard() {
             Welcome back! Here's what's happening with your trade operations.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline">
+        <div className="flex items-center space-x-2 no-print">
+          <Button variant="outline" onClick={() => window.print()}>
             Export Report
           </Button>
-          <Button variant="gradient">
+          <Button variant="gradient" onClick={() => navigate('/calculator')}>
             New Calculation
           </Button>
         </div>
@@ -160,7 +264,7 @@ function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="card-hover">
+              <Card className="card-hover h-full">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
                     {stat.title}
@@ -189,13 +293,13 @@ function Dashboard() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                <CardContent className="flex flex-col min-h-[80px]">
+                  <div className="text-2xl font-bold truncate">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-1">
                     {stat.description}
                   </p>
                   {stat.subtext && (
-                    <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    <p className="text-xs text-muted-foreground font-medium mt-1">
                       {stat.subtext}
                     </p>
                   )}
@@ -221,18 +325,81 @@ function Dashboard() {
                 <div>
                   <CardTitle>Tariff Trends</CardTitle>
                   <CardDescription>
-                    Historical charts will appear here once data is connected.
+                    Your tariff calculations over time
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      {getTrendPeriodLabel()}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setTrendPeriod('week')}>
+                      Last 7 Days
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTrendPeriod('month')}>
+                      Last 30 Days
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTrendPeriod('6months')}>
+                      Last 6 Months
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTrendPeriod('year')}>
+                      Last Year
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-                Chart pending data connection.
-              </div>
+              {trendsLoading ? (
+                <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                  Loading trends...
+                </div>
+              ) : trendsData.length === 0 || trendsData.every(d => d.total === 0) ? (
+                <div className="flex flex-col h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                  <TrendingUp className="w-12 h-12 mb-4 opacity-50" />
+                  <p>No calculation data yet.</p>
+                  <p className="mt-1">Create your first calculation to see trends!</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendsData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="date" 
+                      className="text-xs"
+                      tick={{ fontSize: 12 }}
+                      interval={trendPeriod === 'week' ? 0 : trendPeriod === 'month' ? 4 : trendPeriod === '6months' ? 29 : 59}
+                      angle={trendPeriod === 'week' ? 0 : -45}
+                      textAnchor={trendPeriod === 'week' ? 'middle' : 'end'}
+                      height={trendPeriod === 'week' ? 30 : 60}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Tariff Total']}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={trendPeriod === 'week' ? { fill: 'hsl(var(--primary))', r: 4 } : false}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -242,6 +409,7 @@ function Dashboard() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
+          className="no-print"
         >
           <Card>
             <CardHeader>
@@ -315,16 +483,6 @@ function Dashboard() {
         transition={{ duration: 0.5, delay: 0.6 }}
       >
         <RecentCalculations />
-      </motion.div>
-
-      {/* Trade Route Visualization */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
-        className="lg:px-0"
-      >
-        <GlobalTradeRoutes />
       </motion.div>
     </div>
   )
