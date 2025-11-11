@@ -14,21 +14,66 @@ import { useNavigate } from 'react-router-dom'
 import { CountrySearch } from '@/components/search/CountrySearch'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+import api from '@/services/api'
 
 interface HeaderProps {
   className?: string
 }
 
+type UserProfile = {
+  id?: number
+  name: string
+  email: string
+  aboutMe?: string
+}
+
 export function Header({ className }: HeaderProps) {
-  const { user, logout } = useAuth()
+  const { user: auth0User, logout } = useAuth()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
+  const [showNotifications, setShowNotifications] = React.useState(false)
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
+  const notificationsRef = React.useRef<HTMLDivElement>(null)
 
   const handleLogout = () => {
     logout()
     setShowUserMenu(false)
   }
+
+  // Fetch user profile from backend
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/profile')
+        setUserProfile(response.data)
+      } catch (error) {
+        console.error('Failed to fetch profile for header:', error)
+        // Fallback to Auth0 user data
+        if (auth0User) {
+          setUserProfile({
+            name: auth0User.name || auth0User.email || 'User',
+            email: auth0User.email || '',
+          })
+        }
+      }
+    }
+    fetchProfile()
+  }, [auth0User])
+
+  // Listen for profile updates
+  React.useEffect(() => {
+    const handler = async () => {
+      try {
+        const response = await api.get('/profile')
+        setUserProfile(response.data)
+      } catch (error) {
+        console.error('Failed to refresh profile:', error)
+      }
+    }
+    window.addEventListener('profile:updated', handler)
+    return () => window.removeEventListener('profile:updated', handler)
+  }, [])
 
   // Close user menu when clicking outside
   React.useEffect(() => {
@@ -36,16 +81,22 @@ export function Header({ className }: HeaderProps) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setShowNotifications(false)
+      }
     }
 
-    if (showUserMenu) {
+    if (showUserMenu || showNotifications) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showUserMenu])
+  }, [showUserMenu, showNotifications])
+
+  const displayName = userProfile?.name || auth0User?.name || auth0User?.email || 'User'
+  const displayEmail = userProfile?.email || auth0User?.email || ''
 
 
   return (
@@ -96,12 +147,39 @@ export function Header({ className }: HeaderProps) {
         {/* Actions */}
         <div className="flex items-center space-x-2">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger-500 rounded-full text-xs flex items-center justify-center">
-              <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-            </span>
-          </Button>
+          <div className="relative" ref={notificationsRef}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative" 
+              aria-label="Notifications"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger-500 rounded-full text-xs flex items-center justify-center">
+                <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+              </span>
+            </Button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Updates</h3>
+                </div>
+                
+                <div className="p-8 text-center">
+                  <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No updates about the platform yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    We'll notify you when there's something new
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User Menu */}
           <div className="relative" ref={dropdownRef}>
@@ -109,11 +187,11 @@ export function Header({ className }: HeaderProps) {
               onClick={() => setShowUserMenu(!showUserMenu)}
               aria-haspopup="true" 
               aria-expanded={showUserMenu}
-              aria-label={`Open profile menu for ${user?.name ?? user?.email ?? 'user'}`} 
+              aria-label={`Open profile menu for ${displayName}`} 
               className="flex items-center space-x-2 pl-2 border-l focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md px-2 py-1 transition-colors"
             >
               <div className="flex flex-col text-right">
-                <span className="text-sm font-medium">{user?.name || user?.email || 'User'}</span>
+                <span className="text-sm font-medium">{displayName}</span>
                 <span className="text-xs text-muted-foreground">Member</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ml-2 overflow-hidden">
@@ -126,8 +204,8 @@ export function Header({ className }: HeaderProps) {
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || 'User'}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{displayName}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{displayEmail}</p>
                 </div>
                 
                 <button
@@ -139,17 +217,6 @@ export function Header({ className }: HeaderProps) {
                 >
                   <User className="w-4 h-4 mr-3" />
                   Profile Settings
-                </button>
-                
-                <button
-                  onClick={() => {
-                    navigate('/settings')
-                    setShowUserMenu(false)
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <Settings className="w-4 h-4 mr-3" />
-                  App Settings
                 </button>
                 
                 <div className="border-t border-gray-200 dark:border-gray-700 mt-1">

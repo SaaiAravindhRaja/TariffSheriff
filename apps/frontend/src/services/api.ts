@@ -29,9 +29,9 @@ export const api = axios.create({
 })
 
 // Global token setter - will be called by useAuth hook
-let getAccessTokenSilently: (() => Promise<string>) | null = null
+let getAccessTokenSilently: ((options?: any) => Promise<string>) | null = null
 
-export const setAuth0TokenGetter = (getter: () => Promise<string>) => {
+export const setAuth0TokenGetter = (getter: (options?: any) => Promise<string>) => {
   getAccessTokenSilently = getter
 }
 
@@ -39,7 +39,11 @@ api.interceptors.request.use(
   async (config) => {
     try {
       if (getAccessTokenSilently) {
-        const token = await getAccessTokenSilently()
+        const token = await getAccessTokenSilently({
+          authorizationParams: {
+            audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.tariffsheriff.com',
+          }
+        })
         config.headers = config.headers ?? {}
         config.headers.Authorization = `Bearer ${token}`
       }
