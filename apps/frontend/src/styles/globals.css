@@ -11,41 +11,43 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
+    /* Primary back to original blue */
     --primary: 200 98% 39%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
+    --secondary: 240 33% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 220 15% 35%;
+    --accent: 246 100% 97%;
+    --accent-foreground: 232 65% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 220 20% 92%;
+    --input: 220 20% 92%;
     --ring: 200 98% 39%;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 230 25% 8%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 232 25% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 232 25% 10%;
     --popover-foreground: 210 40% 98%;
+    /* Primary back to original blue */
     --primary: 200 98% 39%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 234 22% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 234 22% 18%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 246 35% 22%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 65% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 236 20% 22%;
+    --input: 236 20% 22%;
     --ring: 200 98% 39%;
   }
 }
@@ -195,4 +197,59 @@
   color: var(--primary);
   border-radius: 0.25rem;
   z-index: 60;
+}
+
+/* Subtle floating blob animations for background */
+@keyframes floatSlow {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(80px, -48px, 0) scale(1.04); }
+  100% { transform: translate3d(-60px, 60px, 0) scale(1); }
+}
+
+@keyframes driftSlower {
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-96px, 40px, 0) scale(1.03); }
+  100% { transform: translate3d(72px, -64px, 0) scale(1.05); }
+}
+
+/* Faster, wider drift that crosses the viewport */
+@keyframes floatAcrossA {
+  0% { transform: translate3d(-10vw, -5vh, 0) scale(1); }
+  50% { transform: translate3d(35vw, 6vh, 0) scale(1.03); }
+  100% { transform: translate3d(80vw, -4vh, 0) scale(1); }
+}
+
+@keyframes floatAcrossB {
+  0% { transform: translate3d(75vw, 8vh, 0) scale(1.05); }
+  50% { transform: translate3d(30vw, -6vh, 0) scale(1.02); }
+  100% { transform: translate3d(-15vw, 10vh, 0) scale(1.05); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 30s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.animate-drift-slower {
+  animation: driftSlower 42s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.animate-float-fast {
+  animation: floatAcrossA 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.animate-drift-fast {
+  animation: floatAcrossB 20s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-drift-slower,
+  .animate-float-fast,
+  .animate-drift-fast {
+    animation: none !important;
+  }
 }
