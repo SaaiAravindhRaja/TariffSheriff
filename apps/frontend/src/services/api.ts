@@ -22,7 +22,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // Increased to 30 seconds for news API calls
   headers: {
     'Content-Type': 'application/json',
   },
@@ -168,11 +168,18 @@ export interface NewsErrorResponse {
 }
 
 export const newsApi = {
-  // GET /api/news/articles - Fetch all stored articles
-  getAllArticles: () => 
-    api.get<Article[]>('/news/articles')
+  // GET /api/news/articles - Fetch all stored articles with pagination
+  getAllArticles: (page: number = 0, limit: number = 3) => 
+    api.get<Article[]>('/news/articles', { params: { page, limit } })
       .catch((error) => {
-        const errorMessage = error.response?.data?.message || 'Failed to fetch articles'
+        // Better error messages
+        if (error.response?.status === 402) {
+          throw new Error('News API rate limit reached. Please try again later.')
+        }
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timed out. Please check your connection and try again.')
+        }
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch articles'
         throw new Error(errorMessage)
       }),
 

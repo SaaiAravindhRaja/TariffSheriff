@@ -16,19 +16,25 @@ export function News() {
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [answerSource, setAnswerSource] = useState<'db' | 'api' | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const articlesPerPage = 3
   const { user } = useAuth()
 
   // Fetch all articles on mount
   useEffect(() => {
-    fetchArticles()
+    fetchArticles(0)
   }, [])
 
-  const fetchArticles = async () => {
+  const fetchArticles = async (page: number) => {
     try {
       setLoading(true)
       setError(null)
-      const response = await newsApi.getAllArticles()
+      const response = await newsApi.getAllArticles(page, articlesPerPage)
       setArticles(response.data)
+      setCurrentPage(page)
+      // If we got fewer articles than requested, there are no more pages
+      setHasMore(response.data.length === articlesPerPage)
     } catch (err: any) {
       console.error('Error fetching articles:', err)
       setError(err.message || 'Failed to load articles. Please try again later.')
@@ -94,11 +100,26 @@ export function News() {
     setSynthesizedAnswer(null)
     setAnswerSource(null)
     setConversationId(null)
-    fetchArticles()
+    setCurrentPage(0)
+    fetchArticles(0)
   }
 
   const handleRetry = () => {
-    fetchArticles()
+    fetchArticles(currentPage)
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      fetchArticles(currentPage - 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handleNextPage = () => {
+    if (hasMore) {
+      fetchArticles(currentPage + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   return (
@@ -189,17 +210,48 @@ export function News() {
         </Card>
       )}
 
-      {/* Articles Grid */}
+      {/* Articles Grid - 3 per page in a single row on large screens */}
       {!loading && articles.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {articles.map((article, index) => (
-            <ArticleCard
-              key={article.id || index}
-              article={article}
-              onReadMore={handleReadMore}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {articles.map((article, index) => (
+              <ArticleCard
+                key={article.id || index}
+                article={article}
+                onReadMore={handleReadMore}
+              />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {!synthesizedAnswer && (
+            <div className="flex items-center justify-center gap-4 mt-8">
+              <Button
+                variant="outline"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 0}
+                className="flex items-center gap-2"
+              >
+                <span>←</span>
+                Previous
+              </Button>
+              
+              <span className="text-sm text-gray-600">
+                Page {currentPage + 1}
+              </span>
+              
+              <Button
+                variant="outline"
+                onClick={handleNextPage}
+                disabled={!hasMore}
+                className="flex items-center gap-2"
+              >
+                Next
+                <span>→</span>
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Article Modal */}

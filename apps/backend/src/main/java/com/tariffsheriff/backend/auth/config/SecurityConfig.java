@@ -88,6 +88,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll() // Keep for backwards compatibility if needed
+                        .requestMatchers("/api/tariff-rate/routes").permitAll() // Public endpoint for map visualization
+                        .requestMatchers("/api/news/**").permitAll() // Public news endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
