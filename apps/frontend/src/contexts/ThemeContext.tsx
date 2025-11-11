@@ -21,7 +21,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement
     root.classList.remove('light', 'dark')
     root.classList.add(theme)
-    try { safeLocalStorage.set('theme', theme) } catch {}
+    try {
+      safeLocalStorage.set('theme', theme)
+    } catch (e) {
+      // ignore persistence errors (private mode, etc.)
+      void e
+    }
   }, [theme])
 
   const value = useMemo<ThemeContextType>(() => ({
@@ -38,4 +43,3 @@ export function useTheme() {
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
   return ctx
 }
-
