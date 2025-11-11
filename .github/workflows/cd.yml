@@ -263,15 +263,16 @@ jobs:
           sed -i "s|DATABASE_PASSWORD_PLACEHOLDER|$DATABASE_PASSWORD|g" /tmp/deploy.sh
           sed -i "s|JWT_SECRET_PLACEHOLDER|$JWT_SECRET|g" /tmp/deploy.sh
           
-          # Send via SSM
+          # Send via SSM using file
           echo "📤 Sending command to EC2..."
-          COMMAND_ID=$(aws ssm send-command \
+          aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="$(cat /tmp/deploy.sh)" \
+            --parameters file:///tmp/deploy.sh \
             --region ${{ env.AWS_REGION }} \
-            --query 'Command.CommandId' \
-            --output text)
+            --output json > /tmp/ssm-response.json
+          
+          COMMAND_ID=$(cat /tmp/ssm-response.json | jq -r '.Command.CommandId')
           
           echo "⏳ Waiting for command..."
           aws ssm wait command-executed \
