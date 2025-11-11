@@ -70,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/auth/**").permitAll() // Keep for backwards compatibility if needed
                         .requestMatchers("/api/tariff-rate/routes").permitAll() // Public endpoint for map visualization
+                        .requestMatchers("/api/news/**").permitAll() // Public news endpoints
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
