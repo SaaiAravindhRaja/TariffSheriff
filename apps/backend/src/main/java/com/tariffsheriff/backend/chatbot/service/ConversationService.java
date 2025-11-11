@@ -210,11 +210,12 @@ public class ConversationService {
             messages.add(message);
         }
         
-        public void limitMessages(int maxMessages) {
-            if (messages.size() > maxMessages) {
+       public void limitMessages(int maxMessagesCount) {
+            if (messages.size() > maxMessagesCount) {
                 // Keep the most recent messages
+                // e.g., size is 101, max is 100. We want sublist from index 1 to 101.
                 List<ConversationMessage> recentMessages = messages.subList(
-                        messages.size() - maxMessages, messages.size());
+                        messages.size() - maxMessagesCount, messages.size());
                 messages.clear();
                 messages.addAll(recentMessages);
             }
