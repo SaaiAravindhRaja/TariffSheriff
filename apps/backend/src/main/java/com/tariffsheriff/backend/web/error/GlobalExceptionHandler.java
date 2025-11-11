@@ -1,5 +1,7 @@
 package com.tariffsheriff.backend.web.error;
 
+import com.tariffsheriff.backend.news.exception.InvalidQueryException;
+import com.tariffsheriff.backend.news.exception.NewsProcessingException;
 import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -21,6 +23,32 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTariffRateNotFound(TariffRateNotFoundException ex, HttpServletRequest req) {
         ErrorResponse body = build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    // News-specific exception handlers
+    
+    /**
+     * Handle news processing errors (500 Internal Server Error)
+     * Thrown when external API calls fail, embedding generation fails, or other processing errors occur
+     */
+    @ExceptionHandler(NewsProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleNewsProcessingException(NewsProcessingException ex, HttpServletRequest req) {
+        log.error("News processing error on {}: {}", req.getRequestURI(), ex.getMessage(), ex);
+        String userFriendlyMessage = "I encountered an issue while processing your news query. Please try again or rephrase your question.";
+        ErrorResponse body = build(HttpStatus.INTERNAL_SERVER_ERROR, userFriendlyMessage, req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+    
+    /**
+     * Handle invalid query errors (400 Bad Request)
+     * Thrown when query is empty, malformed, or doesn't meet validation requirements
+     */
+    @ExceptionHandler(InvalidQueryException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQueryException(InvalidQueryException ex, HttpServletRequest req) {
+        log.warn("Invalid news query on {}: {}", req.getRequestURI(), ex.getMessage());
+        String userFriendlyMessage = "Your query appears to be invalid or incomplete. Please provide a clear question about tariff news.";
+        ErrorResponse body = build(HttpStatus.BAD_REQUEST, userFriendlyMessage, req.getRequestURI());
+        return ResponseEntity.badRequest().body(body);
     }
 
     // Chatbot/AI-specific exception handlers removed for simplicity
