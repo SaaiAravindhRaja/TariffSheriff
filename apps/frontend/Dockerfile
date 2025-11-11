@@ -8,9 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (include devDeps for Vite build)
-# Robust path: generate a lockfile, then perform a clean install
-RUN npm install --package-lock-only --no-audit --no-fund \
-    && npm ci --no-audit --no-fund
+# Pin to npm@9 to avoid npm@10 CI bugs (e.g., 'extraneous' undefined)
+RUN npm i -g npm@9.9.2 && npm --version \
+    && npm install --no-audit --no-fund
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
