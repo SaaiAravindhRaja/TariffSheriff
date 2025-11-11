@@ -68,7 +68,11 @@ const countryCoordinates: Record<string, [number, number]> = {
   'BEL': [4, 50],
 }
 
-export function GlobalTradeRoutes() {
+interface GlobalTradeRoutesProps {
+  onRouteSelect?: (route: { importer: string; origin: string } | null) => void
+}
+
+export function GlobalTradeRoutes({ onRouteSelect }: GlobalTradeRoutesProps = {}) {
   const [routes, setRoutes] = useState<TradeRoute[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<RouteInfo | null>(null)
@@ -299,14 +303,18 @@ export function GlobalTradeRoutes() {
                   from={route.originCoords}
                   to={route.importerCoords}
                   stroke="#3b82f6"
-                  strokeWidth={hoveredRoute?.importer === route.importer && hoveredRoute?.origin === route.origin ? 2 : 1}
+                  strokeWidth={hoveredRoute?.importer === route.importer && hoveredRoute?.origin === route.origin ? 4 : 2.5}
                   strokeLinecap="round"
                   className="opacity-60 hover:opacity-100 transition-all cursor-pointer"
-                  onClick={() => setSelectedRoute({
-                    importer: route.importer,
-                    origin: route.origin,
-                    count: route.count
-                  })}
+                  onClick={() => {
+                    const routeInfo = {
+                      importer: route.importer,
+                      origin: route.origin,
+                      count: route.count
+                    }
+                    setSelectedRoute(routeInfo)
+                    onRouteSelect?.(routeInfo)
+                  }}
                   onMouseEnter={() => setHoveredRoute({
                     importer: route.importer,
                     origin: route.origin,
@@ -375,7 +383,10 @@ export function GlobalTradeRoutes() {
                     Trade Route Details
                   </h4>
                   <button
-                    onClick={() => setSelectedRoute(null)}
+                    onClick={() => {
+                      setSelectedRoute(null)
+                      onRouteSelect?.(null)
+                    }}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

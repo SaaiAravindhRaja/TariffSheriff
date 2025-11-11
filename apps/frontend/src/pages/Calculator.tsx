@@ -153,6 +153,30 @@ export function Calculator() {
     return map[c] || undefined
   }
   
+  // Auto-fill form from Database page transfer
+  useEffect(() => {
+    const prefilledData = sessionStorage.getItem('prefilledTariff')
+    if (prefilledData) {
+      try {
+        const data = JSON.parse(prefilledData)
+        console.log('📋 Auto-filling calculator from database:', data)
+        
+        // Set form fields
+        setForm({
+          importerIso3: data.importerIso3 || '',
+          originIso3: data.originIso3 || '',
+          hsCode: data.hsCode || ''
+        })
+        
+        // Clear the sessionStorage so it doesn't auto-fill again on refresh
+        sessionStorage.removeItem('prefilledTariff')
+        
+        console.log('✅ Form auto-filled! Click "Lookup Tariff Options" to continue.')
+      } catch (error) {
+        console.error('Failed to parse prefilled data:', error)
+      }
+    }
+  }, []) // Run once on mount
 
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
