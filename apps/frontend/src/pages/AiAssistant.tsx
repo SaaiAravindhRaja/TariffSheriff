@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2 } from 'lucide-react'
+import { Send, Bot, User, Loader2, Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { api } from '@/services/api'
+import { useToast } from '@/hooks/use-toast'
 
 interface Message {
   id: string
@@ -38,7 +39,11 @@ export function AiAssistant() {
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string>()
   const [error, setError] = useState<string>()
+  const [isListening, setIsListening] = useState(false)
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const { toast } = useToast()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,6 +52,105 @@ export function AiAssistant() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Check for speech recognition support on mount
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    setIsVoiceSupported(!!SpeechRecognition)
+  }, [])
+
+  const startVoiceInput = () => {
+    if (!isVoiceSupported) {
+      console.warn('Voice input not supported in this browser')
+      alert('Voice input is not supported in your browser. Please use Chrome or Edge.')
+      return
+    }
+
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const recognition = new SpeechRecognition()
+      
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+      recognition.maxAlternatives = 1
+
+      recognition.onstart = () => {
+        console.log('Voice recognition started')
+        setIsListening(true)
+      }
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        console.log('Voice recognition result received')
+        let transcript = ''
+        
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript
+        }
+        
+        console.log('Transcript:', transcript)
+        setInput(transcript)
+      }
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error, event.message)
+        setIsListening(false)
+        
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please allow microphone access in your browser settings.')
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          alert(`Voice input error: ${event.error}. Please try again.`)
+        }
+      }
+
+      recognition.onend = () => {
+        console.log('Voice recognition ended')
+        setIsListening(false)
+        recognitionRef.current = null
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+      console.log('Starting voice recognition...')
+    } catch (error) {
+      console.error('Failed to start voice recognition:', error)
+      setIsListening(false)
+      alert('Failed to start voice input. Please try again.')
+    }
+  }
+
+  const stopVoiceInput = () => {
+    if (recognitionRef.current) {
+      console.log('Stopping voice recognition')
+      try {
+        recognitionRef.current.stop()
+      } catch (error) {
+        console.error('Error stopping recognition:', error)
+      }
+      setIsListening(false)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop()
+        } catch (error) {
+          console.error('Error cleaning up recognition:', error)
+        }
+      }
+    }
+  }, [])
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      stopVoiceInput()
+    } else {
+      startVoiceInput()
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -223,14 +327,38 @@ export function AiAssistant() {
           )}
           
           <form onSubmit={handleSubmit} className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question about tariffs, trade agreements, or HS codes..."
-              className="flex-1 min-h-[60px] max-h-[120px] resize-none"
-              disabled={isLoading}
-            />
+            <div className="flex-1 relative">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a question about tariffs, trade agreements, or HS codes..."
+                className="min-h-[60px] max-h-[120px] resize-none pr-12"
+                disabled={isLoading}
+              />
+              {isVoiceSupported && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleVoiceInput}
+                  disabled={isLoading}
+                  className={`absolute right-2 top-2 hover:bg-gray-100 ${
+                    isListening 
+                      ? 'text-red-600 bg-red-50 animate-pulse' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={isListening ? 'Click to stop recording' : 'Click to start voice input'}
+                  aria-label={isListening ? 'Stop voice recording' : 'Start voice recording'}
+                >
+                  {isListening ? (
+                    <Mic className="w-5 h-5" />
+                  ) : (
+                    <MicOff className="w-5 h-5" />
+                  )}
+                </Button>
+              )}
+            </div>
             <Button
               type="submit"
               disabled={!input.trim() || isLoading}
@@ -246,6 +374,7 @@ export function AiAssistant() {
           
           <p className="text-xs text-gray-500 mt-2">
             Press Enter to send, Shift+Enter for new line
+            {isVoiceSupported && ' • Click microphone for voice input'}
           </p>
         </div>
       </Card>
