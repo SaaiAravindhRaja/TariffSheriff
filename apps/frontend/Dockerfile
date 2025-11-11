@@ -5,11 +5,10 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
 
 # Install dependencies (include devDeps for Vite build)
-# If you later add a package-lock.json, you can switch to: RUN npm ci
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
