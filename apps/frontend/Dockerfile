@@ -1,5 +1,5 @@
 # Multi-stage build for React frontend
-FROM node:18-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -8,9 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (include devDeps for Vite build)
-# Pin to npm@9 to avoid npm@10 CI bugs (e.g., 'extraneous' undefined)
-RUN npm i -g npm@9.9.2 && npm --version \
-    && npm install --no-audit --no-fund
+# Generate lockfile and use clean install (Debian base avoids Alpine/npm musl issues)
+RUN npm install --package-lock-only --no-audit --no-fund \
+    && npm ci --no-audit --no-fund
 
 # Build-time envs for Vite
 ARG VITE_API_BASE_URL
