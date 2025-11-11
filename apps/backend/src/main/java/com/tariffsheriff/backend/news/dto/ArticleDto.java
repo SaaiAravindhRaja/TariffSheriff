@@ -53,4 +53,10 @@ public class ArticleDto {
         example = "2024-01-15T10:30:00Z"
     )
     private String publishedAt;
+    
+    @Schema(
+        description = "URL to article image/thumbnail",
+        example = "https://example.com/images/article-thumbnail.jpg"
+    )
+    private String imageUrl;
 }

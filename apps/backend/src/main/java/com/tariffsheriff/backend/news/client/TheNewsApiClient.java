@@ -146,6 +146,9 @@ public class TheNewsApiClient {
         @JsonProperty("snippet")
         private String snippet;
         
+        @JsonProperty("image_url")
+        private String imageUrl;
+        
         public String getTitle() {
             return title;
         }
@@ -184,6 +187,14 @@ public class TheNewsApiClient {
         
         public void setSnippet(String snippet) {
             this.snippet = snippet;
+        }
+        
+        public String getImageUrl() {
+            return imageUrl;
+        }
+        
+        public void setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
         }
     }
     
