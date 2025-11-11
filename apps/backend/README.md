@@ -149,3 +149,4 @@ export DATABASE_MIN_IDLE=0
 ```
 
 Then start the backend as usual (`./mvnw spring-boot:run` or `mvn spring-boot:run`). Flyway will apply the migrations on first run; if you want to skip them for a pre-provisioned schema you can set `SPRING_FLYWAY_ENABLED=false`.
+# Deployment test
