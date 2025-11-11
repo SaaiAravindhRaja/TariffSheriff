@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class TariffRate {
 
     @Id
@@ -38,7 +38,7 @@ public class TariffRate {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "hs_product_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private HsProduct hsProduct;
 
     @Column(nullable = false)

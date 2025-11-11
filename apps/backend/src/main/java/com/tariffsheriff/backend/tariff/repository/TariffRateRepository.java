@@ -34,32 +34,33 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
     // Filter by country pair (e.g., India → Singapore)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.originIso3 = :originIso3")
-    List<TariffRate> findByCountryPair(@Param("importerIso3") String importerIso3, 
-                                       @Param("originIso3") String originIso3, 
-                                       Pageable pageable);
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.originIso3 = :originIso3")
+    List<TariffRate> findByCountryPair(@Param("importerIso3") String importerIso3,
+            @Param("originIso3") String originIso3,
+            Pageable pageable);
 
     // Filter by country pair + HS code prefix (using subquery)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.originIso3 = :originIso3 " +
-           "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE hp.hsCode LIKE CONCAT(:hsCodePrefix, '%'))")
-    List<TariffRate> findByCountryPairAndHsCode(@Param("importerIso3") String importerIso3, 
-                                                 @Param("originIso3") String originIso3,
-                                                 @Param("hsCodePrefix") String hsCodePrefix,
-                                                 Pageable pageable);
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.originIso3 = :originIso3 " +
+            "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE hp.hsCode LIKE CONCAT(:hsCodePrefix, '%'))")
+    List<TariffRate> findByCountryPairAndHsCode(@Param("importerIso3") String importerIso3,
+            @Param("originIso3") String originIso3,
+            @Param("hsCodePrefix") String hsCodePrefix,
+            Pageable pageable);
 
-    // Filter by country pair + multiple HS code prefixes (for categories with multiple codes)
+    // Filter by country pair + multiple HS code prefixes (for categories with
+    // multiple codes)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.originIso3 = :originIso3 " +
-           "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
-           "hp.hsCode LIKE CONCAT(:hsPrefix1, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsPrefix2, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsPrefix3, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsPrefix4, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsPrefix5, '%'))")
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.originIso3 = :originIso3 " +
+            "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
+            "hp.hsCode LIKE CONCAT(:hsPrefix1, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsPrefix2, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsPrefix3, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsPrefix4, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsPrefix5, '%'))")
     List<TariffRate> findByCountryPairAndMultipleHsCodes(
             @Param("importerIso3") String importerIso3,
             @Param("originIso3") String originIso3,
@@ -76,22 +77,22 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
     // Filter by importer + HS code prefix (using subquery)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE hp.hsCode LIKE CONCAT(:hsCodePrefix, '%'))")
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE hp.hsCode LIKE CONCAT(:hsCodePrefix, '%'))")
     List<TariffRate> findByImporterAndHsCode(@Param("importerIso3") String importerIso3,
-                                             @Param("hsCodePrefix") String hsCodePrefix,
-                                             Pageable pageable);
+            @Param("hsCodePrefix") String hsCodePrefix,
+            Pageable pageable);
 
     // Filter by country pair + list of HS codes (with prefix matching)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.originIso3 = :originIso3 " +
-           "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
-           "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.originIso3 = :originIso3 " +
+            "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
+            "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
     List<TariffRate> findByCountryPairAndHsCodes(
             @Param("importerIso3") String importerIso3,
             @Param("originIso3") String originIso3,
@@ -104,13 +105,13 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
     // Filter by importer + list of HS codes (with prefix matching)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.importerIso3 = :importerIso3 " +
-           "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
-           "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
+            "WHERE tr.importerIso3 = :importerIso3 " +
+            "AND tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
+            "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
     List<TariffRate> findByImporterAndHsCodes(
             @Param("importerIso3") String importerIso3,
             @Param("hsCode1") String hsCode1,
@@ -122,12 +123,12 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
 
     // Filter by list of HS codes only (with prefix matching)
     @Query("SELECT tr FROM TariffRate tr " +
-           "WHERE tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
-           "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
-           "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
+            "WHERE tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE " +
+            "hp.hsCode LIKE CONCAT(:hsCode1, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode2, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode3, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode4, '%') OR " +
+            "hp.hsCode LIKE CONCAT(:hsCode5, '%'))")
     List<TariffRate> findByHsCodes(
             @Param("hsCode1") String hsCode1,
             @Param("hsCode2") String hsCode2,

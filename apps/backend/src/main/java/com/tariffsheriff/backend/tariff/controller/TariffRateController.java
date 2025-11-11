@@ -31,7 +31,7 @@ public class TariffRateController {
         this.tariffRateRepository = trr;
     }
 
-    @GetMapping({"", "/"})
+    @GetMapping({ "", "/" })
     public List<TariffRate> getTariffRates(
             @RequestParam(required = false) String importerIso3,
             @RequestParam(required = false) String originIso3,
