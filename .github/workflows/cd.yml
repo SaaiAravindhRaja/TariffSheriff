@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.backend == 'true'
-    timeout-minutes: 20
+    timeout-minutes: 25
     outputs:
       image: ${{ steps.image.outputs.image }}
     steps:
@@ -85,9 +85,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -107,22 +104,16 @@ jobs:
           context: apps/backend
           file: apps/backend/Dockerfile
           push: true
+          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      
-      - name: Set image output
-        id: image
-        run: |
-          FULL_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ steps.meta.outputs.version }}"
-          echo "image=$FULL_IMAGE" >> $GITHUB_OUTPUT
-          echo "✅ Using image: $FULL_IMAGE"
 
   build-frontend:
     name: Build Frontend Docker Image
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.frontend == 'true'
-    timeout-minutes: 20
+    timeout-minutes: 25
     outputs:
       image: ${{ steps.image.outputs.image }}
     steps:
@@ -158,9 +149,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -180,15 +168,17 @@ jobs:
           context: apps/frontend
           file: apps/frontend/Dockerfile
           push: true
+          platforms: linux/amd64
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}
+            VITE_AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}
+            VITE_AUTH0_AUDIENCE=${{ secrets.AUTH0_AUDIENCE }}
+            VITE_AUTH0_REDIRECT_URI=https://tariffsheriff.app
+            VITE_ENABLE_ANALYTICS=false
+            VITE_ENABLE_ERROR_REPORTING=false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      
-      - name: Set image output
-        id: image
-        run: |
-          FULL_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ steps.meta.outputs.version }}"
-          echo "image=$FULL_IMAGE" >> $GITHUB_OUTPUT
-          echo "✅ Using image: $FULL_IMAGE"
 
   deploy-to-ec2:
     name: Deploy to EC2
@@ -204,16 +194,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -221,80 +201,35 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
       
-      - name: Deploy to EC2
+      - name: Deploy to EC2 using ec2_run.sh
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
-          BACKEND_IMAGE: ${{ needs.build-backend.outputs.image || '' }}
-          FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image || '' }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DOMAIN: tariffsheriff.app
         run: |
-          echo "🚀 Deploying to EC2..."
+          echo "🚀 Deploying to EC2 with ec2_run.sh..."
           
-          # Create deployment script
-          cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
-          #!/bin/bash
-          set -e
+          # Create /opt/tariffsheriff and write backend.env from GitHub Secrets
+          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "sudo mkdir -p /opt/tariffsheriff && sudo chown \$USER:\$USER /opt/tariffsheriff"
+          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "cat > /tmp/backend.env << 'ENVEOF'
+          DATABASE_URL=${DATABASE_URL}
+          DATABASE_USERNAME=${DATABASE_USERNAME}
+          DATABASE_PASSWORD=${DATABASE_PASSWORD}
+          JWT_SECRET=${JWT_SECRET}
+          SPRING_PROFILES_ACTIVE=prod
+          CORS_ALLOWED_ORIGIN_PATTERNS=https://tariffsheriff.app,https://www.tariffsheriff.app
+          ENVEOF"
+          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "sudo mv /tmp/backend.env /opt/tariffsheriff/backend.env && sudo chmod 600 /opt/tariffsheriff/backend.env"
           
-          echo "📥 Logging into ECR..."
-          aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin REGISTRY_PLACEHOLDER
+          # Copy ec2_run.sh and execute it with proper env vars
+          scp -i ~/.ssh/deploy_key scripts/ec2_run.sh $EC2_USER@$EC2_HOST:/tmp/ec2_run.sh
+          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "chmod +x /tmp/ec2_run.sh && AWS_REGION='${{ env.AWS_REGION }}' BACKEND_REPO='${{ env.ECR_BACKEND_REPOSITORY }}' FRONTEND_REPO='${{ env.ECR_FRONTEND_REPOSITORY }}' BACKEND_ENV_FILE='/opt/tariffsheriff/backend.env' IMAGE_TAG='latest' DOMAIN='${DOMAIN}' HOST_CERTS_DIR='/opt/caddy/certs' /tmp/ec2_run.sh"
           
-          # Environment variables for backend
-          DATABASE_URL="jdbc:postgresql://ep-broad-bar-a14utknk-pooler.ap-southeast-1.aws.neon.tech:5432/tariffsheriff?sslmode=require"
-          DATABASE_USERNAME="app_dev"
-          DATABASE_PASSWORD="2vKk?uw3mhdF"
-          JWT_SECRET="ff12189b52cbc92e16daaba6c45a7abda817faadf8c10b32dc1d73eebf91f8d9ef2eb143514e627a1f427beddf7c1ab3f398652e70e4abb37245879da0f02c8b"
-          
-          # Deploy backend if image is provided
-          if [ -n "BACKEND_IMAGE_PLACEHOLDER" ] && [ "BACKEND_IMAGE_PLACEHOLDER" != "" ]; then
-            echo "🔄 Deploying backend..."
-            docker pull BACKEND_IMAGE_PLACEHOLDER
-            docker stop tariffsheriff-backend 2>/dev/null || true
-            docker rm tariffsheriff-backend 2>/dev/null || true
-            docker run -d \
-              --name tariffsheriff-backend \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              -e SPRING_PROFILES_ACTIVE=prod \
-              -e DATABASE_URL="$DATABASE_URL" \
-              -e DATABASE_USERNAME="$DATABASE_USERNAME" \
-              -e DATABASE_PASSWORD="$DATABASE_PASSWORD" \
-              -e JWT_SECRET="$JWT_SECRET" \
-              BACKEND_IMAGE_PLACEHOLDER
-            echo "✅ Backend deployed"
-          fi
-          
-          # Deploy frontend if image is provided
-          if [ -n "FRONTEND_IMAGE_PLACEHOLDER" ] && [ "FRONTEND_IMAGE_PLACEHOLDER" != "" ]; then
-            echo "🔄 Deploying frontend..."
-            docker pull FRONTEND_IMAGE_PLACEHOLDER
-            docker stop tariffsheriff-frontend 2>/dev/null || true
-            docker rm tariffsheriff-frontend 2>/dev/null || true
-            docker run -d \
-              --name tariffsheriff-frontend \
-              --restart unless-stopped \
-              -p 80:80 \
-              FRONTEND_IMAGE_PLACEHOLDER
-            echo "✅ Frontend deployed"
-          fi
-          
-          echo "🧹 Cleaning up old images..."
-          docker image prune -af --filter "until=24h" || true
-          
-          echo "✅ Deployment complete!"
-          docker ps --filter "name=tariffsheriff"
-          DEPLOY_SCRIPT
-          
-          # Replace placeholders
-          sed -i "s|REGISTRY_PLACEHOLDER|$ECR_REGISTRY|g" /tmp/deploy.sh
-          sed -i "s|BACKEND_IMAGE_PLACEHOLDER|$BACKEND_IMAGE|g" /tmp/deploy.sh
-          sed -i "s|FRONTEND_IMAGE_PLACEHOLDER|$FRONTEND_IMAGE|g" /tmp/deploy.sh
-          
-          # Copy and execute deployment script
-          scp -i ~/.ssh/deploy_key /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
-          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "chmod +x /tmp/deploy.sh && bash /tmp/deploy.sh"
-          
-          echo "✅ Deployment successful!"
+          echo "✅ Remote execution complete"
       
       - name: Verify deployment
         env:
@@ -311,15 +246,14 @@ jobs:
     if: needs.deploy-to-ec2.result == 'success'
     timeout-minutes: 5
     steps:
-      - name: Check backend health
-        continue-on-error: true
+      - name: Check backend health (via Caddy HTTPS)
         run: |
           echo "🏥 Checking backend health..."
           MAX_RETRIES=10
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if curl -f -s http://${{ secrets.EC2_HOST }}:8080/actuator/health > /dev/null 2>&1; then
+            if curl -f -s https://tariffsheriff.app/actuator/health > /dev/null 2>&1; then
               echo "✅ Backend is healthy!"
               exit 0
             fi
@@ -330,16 +264,16 @@ jobs:
           done
           
           echo "⚠️  Backend health check failed after $MAX_RETRIES attempts"
-      
-      - name: Check frontend health
-        continue-on-error: true
+          exit 1
+
+      - name: Check frontend health (HTTPS)
         run: |
           echo "🏥 Checking frontend health..."
           MAX_RETRIES=10
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if curl -f -s http://${{ secrets.EC2_HOST }} > /dev/null 2>&1; then
+            if curl -f -s https://tariffsheriff.app > /dev/null 2>&1; then
               echo "✅ Frontend is healthy!"
               exit 0
             fi
@@ -350,6 +284,7 @@ jobs:
           done
           
           echo "⚠️  Frontend health check failed after $MAX_RETRIES attempts"
+          exit 1
 
   notify:
     name: Deployment Notification
