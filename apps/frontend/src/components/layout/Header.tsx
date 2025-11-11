@@ -113,23 +113,15 @@ export function Header({ className }: HeaderProps) {
         className
       )}
     >
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="flex h-16 items-center justify-between px-6 max-w-full">
         {/* Logo and Brand */}
-        <motion.div 
-          className="flex items-center space-x-3"
-          whileHover={{ scale: 1.05 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        <button 
+          onClick={() => navigate('/')}
+          className="flex items-center cursor-pointer bg-transparent border-none p-0 hover:opacity-80 transition-opacity focus:outline-none focus:ring-0"
+          aria-label="Go to TariffSheriff home"
+          title="Go to home"
         >
-          <a
-            onClick={(e) => { e.preventDefault(); navigate('/') }}
-            href="/"
-            aria-label="Go to TariffSheriff home"
-            title="TariffSheriff home"
-            className="flex items-center rounded-md bg-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
-          >
-            {/* App icon intentionally removed to avoid dark mode contrast issues */}
-          </a>
-          <div className="flex flex-col">
+          <div className="flex flex-col items-start">
             <h1 className="text-xl font-bold bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">
               TariffSheriff
             </h1>
@@ -137,7 +129,7 @@ export function Header({ className }: HeaderProps) {
               Trade Intelligence Platform
             </p>
           </div>
-        </motion.div>
+        </button>
 
         {/* Country Search */}
         <div className="flex-1 max-w-md mx-8">
@@ -173,9 +165,6 @@ export function Header({ className }: HeaderProps) {
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger-500 rounded-full text-xs flex items-center justify-center">
-                <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-              </span>
             </Button>
 
             {/* Notifications Dropdown */}

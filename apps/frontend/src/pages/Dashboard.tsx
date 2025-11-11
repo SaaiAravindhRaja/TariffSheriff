@@ -1,58 +1,95 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, Globe, Calculator, Zap, ArrowUpRight, ArrowDownRight, MoreHorizontal } from 'lucide-react'
+import { DollarSign, Globe, Calculator, Package, MoreHorizontal, ChevronDown } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, getCountryFlag } from '@/lib/utils'
 import { RecentCalculations } from '@/components/dashboard/RecentCalculations'
+import { DashboardStats, CalculationPeriod } from '@/types/dashboard'
+import api from '@/services/api'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
-const statsData = [
-  {
-    title: 'Total Tariff Revenue',
-    value: '$2,847,392',
-    change: '+12.5%',
-    trend: 'up',
-    icon: DollarSign,
-    description: 'This month'
-  },
-  {
-    title: 'Active Trade Routes',
-    value: '847',
-    change: '+3.2%',
-    trend: 'up',
-    icon: Globe,
-    description: 'Currently monitored'
-  },
-  {
-    title: 'Calculations Today',
-    value: '1,247',
-    change: '-2.1%',
-    trend: 'down',
-    icon: Calculator,
-    description: 'vs yesterday'
-  },
-  {
-    title: 'Avg Processing Time',
-    value: '0.8s',
-    change: '-15.3%',
-    trend: 'up',
-    icon: Zap,
-    description: 'Response time'
+function Dashboard() {
+  const navigate = useNavigate()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [period, setPeriod] = useState<CalculationPeriod>('today')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchDashboardStats()
+  }, [period])
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get<DashboardStats>('/profile/dashboard-stats', {
+        params: { period }
+      })
+      setStats(response.data)
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-]
 
-const topCountries = [
-  { code: 'US', name: 'United States', volume: '$1.2B', change: '+5.2%' },
-  { code: 'CN', name: 'China', volume: '$987M', change: '+12.8%' },
-  { code: 'DE', name: 'Germany', volume: '$654M', change: '-2.1%' },
-  { code: 'JP', name: 'Japan', volume: '$432M', change: '+8.7%' },
-  { code: 'GB', name: 'United Kingdom', volume: '$321M', change: '+3.4%' }
-]
+  const formatRevenue = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(2)}M`
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(1)}K`
+    }
+    return `$${value.toFixed(2)}`
+  }
 
-export function Dashboard() {
-  const navigate = useNavigate();
+  const getPeriodLabel = () => {
+    switch (period) {
+      case 'today': return 'Today'
+      case 'month': return 'This Month'
+      case 'year': return 'This Year'
+      default: return 'Today'
+    }
+  }
+
+  const statsCards = [
+    {
+      title: 'Total Tariff Revenue',
+      value: loading ? '...' : formatRevenue(stats?.totalTariffRevenue || 0),
+      icon: DollarSign,
+      description: 'From all your calculations',
+      color: 'text-green-600 dark:text-green-400'
+    },
+    {
+      title: 'Active Tariff Routes',
+      value: loading ? '...' : (stats?.activeTariffRoutes?.toLocaleString() || '0'),
+      icon: Globe,
+      description: 'Available in database',
+      color: 'text-blue-600 dark:text-blue-400'
+    },
+    {
+      title: `Calculations ${getPeriodLabel()}`,
+      value: loading ? '...' : (stats?.calculationsCount?.toString() || '0'),
+      icon: Calculator,
+      description: getPeriodLabel(),
+      color: 'text-purple-600 dark:text-purple-400',
+      hasDropdown: true
+    },
+    {
+      title: 'Most Used HS Code',
+      value: loading ? '...' : (stats?.mostUsedHsCode?.hsCode || 'None'),
+      icon: Package,
+      description: loading ? '' : (stats?.mostUsedHsCode?.description || 'No calculations yet'),
+      subtext: loading ? '' : (stats?.mostUsedHsCode ? `Used ${stats.mostUsedHsCode.count}x` : ''),
+      color: 'text-orange-600 dark:text-orange-400'
+    }
+  ]
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
@@ -80,9 +117,8 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsData.map((stat, index) => {
+        {statsCards.map((stat, index) => {
           const Icon = stat.icon
-          const isPositive = stat.trend === 'up'
           
           return (
             <motion.div
@@ -96,23 +132,39 @@ export function Dashboard() {
                   <CardTitle className="text-sm font-medium">
                     {stat.title}
                   </CardTitle>
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  {stat.hasDropdown ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setPeriod('today')}>
+                          Today
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPeriod('month')}>
+                          This Month
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPeriod('year')}>
+                          This Year
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                    <span className={`flex items-center ${
-                      isPositive ? 'text-success-600' : 'text-danger-600'
-                    }`}>
-                      {isPositive ? (
-                        <ArrowUpRight className="w-3 h-3 mr-1" />
-                      ) : (
-                        <ArrowDownRight className="w-3 h-3 mr-1" />
-                      )}
-                      {stat.change}
-                    </span>
-                    <span>{stat.description}</span>
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.description}
+                  </p>
+                  {stat.subtext && (
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">
+                      {stat.subtext}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -151,7 +203,7 @@ export function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Top Countries */}
+        {/* Latest Tariff News */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -159,49 +211,28 @@ export function Dashboard() {
         >
           <Card>
             <CardHeader>
-              <CardTitle>Top Trading Partners</CardTitle>
+              <CardTitle>Latest Tariff News</CardTitle>
               <CardDescription>
-                Countries by trade volume this month
+                Recent updates on tariffs and trade
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {topCountries.map((country) => (
-                <button
-                  key={country.code}
-                  onClick={() => navigate(`/country/${country.code.toLowerCase()}`)}
-                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{getCountryFlag(country.code)}</div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">{country.name}</p>
-                      <p className="text-xs text-muted-foreground">{country.volume}</p>
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={country.change.startsWith('+') ? 'success' : 'destructive'}
-                    className="text-xs"
-                  >
-                    {country.change}
-                  </Badge>
-                </button>
-              ))}
+              <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                News pending data connection.
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      {/* Bottom Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Calculations */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
-          <RecentCalculations />
-        </motion.div>
-      </div>
+      {/* Recent Calculations */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <RecentCalculations />
+      </motion.div>
 
       {/* Trade Route Visualization */}
       <motion.div
@@ -226,3 +257,5 @@ export function Dashboard() {
     </div>
   )
 }
+
+export { Dashboard }
