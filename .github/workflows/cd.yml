@@ -176,7 +176,7 @@ jobs:
     if: |
       always() && 
       (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment:
       name: production
     steps:
@@ -193,29 +193,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          
-          # Add SSH config to disable strict host checking (for first-time connection)
-          cat > ~/.ssh/config << EOF
-          Host ${{ secrets.EC2_HOST }}
-            StrictHostKeyChecking no
-            UserKnownHostsFile=/dev/null
-            ServerAliveInterval 60
-            ServerAliveCountMax 3
-            ConnectTimeout 10
-          EOF
-          chmod 600 ~/.ssh/config
-          
-          echo "✅ SSH configured"
-      
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSM
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
           BACKEND_IMAGE: ${{ needs.build-backend.outputs.image || '' }}
           FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image || '' }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -224,7 +204,7 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
-          echo "🚀 Deploying to EC2..."
+          echo "🚀 Deploying to EC2 via AWS Systems Manager..."
           
           # Create deployment script
           cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
@@ -283,19 +263,31 @@ jobs:
           sed -i "s|DATABASE_PASSWORD_PLACEHOLDER|$DATABASE_PASSWORD|g" /tmp/deploy.sh
           sed -i "s|JWT_SECRET_PLACEHOLDER|$JWT_SECRET|g" /tmp/deploy.sh
           
-          # Copy and execute deployment script
-          scp -i ~/.ssh/deploy_key /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
-          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "chmod +x /tmp/deploy.sh && bash /tmp/deploy.sh"
+          # Execute via SSM
+          echo "📤 Sending command to EC2 instance..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=$(cat /tmp/deploy.sh | base64 -w 0 | sed 's/^/echo /' | sed 's/$/ | base64 -d | bash/')" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Command.CommandId' \
+            --output text)
+          
+          echo "⏳ Waiting for command to complete..."
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "📋 Command output:"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StandardOutputContent' \
+            --output text
           
           echo "✅ Deployment successful!"
-      
-      - name: Verify deployment
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-        run: |
-          echo "🔍 Checking container status..."
-          ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "docker ps --filter 'name=tariffsheriff' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
   health-check:
     name: Post-Deployment Health Check
