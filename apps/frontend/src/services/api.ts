@@ -127,4 +127,72 @@ export const savedTariffsApi = {
   save: (payload: any) => api.post('/tariff-calculations', payload),
 }
 
+// News API types
+export interface Article {
+  id?: number
+  title: string
+  url: string
+  content: string
+  queryContext?: string
+  source?: 'db' | 'api'
+  publishedAt?: string
+}
+
+export interface NewsQueryRequest {
+  query: string
+  username?: string
+  conversationId?: number
+}
+
+export interface NewsQueryResponse {
+  synthesizedAnswer: string
+  source: 'db' | 'api'
+  articles: Article[]
+  conversationId?: number
+}
+
+export interface NewsErrorResponse {
+  message: string
+  errorCode?: string
+}
+
+export const newsApi = {
+  // GET /api/news/articles - Fetch all stored articles
+  getAllArticles: () => 
+    api.get<Article[]>('/news/articles')
+      .catch((error) => {
+        const errorMessage = error.response?.data?.message || 'Failed to fetch articles'
+        throw new Error(errorMessage)
+      }),
+
+  // POST /api/news/query - Query news with semantic search
+  queryNews: (params: NewsQueryRequest) =>
+    api.post<NewsQueryResponse>('/news/query', null, { params })
+      .catch((error) => {
+        const errorMessage = error.response?.data?.message || 'Failed to query news'
+        const errorCode = error.response?.data?.errorCode
+        const newsError: NewsErrorResponse = {
+          message: errorMessage,
+          errorCode,
+        }
+        throw newsError
+      }),
+
+  // GET /api/news/search/similar - Find similar articles by embedding
+  searchSimilar: (params: { embedding: string; limit?: number }) =>
+    api.get<Article[]>('/news/search/similar', { params })
+      .catch((error) => {
+        const errorMessage = error.response?.data?.message || 'Failed to search similar articles'
+        throw new Error(errorMessage)
+      }),
+
+  // GET /api/news/search/query - Find articles by natural language query
+  searchByQuery: (params: { query: string; limit?: number }) =>
+    api.get<Article[]>('/news/search/query', { params })
+      .catch((error) => {
+        const errorMessage = error.response?.data?.message || 'Failed to search articles by query'
+        throw new Error(errorMessage)
+      }),
+}
+
 export default api
