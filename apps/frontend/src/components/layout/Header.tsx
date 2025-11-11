@@ -4,14 +4,12 @@ import {
   Shield, 
   User, 
   Bell,
-  Search,
   LogOut,
   Settings,
   ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
-import { CountrySearch } from '@/components/search/CountrySearch'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import api from '@/services/api'
@@ -131,13 +129,8 @@ export function Header({ className }: HeaderProps) {
           </div>
         </button>
 
-        {/* Country Search */}
-        <div className="flex-1 max-w-md mx-8">
-          <CountrySearch 
-            placeholder="Search countries for trade data..."
-            className="w-full"
-          />
-        </div>
+        {/* Spacer */}
+        <div className="flex-1"></div>
 
         {/* Actions */}
         <div className="flex items-center space-x-2">

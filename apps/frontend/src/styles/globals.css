@@ -5,50 +5,52 @@
 
 @layer base {
   :root {
+    /* Purple-Black Theme - Light Mode */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    /* Primary back to original blue */
-    --primary: 200 98% 39%;
+    /* Primary: Purple gradient colors */
+    --primary: 263 70% 50%;
     --primary-foreground: 210 40% 98%;
     --secondary: 240 33% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
     --muted: 220 20% 96%;
     --muted-foreground: 220 15% 35%;
-    --accent: 246 100% 97%;
-    --accent-foreground: 232 65% 20%;
+    --accent: 263 100% 97%;
+    --accent-foreground: 263 65% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 220 20% 92%;
     --input: 220 20% 92%;
-    --ring: 200 98% 39%;
+    --ring: 263 70% 50%;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 230 25% 8%;
+    /* Purple-Black Theme - Dark Mode */
+    --background: 240 10% 8%;
     --foreground: 210 40% 98%;
-    --card: 232 25% 10%;
+    --card: 240 10% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 232 25% 10%;
+    --popover: 240 10% 10%;
     --popover-foreground: 210 40% 98%;
-    /* Primary back to original blue */
-    --primary: 200 98% 39%;
+    /* Primary: Purple gradient colors */
+    --primary: 263 70% 50%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 234 22% 18%;
+    --secondary: 240 15% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 234 22% 18%;
+    --muted: 240 15% 18%;
     --muted-foreground: 215 20% 70%;
-    --accent: 246 35% 22%;
+    --accent: 263 35% 22%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 65% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 236 20% 22%;
-    --input: 236 20% 22%;
-    --ring: 200 98% 39%;
+    --border: 240 20% 22%;
+    --input: 240 20% 22%;
+    --ring: 263 70% 50%;
   }
 }
 
@@ -72,7 +74,11 @@
   }
   
   .tariff-gradient {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 50%, #3730a3 100%);
+  }
+  
+  .purple-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
   
   .card-hover {
