@@ -136,4 +136,11 @@ public interface TariffRateRepository extends JpaRepository<TariffRate, Long> {
             @Param("hsCode4") String hsCode4,
             @Param("hsCode5") String hsCode5,
             Pageable pageable);
+
+    // Filter by single HS code prefix
+    @Query("SELECT tr FROM TariffRate tr " +
+            "WHERE tr.hsProductId IN (SELECT hp.id FROM HsProduct hp WHERE hp.hsCode LIKE CONCAT(:hsCodePrefix, '%'))")
+    List<TariffRate> findByHsCodePrefix(
+            @Param("hsCodePrefix") String hsCodePrefix,
+            Pageable pageable);
 }
