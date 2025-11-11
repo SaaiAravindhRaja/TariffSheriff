@@ -60,12 +60,6 @@ const navigationItems = [
     href: '/news',
     icon: Newspaper,
     description: 'Tariff News & Updates'
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    description: 'Preferences & Config'
   }
 ]
 
