@@ -209,7 +209,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          
+          # Create SSH config with relaxed host checking
+          cat > ~/.ssh/config << 'EOF'
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            ConnectTimeout 30
+            ServerAliveInterval 60
+            ServerAliveCountMax 3
+          EOF
+          chmod 600 ~/.ssh/config
+          
+          echo "✅ SSH configured"
       
       - name: Deploy to EC2 using ec2_run.sh
         env:
