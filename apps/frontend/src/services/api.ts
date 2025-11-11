@@ -136,6 +136,7 @@ export interface Article {
   queryContext?: string
   source?: 'db' | 'api'
   publishedAt?: string
+  imageUrl?: string
 }
 
 export interface NewsQueryRequest {

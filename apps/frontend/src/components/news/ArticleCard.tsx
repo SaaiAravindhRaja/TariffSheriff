@@ -10,6 +10,7 @@ interface Article {
   queryContext?: string
   source?: 'db' | 'api'
   publishedAt?: string
+  imageUrl?: string
 }
 
 interface ArticleCardProps {
@@ -32,7 +33,22 @@ export function ArticleCard({ article, onReadMore }: ArticleCardProps) {
   }
 
   return (
-    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200">
+    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+      {/* Article Image */}
+      {article.imageUrl && (
+        <div className="relative w-full h-48 bg-gray-100 overflow-hidden">
+          <img
+            src={article.imageUrl}
+            alt={article.title}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            onError={(e) => {
+              // Hide image if it fails to load
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        </div>
+      )}
+      
       <CardContent className="pt-6 flex flex-col flex-1">
         <h3 className="font-semibold text-lg mb-2 line-clamp-2">
           {article.title}
