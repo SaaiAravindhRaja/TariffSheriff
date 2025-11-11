@@ -536,10 +536,10 @@ export function Calculator() {
                       return (
                         <div
                           key={option.id}
-                          className={`w-full rounded-md border px-4 py-3 text-left ${
+                          className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
                             isSelected
-                              ? 'border-brand-500 bg-brand-50'
-                              : 'border-border bg-background'
+                              ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 dark:border-brand-400'
+                              : 'border-border bg-background dark:bg-gray-900/50'
                           } ${eligible ? '' : 'opacity-50'}`}
                         >
                           <div className="flex items-center justify-between">

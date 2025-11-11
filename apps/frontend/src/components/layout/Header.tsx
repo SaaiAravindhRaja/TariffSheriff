@@ -14,6 +14,8 @@ import { useNavigate } from 'react-router-dom'
 import { CountrySearch } from '@/components/search/CountrySearch'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/ThemeContext'
+import { Sun, Moon } from 'lucide-react'
 
 interface HeaderProps {
   className?: string
@@ -21,6 +23,7 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
@@ -95,6 +98,20 @@ export function Header({ className }: HeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </Button>
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
             <Bell className="w-5 h-5" />

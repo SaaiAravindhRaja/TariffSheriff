@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsProvider } from '@/contexts/SettingsContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { useAuth } from '@/hooks/useAuth'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -20,6 +21,7 @@ import { Contact } from '@/pages/Contact'
 import { SavedTariffs } from '@/pages/SavedTariffs'
  
 import '@/styles/globals.css'
+import BackgroundFX from '@/components/visual/BackgroundFX'
 import Footer from '@/components/layout/Footer'
 
 // Create a client
@@ -55,7 +57,8 @@ function AppContent() {
 
   // Show main app if authenticated
   return (
-    <div className="min-h-screen bg-background font-sans antialiased">
+    <div className="min-h-screen bg-background font-sans antialiased relative">
+      <BackgroundFX />
       {/* Skip link for keyboard users */}
       <a href="#main-content" className="sr-only focus:not-sr-only skip-link">Skip to content</a>
       <Header />
@@ -88,11 +91,13 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </SettingsProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </SettingsProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }
