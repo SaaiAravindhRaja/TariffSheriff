@@ -41,6 +41,11 @@ api.interceptors.request.use(
     const publicEndpoints = ['/tariff-rate', '/countries', '/hs-products']
     const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.startsWith(endpoint))
     
+    console.log(`🔐 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+      isPublic: isPublicEndpoint,
+      hasTokenGetter: !!getAccessTokenSilently
+    })
+    
     if (!isPublicEndpoint) {
       try {
         if (getAccessTokenSilently) {
@@ -51,9 +56,15 @@ api.interceptors.request.use(
           })
           config.headers = config.headers ?? {}
           config.headers.Authorization = `Bearer ${token}`
+          console.log(`✅ Auth token attached for ${config.url}`, {
+            tokenLength: token?.length,
+            tokenPreview: token?.substring(0, 20) + '...'
+          })
+        } else {
+          console.warn(`⚠️ No token getter available for ${config.url}`)
         }
       } catch (error) {
-        console.error('Failed to get Auth0 token:', error)
+        console.error(`❌ Failed to get Auth0 token for ${config.url}:`, error)
       }
     }
     return config
@@ -65,8 +76,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
+      console.error(`🔒 401 Unauthorized for ${error.config?.url}`, {
+        hasAuthHeader: !!error.config?.headers?.Authorization,
+        responseData: error.response?.data
+      })
       // Auth0 will handle re-authentication
       console.error('Unauthorized request - please login again')
+    } else if (error.response?.status === 403) {
+      console.error(`🚫 403 Forbidden for ${error.config?.url}`, {
+        hasAuthHeader: !!error.config?.headers?.Authorization,
+        authHeaderPreview: error.config?.headers?.Authorization?.substring(0, 30) + '...',
+        responseData: error.response?.data
+      })
     }
     return Promise.reject(error)
   },

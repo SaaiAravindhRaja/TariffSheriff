@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Calculator,
   Database,
-  TrendingUp,
   Settings,
   FileText,
   Globe,
@@ -123,37 +122,6 @@ export function Sidebar({ className }: SidebarProps) {
           )
         })}
       </nav>
-
-      {/* Bottom Section */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.5 }}
-        className="absolute bottom-4 left-4 right-4"
-      >
-        <div className="rounded-lg bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-900/20 dark:to-brand-800/20 p-4 border border-brand-200 dark:border-brand-800">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-brand-600" />
-            <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
-              Quick Stats
-            </span>
-          </div>
-          <div className="space-y-1 text-xs text-brand-600 dark:text-brand-400">
-            <div className="flex justify-between">
-              <span>Active Rules:</span>
-              <span className="font-medium">1,247</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Countries:</span>
-              <span className="font-medium">195</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Last Update:</span>
-              <span className="font-medium">2h ago</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
     </motion.aside>
   )
 }
