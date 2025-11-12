@@ -74,7 +74,7 @@ public class InvalidQueryException extends ChatbotException {
                    "• Focus on one specific topic at a time\n" +
                    "• Break complex questions into smaller parts\n" +
                    "• Ask follow-up questions for additional details\n" +
-                   "• Keep questions under 500 characters";
+                   "• Keep questions under 1000 characters";
         }
         
         return generateDefaultSuggestion();

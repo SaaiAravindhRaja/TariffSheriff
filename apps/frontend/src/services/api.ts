@@ -101,6 +101,12 @@ export const tariffApi = {
     originIso3?: string
     hsCode: string
   }) => api.get<TariffLookupResponse>('/tariff-rate/lookup', { params }),
+  getTariffSubcategories: (params: {
+    importerIso3: string
+    originIso3?: string
+    hsCode: string
+    limit?: number
+  }) => api.get<TariffRateLookupResponse[]>('/tariff-rate/subcategories', { params }),
   searchHsProducts: (params: { q: string; limit?: number }) =>
     api.get<{ hsCode: string; hsLabel: string }[]>('/hs-products/search', { params }),
 }
@@ -137,80 +143,60 @@ export const savedTariffsApi = {
   save: (payload: any) => api.post('/tariff-calculations', payload),
 }
 
-// News API types
+export interface ChatConversationSummary {
+  conversationId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChatMessageDetail {
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+export interface ChatConversationDetail {
+  conversationId: string
+  createdAt: string
+  updatedAt: string
+  messages: ChatMessageDetail[]
+}
+
+export const chatbotApi = {
+  listConversations: () => api.get<ChatConversationSummary[]>('/chatbot/conversations'),
+  getConversation: (conversationId: string) =>
+    api.get<ChatConversationDetail>(`/chatbot/conversations/${conversationId}`),
+  deleteConversation: (conversationId: string) =>
+    api.delete(`/chatbot/conversations/${conversationId}`),
+}
+
 export interface Article {
-  id?: number
   title: string
   url: string
   content: string
   queryContext?: string
-  source?: 'db' | 'api'
+  source?: 'db' | 'api' | 'error'
   publishedAt?: string
   imageUrl?: string
 }
 
-export interface NewsQueryRequest {
-  query: string
-  username?: string
-  conversationId?: number
-}
-
 export interface NewsQueryResponse {
   synthesizedAnswer: string
-  source: 'db' | 'api'
+  source: 'db' | 'api' | 'error'
   articles: Article[]
-  conversationId?: number
-}
-
-export interface NewsErrorResponse {
-  message: string
-  errorCode?: string
+  conversationId?: number | null
 }
 
 export const newsApi = {
-  // GET /api/news/articles - Fetch all stored articles with pagination
-  getAllArticles: (page: number = 0, limit: number = 3) => 
-    api.get<Article[]>('/news/articles', { params: { page, limit } })
-      .catch((error) => {
-        // Better error messages
-        if (error.response?.status === 402) {
-          throw new Error('News API rate limit reached. Please try again later.')
-        }
-        if (error.code === 'ECONNABORTED') {
-          throw new Error('Request timed out. Please check your connection and try again.')
-        }
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch articles'
-        throw new Error(errorMessage)
-      }),
-
-  // POST /api/news/query - Query news with semantic search
-  queryNews: (params: NewsQueryRequest) =>
-    api.post<NewsQueryResponse>('/news/query', null, { params })
-      .catch((error) => {
-        const errorMessage = error.response?.data?.message || 'Failed to query news'
-        const errorCode = error.response?.data?.errorCode
-        const newsError: NewsErrorResponse = {
-          message: errorMessage,
-          errorCode,
-        }
-        throw newsError
-      }),
-
-  // GET /api/news/search/similar - Find similar articles by embedding
-  searchSimilar: (params: { embedding: string; limit?: number }) =>
-    api.get<Article[]>('/news/search/similar', { params })
-      .catch((error) => {
-        const errorMessage = error.response?.data?.message || 'Failed to search similar articles'
-        throw new Error(errorMessage)
-      }),
-
-  // GET /api/news/search/query - Find articles by natural language query
-  searchByQuery: (params: { query: string; limit?: number }) =>
-    api.get<Article[]>('/news/search/query', { params })
-      .catch((error) => {
-        const errorMessage = error.response?.data?.message || 'Failed to search articles by query'
-        throw new Error(errorMessage)
-      }),
+  getAllArticles: (page = 0, limit = 12) =>
+    api.get<Article[]>('/news/articles', { params: { page, limit } }),
+  queryNews: (payload: { query: string; username?: string; conversationId?: number | null }) => {
+    const { query, ...rest } = payload
+    const body = Object.keys(rest).length ? rest : undefined
+    return api.post<NewsQueryResponse>('/news/query', body, {
+      params: { query },
+    })
+  },
 }
 
 export default api

@@ -86,4 +86,13 @@ public class TariffRateController {
 
         return result;
     }
+
+    @GetMapping("/subcategories")
+    public List<TariffRateLookupDto> getSubcategories(
+            @RequestParam String importerIso3,
+            @RequestParam(required = false) String originIso3,
+            @RequestParam(name = "hsCode") String hsCodePrefix,
+            @RequestParam(defaultValue = "200") int limit) {
+        return tariffRateService.getSubcategories(importerIso3, originIso3, hsCodePrefix, limit);
+    }
 }
