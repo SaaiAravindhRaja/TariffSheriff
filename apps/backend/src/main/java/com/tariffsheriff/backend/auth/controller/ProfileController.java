@@ -115,7 +115,8 @@ public class ProfileController {
             String hsCode = (String) result[0];
             Long count = (Long) result[1];
 
-            // Get HS product description - handle case where HS code might not exist or cause DB errors
+            // Get HS product description - handle case where HS code might not exist or
+            // cause DB errors
             String description = "Unknown Product";
             try {
                 description = hsProductRepository.findByHsCode(hsCode)
