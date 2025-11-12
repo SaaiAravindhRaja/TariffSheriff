@@ -58,12 +58,12 @@ function AppContent() {
 
   // Show main app if authenticated
   return (
-    <div className="min-h-screen bg-background font-sans antialiased relative">
+    <div className="min-h-screen bg-background font-sans antialiased relative flex flex-col">
       <BackgroundFX />
       {/* Skip link for keyboard users */}
       <a href="#main-content" className="sr-only focus:not-sr-only skip-link">Skip to content</a>
       <Header />
-      <div className="flex">
+      <div className="flex flex-1">
         <Sidebar />
         <main id="main-content" className="flex-1 ml-64 transition-all duration-300">
           <Routes>
