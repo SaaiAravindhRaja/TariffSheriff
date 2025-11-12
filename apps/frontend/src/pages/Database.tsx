@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { GlobalTradeRoutes } from '@/components/dashboard/GlobalTradeRoutes'
 import { Search, ChevronDown, ChevronRight, Calculator, Battery, Zap, Cpu, ThermometerSun, Box, Gauge, Eye, Lightbulb, Magnet, X } from 'lucide-react'
 import api from '@/services/api'
+// import { CountrySelect } from '@/components/inputs/CountrySelect'
 
 interface TariffRate {
   id: number
@@ -229,15 +230,18 @@ export function Database() {
   const [filteredRates, setFilteredRates] = useState<TariffRate[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [selectedMapRoute, setSelectedMapRoute] = useState<{importer: string, origin: string} | null>(null)
+  const [manualImporter, setManualImporter] = useState<string>('')
+  const [manualOrigin, setManualOrigin] = useState<string>('')
 
   useEffect(() => {
     fetchTariffRates()
-  }, [selectedMapRoute, selectedCategory]) // Re-fetch when filters change
+  }, [selectedMapRoute, selectedCategory, selectedSubcategory, manualImporter, manualOrigin]) // Re-fetch when filters change
 
   useEffect(() => {
     filterRates()
-  }, [searchQuery, selectedCategory, tariffRates, selectedMapRoute])
+  }, [searchQuery, selectedCategory, selectedSubcategory, tariffRates, selectedMapRoute, manualImporter, manualOrigin])
 
   const fetchTariffRates = async () => {
     try {
@@ -246,11 +250,17 @@ export function Database() {
       // Build query parameters for filtering
       const params: any = {}
       
+      // Prioritize manual country selection over map selection
+      const effectiveImporter = manualImporter || selectedMapRoute?.importer
+      const effectiveOrigin = manualOrigin || selectedMapRoute?.origin
+      
       // Add country filter if route selected
-      if (selectedMapRoute) {
-        console.log('🔍 Fetching tariff rates for route:', selectedMapRoute)
-        params.importerIso3 = selectedMapRoute.importer
-        params.originIso3 = selectedMapRoute.origin
+      if (effectiveImporter) {
+        console.log('🔍 Fetching tariff rates for route:', effectiveImporter, '←', effectiveOrigin)
+        params.importerIso3 = effectiveImporter
+        if (effectiveOrigin) {
+          params.originIso3 = effectiveOrigin
+        }
       } else {
         console.log('🔍 Fetching all tariff rates (no route selected)')
       }
@@ -277,21 +287,24 @@ export function Database() {
   const filterRates = () => {
     let filtered = tariffRates
 
-    // Filter by selected map route first
-    if (selectedMapRoute) {
+    const effectiveImporter = manualImporter || selectedMapRoute?.importer
+    const effectiveOrigin = manualOrigin || selectedMapRoute?.origin
+
+    // Filter by selected map route or manual country selection
+    if (effectiveImporter) {
       filtered = filtered.filter(rate => 
-        rate.importerIso3 === selectedMapRoute.importer && 
-        (rate.originIso3 === selectedMapRoute.origin || !rate.originIso3)
+        rate.importerIso3 === effectiveImporter && 
+        (!effectiveOrigin || rate.originIso3 === effectiveOrigin || !rate.originIso3)
       )
     }
 
-    // Filter by selected category
-    if (selectedCategory) {
+    // Filter by selected subcategory (changed from category)
+    if (selectedSubcategory && selectedCategory) {
       const category = hsCodeCategories.find(c => c.name === selectedCategory)
-      if (category && category.subcategories.length > 0) {
-        const categoryCodes = category.subcategories.flatMap(sub => sub.codes)
+      const subcategory = category?.subcategories.find(s => s.name === selectedSubcategory)
+      if (subcategory) {
         filtered = filtered.filter(rate => 
-          categoryCodes.some(code => rate.hsCode?.startsWith(code.replace('.', '')))
+          subcategory.codes.some(code => rate.hsCode?.startsWith(code.replace('.', '')))
         )
       }
     }
@@ -315,6 +328,7 @@ export function Database() {
       newExpanded.delete(categoryName)
       if (selectedCategory === categoryName) {
         setSelectedCategory(null)
+        setSelectedSubcategory(null)
       }
     } else {
       newExpanded.add(categoryName)
@@ -322,8 +336,21 @@ export function Database() {
     setExpandedCategories(newExpanded)
   }
 
-  const selectCategory = (categoryName: string) => {
-    setSelectedCategory(categoryName === selectedCategory ? null : categoryName)
+  const selectSubcategory = (categoryName: string, subcategoryName: string) => {
+    console.log('🔘 selectSubcategory called:', { categoryName, subcategoryName })
+    console.log('📊 Current state:', { selectedCategory, selectedSubcategory })
+    
+    if (selectedCategory === categoryName && selectedSubcategory === subcategoryName) {
+      // Deselect if clicking the same subcategory
+      console.log('❌ Deselecting subcategory')
+      setSelectedCategory(null)
+      setSelectedSubcategory(null)
+    } else {
+      // Select the subcategory
+      console.log('✅ Selecting subcategory:', categoryName, '-', subcategoryName)
+      setSelectedCategory(categoryName)
+      setSelectedSubcategory(subcategoryName)
+    }
   }
 
   const transferToCalculator = (rate: any) => {
@@ -482,10 +509,10 @@ export function Database() {
                                 </div>
                                 <Button
                                   size="sm"
-                                  variant={isSelected ? "default" : "outline"}
-                                  onClick={() => selectCategory(category.name)}
+                                  variant={selectedCategory === category.name && selectedSubcategory === subcategory.name ? "default" : "outline"}
+                                  onClick={() => selectSubcategory(category.name, subcategory.name)}
                                 >
-                                  {isSelected ? 'Selected' : 'View Rates'}
+                                  {selectedCategory === category.name && selectedSubcategory === subcategory.name ? 'Selected' : 'View Rates'}
                                 </Button>
                               </div>
                             </div>
@@ -498,12 +525,53 @@ export function Database() {
               })}
             </div>
 
+            {/* Country Filter Dropdowns */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Filter by Trade Route</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Importer Country</label>
+                  {/* <CountrySelect
+                    value={manualImporter}
+                    onChange={setManualImporter}
+                    placeholder="Select importer..."
+                  /> */}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Exporter Country</label>
+                  {/* <CountrySelect
+                    value={manualOrigin}
+                    onChange={setManualOrigin}
+                    placeholder="Select exporter..."
+                  /> */}
+                </div>
+              </div>
+              {(manualImporter || manualOrigin) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setManualImporter('')
+                    setManualOrigin('')
+                  }}
+                  className="mt-2 text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear Country Filters
+                </Button>
+              )}
+            </div>
+
             {/* Tariff Rates Table */}
             {(selectedCategory || searchQuery) && (
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedCategory ? `${selectedCategory} - Tariff Rates` : 'Search Results'}
+                    {selectedCategory && selectedSubcategory 
+                      ? `${selectedCategory} - ${selectedSubcategory}` 
+                      : selectedCategory 
+                      ? selectedCategory 
+                      : 'Search Results'}
                   </h3>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {filteredRates.length} rates found
@@ -527,7 +595,6 @@ export function Database() {
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Description</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Route</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">MFN Rate</th>
-                          <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Pref. Rate</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
@@ -539,8 +606,7 @@ export function Database() {
                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                               <span className="font-mono text-xs">{rate.originIso3 || 'Any'} → {rate.importerIso3}</span>
                             </td>
-                            <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{rate.mfnRate}%</td>
-                            <td className="px-4 py-3 text-green-600 dark:text-green-400 font-medium">{rate.preferentialRate}%</td>
+                            <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{rate.mfnRate != null ? `${rate.mfnRate}%` : '-'}</td>
                             <td className="px-4 py-3">
                               <Button
                                 size="sm"
