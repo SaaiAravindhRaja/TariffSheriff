@@ -115,10 +115,16 @@ public class ProfileController {
             String hsCode = (String) result[0];
             Long count = (Long) result[1];
 
-            // Get HS product description
-            String description = hsProductRepository.findByHsCode(hsCode)
-                    .map(HsProduct::getHsLabel)
-                    .orElse("Unknown Product");
+            // Get HS product description - handle case where HS code might not exist or cause DB errors
+            String description = "Unknown Product";
+            try {
+                description = hsProductRepository.findByHsCode(hsCode)
+                        .map(HsProduct::getHsLabel)
+                        .orElse("Unknown Product");
+            } catch (Exception e) {
+                // Log and continue with "Unknown Product" if lookup fails
+                System.err.println("Failed to lookup HS code " + hsCode + ": " + e.getMessage());
+            }
 
             mostUsedHsCode = new DashboardStatsDto.MostUsedHsCodeDto(hsCode, description, count);
         }

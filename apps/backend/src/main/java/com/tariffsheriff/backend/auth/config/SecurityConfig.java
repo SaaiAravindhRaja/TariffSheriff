@@ -63,16 +63,13 @@ public class SecurityConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain publicApiFilterChain(HttpSecurity http) throws Exception {
+        System.out.println("🔧 Configuring PUBLIC filter chain (Order 1) - /api/tariff-rate/**, /api/countries/**, /api/hs-products/**");
         http
                 .securityMatcher("/api/tariff-rate/**", "/api/countries/**", "/api/hs-products/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/tariff-rate/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tariff-rate").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/countries/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/hs-products/**").permitAll()
-                        .anyRequest().denyAll())
+                        .anyRequest().permitAll()) // Permit ALL requests that match the securityMatcher
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();

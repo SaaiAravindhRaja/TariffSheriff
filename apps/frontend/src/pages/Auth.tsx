@@ -154,7 +154,27 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
             {/* Login Form Mockup */}
             <div className="space-y-4">
-              {/* Email/Google/Social Options */}
+              {/* Email Login - Primary Option */}
+              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                <button
+                  onClick={handleLogin}
+                  className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <Mail className="w-5 h-5" />
+                  <span>Sign in with Auth0</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </motion.div>
+
+              {/* Hidden for now - Google/GitHub authentication not yet configured */}
+              {/* Uncomment when social auth is properly set up in Auth0 */}
+              {/* 
+              <div className="flex items-center gap-3 text-sm">
+                <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+                <span className="text-muted-foreground">or</span>
+                <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+              </div>
+
               <div className="space-y-3">
                 <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                   <button
@@ -183,25 +203,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   </button>
                 </motion.div>
               </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 text-sm">
-                <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
-                <span className="text-muted-foreground">or</span>
-                <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
-              </div>
-
-              {/* Email Login */}
-              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                <button
-                  onClick={handleLogin}
-                  className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center space-x-2"
-                >
-                  <Mail className="w-5 h-5" />
-                  <span>Continue with Email</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </motion.div>
+              */}
             </div>
 
             {/* Info Text */}
