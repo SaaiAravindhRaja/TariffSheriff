@@ -463,7 +463,7 @@ export function Database() {
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.name)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-accent/50 dark:hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-100 dark:bg-blue-900/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
@@ -492,10 +492,10 @@ export function Database() {
 
                     {/* Subcategories */}
                     {isExpanded && category.subcategories.length > 0 && (
-                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-4">
+                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-background/50 p-4">
                         <div className="space-y-2">
                           {category.subcategories.map((subcategory) => (
-                            <div key={subcategory.name} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div key={subcategory.name} className="bg-card dark:bg-card rounded-lg p-3 border border-gray-200 dark:border-gray-700">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <h4 className="text-sm font-medium text-gray-900 dark:text-white">{subcategory.name}</h4>
@@ -587,9 +587,9 @@ export function Database() {
                     No tariff rates found for this category
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-card dark:bg-card">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                      <thead className="bg-gray-50 dark:bg-card border-b border-gray-200 dark:border-gray-700">
                         <tr>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">HS Code</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Description</th>
@@ -598,7 +598,7 @@ export function Database() {
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-card dark:bg-card">
                         {filteredRates.slice(0, 100).map((rate) => (
                           <tr key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                             <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 font-medium">{rate.hsCode}</td>

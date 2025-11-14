@@ -8,7 +8,7 @@ import React from 'react'
 export function SavedTariffs() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
-  const [size, setSize] = useState(10)
+  const size = 25
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [exportingDetails, setExportingDetails] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)

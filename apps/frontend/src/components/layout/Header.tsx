@@ -120,7 +120,7 @@ export function Header({ className }: HeaderProps) {
           title="Go to home"
         >
           <div className="flex flex-col items-start">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent">
               TariffSheriff
             </h1>
             <p className="text-xs text-muted-foreground -mt-1">

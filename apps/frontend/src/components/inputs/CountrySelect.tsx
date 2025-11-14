@@ -165,13 +165,13 @@ const CountrySelect: React.FC<CountrySelectProps> = ({
             onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlight(0) }}
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
-            className="rounded-md border px-3 py-2 bg-white dark:bg-slate-900 w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-md border border-input px-3 py-2 bg-background dark:bg-background text-foreground w-full disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
       </div>
 
       {open && (
-        <ul id={listboxId} role="listbox" aria-labelledby="country-select-label" className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-white dark:bg-slate-900 shadow-lg">
+        <ul id={listboxId} role="listbox" aria-labelledby="country-select-label" className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card text-card-foreground shadow-lg dark:bg-card">
           {loading ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">Loading...</li>
           ) : error ? (
@@ -187,7 +187,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({
                 aria-selected={multi ? selectedCodes.includes(c.code) : value === c.code}
                 onMouseDown={(e) => { e.preventDefault(); select(c) }}
                 onMouseEnter={() => setHighlight(idx)}
-                className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm ${idx === highlight ? 'bg-brand-50 dark:bg-brand-800/40' : ''}`}
+                className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm ${idx === highlight ? 'bg-accent dark:bg-accent' : ''}`}
               >
                 <span className="flex-1">{c.name}</span>
                 <span className="text-xs text-muted-foreground">{c.code}</span>
