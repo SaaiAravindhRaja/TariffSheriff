@@ -53,41 +53,13 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   React.useEffect(() => {
     let cancelled = false
     const q = query.trim()
-    const allowEmptyForImporter = open && importerIso3 && importerIso3.trim().length > 0 && q.length === 0
-    const isDigitsOnly = /^[0-9]*$/.test(q) // allow empty as digits-only
-    const tooShort = (!allowEmptyForImporter) && (isDigitsOnly ? q.length < 1 : q.length < 2)
-    if (tooShort) {
-      setResults([])
-      setError(null)
-      return
-    }
     setLoading(true)
     setError(null)
     
     const t = setTimeout(async () => {
       try {
-        // If filterCodes exist and query is short, show those first
-        if (filterCodes && filterCodes.length > 0 && q.length < 2) {
-          // Fetch details for filtered codes
-          const codePromises = filterCodes.slice(0, 10).map(async (code) => {
-            try {
-              const res = await tariffApi.searchHsProducts({ q: code, limit: 1 })
-              return res.data?.[0] || { hsCode: code, hsLabel: 'Product description' }
-            } catch {
-              return { hsCode: code, hsLabel: 'Product description' }
-            }
-          })
-          const codeDetails = await Promise.all(codePromises)
-          if (cancelled) return
-          setResults(codeDetails)
-          setLoading(false)
-          return
-        }
-        
-        // For queries with at least 1 character, do normal search
         if (q.length < 1) {
-          // Show some popular/common codes as examples
-          const res = await tariffApi.searchHsProducts({ q: '87', limit: 10 })
+          const res = await tariffApi.searchHsProducts({ q: '87', limit: 50 })
           if (cancelled) return
           setResults(res.data || [])
           setLoading(false)

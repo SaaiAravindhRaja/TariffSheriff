@@ -10,6 +10,7 @@ import com.tariffsheriff.backend.tariffcalculation.service.TariffCalculationServ
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -91,9 +92,14 @@ public class TariffCalculationController {
     @GetMapping
     public Page<TariffCalculationSummary> list(@AuthenticationPrincipal Jwt jwt,
                                                @RequestParam(defaultValue = "0") int page,
-                                               @RequestParam(defaultValue = "20") int size) {
+                                               @RequestParam(defaultValue = "25") int size) {
         User currentUser = requireUserFromJwt(jwt);
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        int normalizedSize = Math.min(Math.max(size, 1), 200);
+        Pageable pageable = PageRequest.of(
+            Math.max(page, 0),
+            normalizedSize,
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
         return service.listForUser(currentUser.getId(), pageable).map(this::toSummary);
     }
 
