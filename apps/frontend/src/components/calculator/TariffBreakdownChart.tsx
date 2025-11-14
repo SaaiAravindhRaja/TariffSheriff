@@ -108,7 +108,7 @@ export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
         {/* Summary Stats */}
         <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Total Fees:</span>
+            <span className="text-muted-foreground">Duty (Total Fees):</span>
             <span className="font-medium">
               {formatCurrency(data.tariffAmount + data.additionalFees)}
             </span>

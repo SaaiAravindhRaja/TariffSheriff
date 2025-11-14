@@ -13,14 +13,13 @@ import jakarta.validation.constraints.Max;
 @ConfigurationProperties(prefix = "openai")
 public class OpenAiProperties {
     
-    @NotBlank(message = "OpenAI API key is required")
     private String apiKey;
     
     @NotBlank(message = "OpenAI model is required")
     private String model = "gpt-4o-mini";
     
     @NotBlank(message = "OpenAI base URL is required")
-    private String baseUrl = "https://api.openai.com/v1";
+    private String baseUrl = "https://openrouter.ai/api/v1";
     
     @Min(value = 1, message = "Max tokens must be at least 1")
     @Max(value = 16384, message = "Max tokens cannot exceed 16384")
@@ -91,5 +90,9 @@ public class OpenAiProperties {
     
     public void setMaxRetries(int maxRetries) {
         this.maxRetries = maxRetries;
+    }
+
+    public boolean hasApiKey() {
+        return apiKey != null && !apiKey.isBlank();
     }
 }

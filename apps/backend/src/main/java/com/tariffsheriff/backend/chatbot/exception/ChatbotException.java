@@ -79,4 +79,13 @@ public class ChatbotException extends RuntimeException {
         // Default user-friendly message
         return "I encountered an issue while processing your request. Please try again or rephrase your question.";
     }
+
+    /**
+     * Internal constructor for subclasses that have already processed their messages.
+     */
+    protected ChatbotException(String technicalMessage, String userFriendlyMessage, String suggestion, Throwable cause) {
+        super(technicalMessage, cause);
+        this.userFriendlyMessage = userFriendlyMessage;
+        this.suggestion = suggestion;
+    }
 }

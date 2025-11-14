@@ -1,323 +1,413 @@
 package com.tariffsheriff.backend.chatbot.service;
 
-import com.tariffsheriff.backend.chatbot.dto.ChatQueryRequest;
-import com.tariffsheriff.backend.chatbot.dto.ChatQueryResponse;
-import com.tariffsheriff.backend.chatbot.dto.ToolCall;
-import com.tariffsheriff.backend.chatbot.dto.ToolDefinition;
-import com.tariffsheriff.backend.chatbot.dto.ToolResult;
-import com.tariffsheriff.backend.chatbot.exception.ChatbotException;
-import com.tariffsheriff.backend.chatbot.exception.InvalidQueryException;
-import com.tariffsheriff.backend.chatbot.exception.LlmServiceException;
-import com.tariffsheriff.backend.chatbot.exception.ToolExecutionException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessageFunctionToolCall;
+import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
+import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
+import com.tariffsheriff.backend.chatbot.dto.ChatConversationDetailDto;
+import com.tariffsheriff.backend.chatbot.dto.ChatConversationSummaryDto;
+import com.tariffsheriff.backend.chatbot.dto.ChatQueryRequest;
+import com.tariffsheriff.backend.chatbot.dto.ChatQueryResponse;
+import com.tariffsheriff.backend.chatbot.exception.ChatbotException;
+import com.tariffsheriff.backend.chatbot.model.ChatConversation;
+import com.tariffsheriff.backend.tariff.dto.TariffRateLookupDto;
+import com.tariffsheriff.backend.tariff.dto.TariffRateOptionDto;
+import com.tariffsheriff.backend.tariff.exception.TariffRateNotFoundException;
+import com.tariffsheriff.backend.tariff.model.Agreement;
+import com.tariffsheriff.backend.tariff.model.HsProduct;
+import com.tariffsheriff.backend.tariff.service.AgreementService;
+import com.tariffsheriff.backend.tariff.service.HsProductService;
+import com.tariffsheriff.backend.tariff.service.TariffRateService;
 
 /**
- * Simplified chatbot service for processing user queries using LLM and tools
+ * Lightweight chatbot orchestrator: loads stored history, prepends the engineered
+ * system prompt, calls the LLM, and persists the result.
  */
 @Service
 public class ChatbotService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ChatbotService.class);
-    
+
+    private static final String SYSTEM_PROMPT = (
+        """
+        You are TariffSheriff, the in-app teammate who knows how TariffSheriff’s data and workflows fit together. Keep every response grounded in TariffSheriff APIs—never invent numbers.
+
+        ## How to Think
+        1. Clarify the user's intent (HS exploration, one-off tariff lookup, calculator support, agreements, comparisons, news recap).
+        2. Note which inputs you already have (importer/origin ISO3, HS code, calculator values) and gather only what’s missing.
+        3. Choose the tool—or no tool—that best fits the intent:
+           • Free-text product → `HsSearchFunction`.
+           • Need a more precise suffix for a known HS6 or a lookup failed → `TariffSubcategoryFunction`.
+           • Have importer/origin + **8/10 digit HS code** and need rates → `TariffLookupFunction`.
+           • Need country agreements/RVC thresholds → `AgreementLookupFunction`.
+           • Calculator help → stay in conversation; walk through the required inputs in order before computing.
+        4. If a tool can't find data (e.g., HS not stored for that importer), say so plainly (“TariffSheriff doesn’t store USA 850760 yet…”) and outline the recovery path (HS search → subcategories → retry lookup).
+        5. Summarize results clearly (MFN vs PREF, RVC thresholds, agreements, non-ad-valorem notes, assumptions) and end with a practical next action.
+
+        ## Data Basics
+        - HS codes: treat 6 digits as canonical. Only cite HS8/HS10 if you retrieved them via the subcategory tool.
+        - Not every importer has every HS line. Explain gaps and propose next steps.
+        - MFN is baseline; preferential applies only when an agreement covers the origin AND rules of origin (e.g., RVC) are met.
+        - Non-ad-valorem duties appear as text; include them beside percentages.
+        - Use the latest valid tariff entry unless the user specifies a date.
+
+        ## Calculator Guidance
+        - RVC = (material + labour + overhead + profit + otherCosts) / FOB × 100.
+        - Preferential applies only if `prefRate` exists AND RVC ≥ threshold; otherwise MFN.
+        - Applied duty = appliedRate × totalValue.
+        - Ask for inputs logically (total value → cost breakdown → FOB → MFN/PREF → RVC threshold). Don’t assume values.
+
+        ## Tool Recap
+        - `HsSearchFunction(description, limit?)`: use for free-text products or when lookups fail.
+        - `TariffSubcategoryFunction(importerIso3, originIso3?, hsCode, limit?)`: drill from HS6 to HS8/HS10 before re-running tariff lookups.
+        - `TariffLookupFunction(importerIso3, originIso3?, hsCode)`: fetch MFN/PREF options and agreements once the code is confirmed.
+        - `AgreementLookupFunction(countryIso3)`: list agreements and RVC thresholds for a country.
+
+        ## Tone & Recovery
+        - Be concise; use bullet lists or tables for clarity.
+        - When data is missing, explain why and give concrete next steps (run HS search, try a nearby HS6, consult HTS.gov if TariffSheriff truly lacks it).
+        - Always end with an actionable suggestion tailored to the user’s goal. No legal advice.
+        """
+    );
+
     private final LlmClient llmClient;
-    private final ToolRegistry toolRegistry;
     private final ConversationService conversationService;
-    private final RateLimitService rateLimitService;
-    
-    @Autowired
-    public ChatbotService(LlmClient llmClient, 
-                         ToolRegistry toolRegistry,
-                         ConversationService conversationService,
-                         RateLimitService rateLimitService) {
+    private final TariffRateService tariffRateService;
+    private final HsProductService hsProductService;
+    private final AgreementService agreementService;
+
+    public ChatbotService(LlmClient llmClient,
+                          ConversationService conversationService,
+                          TariffRateService tariffRateService,
+                          HsProductService hsProductService,
+                          AgreementService agreementService) {
         this.llmClient = llmClient;
-        this.toolRegistry = toolRegistry;
         this.conversationService = conversationService;
-        this.rateLimitService = rateLimitService;
-        
-        logger.info("ChatbotService initialized with simplified architecture");
+        this.tariffRateService = tariffRateService;
+        this.hsProductService = hsProductService;
+        this.agreementService = agreementService;
     }
-    
-    /**
-     * Main method to process user queries with simple 3-phase flow:
-     * 1. Understand: LLM selects tool or responds directly
-     * 2. Execute: Tool fetches data
-     * 3. Respond: LLM generates conversational response
-     */
-    public ChatQueryResponse processQuery(ChatQueryRequest request) {
-        long startTime = System.currentTimeMillis();
-        String conversationId = request.getConversationId();
-        String userId = request.getUserId();
-        
-        if (conversationId == null) {
-            conversationId = UUID.randomUUID().toString();
-        }
-        
-        try {
-            // Validate input
-            validateQuery(request.getQuery());
-            
-            // Check rate limit
-            if (userId != null && !rateLimitService.allowRequest(userId)) {
-                throw new ChatbotException("Rate limit exceeded. Please try again later.");
+
+    public ChatQueryResponse processQuery(ChatQueryRequest request, String userEmail) {
+        long startedAt = System.currentTimeMillis();
+        validateQuery(request.getQuery());
+
+        ChatConversation conversation = conversationService
+                .ensureConversation(request.getConversationId(), userEmail);
+        List<ChatQueryRequest.ChatMessage> history = conversationService.loadHistory(conversation);
+
+        ChatCompletionCreateParams.Builder builder = llmClient.newChatBuilder()
+                .addSystemMessage(SYSTEM_PROMPT)
+                .addTool(TariffLookupFunction.class)
+                .addTool(HsSearchFunction.class)
+                .addTool(AgreementLookupFunction.class)
+                .addTool(TariffSubcategoryFunction.class);
+
+        for (ChatQueryRequest.ChatMessage msg : history) {
+            if (msg == null || !StringUtils.hasText(msg.getContent())) {
+                continue;
             }
-            
-            logger.info("Processing query for conversation {}: {}", conversationId, request.getQuery());
-            
-            // Get conversation history for context
-            List<ConversationService.ConversationMessage> conversationHistory = getConversationHistory(userId, conversationId);
-            
-            // Phase 1: Query analysis and tool selection
-            ToolCall toolCall = callLlmForToolSelection(request.getQuery(), conversationHistory);
-            
-            // Handle direct response (no tool needed)
-            if (ToolCall.DIRECT_RESPONSE_TOOL.equals(toolCall.getName())) {
-                String directText = toolCall.getStringArgument("text", 
-                        "I'm here to help! How else can I assist you today?");
-                ChatQueryResponse chatResponse = new ChatQueryResponse(directText, conversationId);
-                chatResponse.setToolsUsed(List.of(ToolCall.getDirectResponseToolLabel()));
-                chatResponse.setProcessingTimeMs(System.currentTimeMillis() - startTime);
-                
-                if (userId != null) {
-                    conversationService.storeMessage(userId, conversationId, request, chatResponse);
-                }
-                
-                logger.info("Processed direct response query for conversation {} in {}ms", 
-                        conversationId, chatResponse.getProcessingTimeMs());
-                return chatResponse;
+            if ("assistant".equalsIgnoreCase(msg.getRole())) {
+                builder.addAssistantMessage(msg.getContent());
+            } else {
+                builder.addUserMessage(msg.getContent());
             }
-            
-            // Phase 2: Tool execution
-            ToolResult toolResult = executeToolCall(toolCall);
-            
-            // Phase 3: Response generation
-            String response = callLlmForResponse(request.getQuery(), toolResult, conversationHistory);
-            
-            // Build response
-            ChatQueryResponse chatResponse = new ChatQueryResponse(response, conversationId);
-            chatResponse.setToolsUsed(List.of(toolCall.getName()));
-            chatResponse.setProcessingTimeMs(System.currentTimeMillis() - startTime);
-            
-            // Store in conversation history
-            if (userId != null) {
-                conversationService.storeMessage(userId, conversationId, request, chatResponse);
+        }
+
+        builder.addUserMessage(request.getQuery());
+
+        List<String> toolsUsed = new ArrayList<>();
+        ChatCompletion completion;
+
+        while (true) {
+            completion = llmClient.createCompletion(builder.build());
+            completion.choices().stream()
+                    .map(choice -> choice.message())
+                    .forEach(builder::addMessage);
+
+            if (!handleToolCalls(completion, builder, toolsUsed)) {
+                break;
             }
-            
-            logger.info("Successfully processed query for conversation {} in {}ms", 
-                    conversationId, chatResponse.getProcessingTimeMs());
-            
-            return chatResponse;
-            
-        } catch (InvalidQueryException e) {
-            // Validation errors - guide the user
-            logger.warn("Query validation failed for conversation {}: {}", conversationId, e.getMessage());
-            return createErrorResponse(conversationId, 
-                    e.getUserFriendlyMessage(), 
-                    e.getSuggestion() != null ? e.getSuggestion() : "Please provide a clear question about tariffs, trade agreements, or HS codes.", 
-                    startTime);
-            
-        } catch (LlmServiceException e) {
-            // LLM service errors - explain AI is unavailable
-            logger.error("LLM service error for conversation {}: {}", conversationId, e.getMessage(), e);
-            return createErrorResponse(conversationId, 
-                    e.getUserFriendlyMessage(), 
-                    e.getSuggestion(), 
-                    startTime);
-            
-        } catch (ToolExecutionException e) {
-            // Tool execution errors - explain what failed and how to proceed
-            logger.error("Tool execution failed for conversation {} (tool: {}): {}", 
-                    conversationId, e.getToolName(), e.getMessage(), e);
-            return createErrorResponse(conversationId, 
-                    e.getUserFriendlyMessage(), 
-                    e.getSuggestion(), 
-                    startTime);
-            
-        } catch (ChatbotException e) {
-            // Generic chatbot errors
-            logger.warn("Chatbot error for conversation {}: {}", conversationId, e.getMessage());
-            return createErrorResponse(conversationId, 
-                    e.getUserFriendlyMessage(), 
-                    e.getSuggestion(), 
-                    startTime);
-            
-        } catch (Exception e) {
-            // Unexpected errors - log full details but show friendly message
-            logger.error("Unexpected error processing query for conversation {}: {}", 
-                    conversationId, e.getMessage(), e);
-            return createErrorResponse(conversationId, 
-                    "I'm having trouble processing your request right now.", 
-                    "Please try again in a moment or rephrase your question. If the problem persists, contact support.", 
-                    startTime);
         }
-    }
-    
-    /**
-     * Phase 1: Call LLM for tool selection
-     */
-    private ToolCall callLlmForToolSelection(String query, List<ConversationService.ConversationMessage> conversationHistory) {
-        try {
-            List<ToolDefinition> availableTools = toolRegistry.getAvailableTools();
-            
-            if (availableTools.isEmpty()) {
-                throw new LlmServiceException("No tools are currently available", 
-                        "Please try again later or contact support if the problem persists.");
-            }
-            
-            logger.debug("Calling LLM for tool selection with {} available tools and {} history messages", 
-                    availableTools.size(), conversationHistory.size());
-            return llmClient.selectTool(query, availableTools, conversationHistory);
-            
-        } catch (LlmServiceException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error in tool selection phase", e);
-            throw new LlmServiceException("Failed to analyze your query", e);
-        }
-    }
-    
-    /**
-     * Phase 2: Execute the selected tool
-     */
-    private ToolResult executeToolCall(ToolCall toolCall) {
-        try {
-            logger.debug("Executing tool call: {}", toolCall.getName());
-            
-            if (!toolRegistry.isToolAvailable(toolCall.getName())) {
-                throw new ToolExecutionException(toolCall.getName(), 
-                        "The requested tool is not available");
-            }
-            
-            ToolResult result = toolRegistry.executeToolCall(toolCall);
-            
-            if (!result.isSuccess()) {
-                logger.warn("Tool execution failed: {}", result.getError());
-                throw new ToolExecutionException(toolCall.getName(), 
-                        result.getError() != null ? result.getError() : "Tool execution failed");
-            }
-            
-            logger.debug("Tool {} executed successfully in {}ms", 
-                    toolCall.getName(), result.getExecutionTimeMs());
-            
-            return result;
-            
-        } catch (ToolExecutionException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.error("Unexpected error executing tool {}", toolCall.getName(), e);
-            throw new ToolExecutionException(toolCall.getName(), 
-                    "Unexpected error during tool execution", e);
-        }
-    }
-    
-    /**
-     * Phase 3: Call LLM for response generation
-     */
-    private String callLlmForResponse(String query, ToolResult toolResult, List<ConversationService.ConversationMessage> conversationHistory) {
-        try {
-            logger.debug("Calling LLM for response generation with {} history messages", conversationHistory.size());
-            
-            String toolData = toolResult.getData();
-            if (toolData == null || toolData.trim().isEmpty()) {
-                toolData = "No data was returned from the tool execution.";
-            }
-            
-            return llmClient.generateResponse(query, toolData, conversationHistory);
-            
-        } catch (LlmServiceException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error in response generation phase", e);
-            throw new LlmServiceException("Failed to generate a response", e);
-        }
-    }
-    
-    /**
-     * Get conversation history for context (last 5-10 messages)
-     */
-    private List<ConversationService.ConversationMessage> getConversationHistory(String userId, String conversationId) {
-        if (userId == null || conversationId == null) {
-            return List.of();
-        }
-        
-        try {
-            ConversationService.Conversation conversation = conversationService.getConversation(userId, conversationId);
-            if (conversation == null) {
-                return List.of();
-            }
-            
-            List<ConversationService.ConversationMessage> allMessages = conversation.getMessages();
-            
-            // Get last 10 messages for context (5 exchanges)
-            int startIndex = Math.max(0, allMessages.size() - 10);
-            return allMessages.subList(startIndex, allMessages.size());
-            
-        } catch (Exception e) {
-            logger.warn("Failed to retrieve conversation history for conversation {}", conversationId, e);
-            return List.of();
-        }
-    }
-    
-    /**
-     * Validate user query
-     */
-    private void validateQuery(String query) {
-        if (!StringUtils.hasText(query)) {
-            throw new InvalidQueryException("Query cannot be empty");
-        }
-        
-        if (query.length() > 2000) {
-            throw new InvalidQueryException("Query is too long. Please keep it under 2000 characters.");
-        }
-        
-        String sanitized = query.trim();
-        if (sanitized.length() < 3) {
-            throw new InvalidQueryException("Query is too short. Please provide more details.");
-        }
-    }
-    
-    /**
-     * Create error response
-     */
-    private ChatQueryResponse createErrorResponse(String conversationId, String message, 
-                                                 String suggestion, long startTime) {
-        ChatQueryResponse response = new ChatQueryResponse();
-        response.setConversationId(conversationId);
-        response.setSuccess(false);
-        response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
-        
-        String fullMessage = message;
-        if (StringUtils.hasText(suggestion)) {
-            fullMessage += "\n\n" + suggestion;
-        }
-        response.setResponse(fullMessage);
-        
+
+        String assistantReply = llmClient.extractContent(completion);
+
+        conversationService.appendExchange(conversation, request.getQuery(), assistantReply);
+
+        ChatQueryResponse response = new ChatQueryResponse(assistantReply, conversation.getPublicId().toString());
+        response.setProcessingTimeMs(System.currentTimeMillis() - startedAt);
+        response.setToolsUsed(toolsUsed.isEmpty() ? List.of("openai") : toolsUsed);
         return response;
     }
-    
-    /**
-     * Get available tools (for debugging/monitoring)
-     */
-    public List<ToolDefinition> getAvailableTools() {
-        return toolRegistry.getAvailableTools();
-    }
-    
-    /**
-     * Check service health
-     */
-    public boolean isHealthy() {
-        try {
-            List<ToolDefinition> tools = toolRegistry.getAvailableTools();
-            return !tools.isEmpty();
-        } catch (Exception e) {
-            logger.error("Health check failed", e);
+
+    private boolean handleToolCalls(ChatCompletion completion,
+                                    ChatCompletionCreateParams.Builder builder,
+                                    List<String> toolsUsed) {
+        var toolCallsOpt = completion.choices().get(0).message().toolCalls();
+        if (toolCallsOpt.isEmpty() || toolCallsOpt.get().isEmpty()) {
             return false;
         }
+
+        for (ChatCompletionMessageToolCall toolCall : toolCallsOpt.get()) {
+            ChatCompletionMessageFunctionToolCall functionCall = toolCall.asFunction();
+            Object payload = callFunction(functionCall.function(), toolsUsed);
+            builder.addMessage(ChatCompletionToolMessageParam.builder()
+                    .toolCallId(functionCall.id())
+                    .contentAsJson(payload)
+                    .build());
+        }
+        return true;
+    }
+
+    public boolean isHealthy() {
+        return llmClient.isEnabled();
+    }
+
+    public List<String> getCapabilities() {
+        return List.of("chat", "history");
+    }
+
+    public List<ChatConversationSummaryDto> listConversations(String userEmail) {
+        return conversationService.listSummaries(userEmail);
+    }
+
+    public ChatConversationDetailDto getConversationDetail(String conversationId, String userEmail) {
+        return conversationService.getConversationDetail(conversationId, userEmail);
+    }
+
+    public void deleteConversation(String conversationId, String userEmail) {
+        conversationService.deleteConversation(conversationId, userEmail);
+    }
+
+    private void validateQuery(String query) {
+        if (!StringUtils.hasText(query)) {
+            throw new ChatbotException("Please enter a question before sending it.");
+        }
+        if (query.length() > 4000) {
+            throw new ChatbotException("Your question is too long.", "Try shortening it and resubmit.");
+        }
+    }
+
+    private Object callFunction(ChatCompletionMessageFunctionToolCall.Function function, List<String> toolsUsed) {
+        String name = function.name();
+        toolsUsed.add(name);
+        try {
+            return switch (name) {
+                case "TariffLookupFunction" -> handleTariffLookup(function.arguments(TariffLookupFunction.class));
+                case "HsSearchFunction" -> handleHsSearch(function.arguments(HsSearchFunction.class));
+                case "AgreementLookupFunction" -> handleAgreementLookup(function.arguments(AgreementLookupFunction.class));
+                case "TariffSubcategoryFunction" -> handleTariffSubcategories(function.arguments(TariffSubcategoryFunction.class));
+                default -> throw new ChatbotException(
+                        "Unknown tool invoked: " + name,
+                        "Please try a different request or contact support.");
+            };
+        } catch (IllegalArgumentException ex) {
+            throw new ChatbotException("Tool arguments were invalid.", ex.getMessage(), ex);
+        } catch (TariffRateNotFoundException ex) {
+            String message = ex.getMessage() != null ? ex.getMessage()
+                    : "I couldn't find tariff data for that HS code and country.";
+            String suggestion = """
+
+Try one of these steps:
+• Run the HS Search tool with a short product description (e.g., \"lithium battery pack\") to confirm the available codes for the importer.
+• Provide a nearby HS6 prefix that exists in TariffSheriff (you can ask me for suggestions if unsure).
+• If you already know the precise HS8/HS10, share it so I can attempt a more specific lookup.""";
+            throw new ChatbotException(message, suggestion, ex);
+        }
+    }
+
+    private TariffLookupResult handleTariffLookup(TariffLookupFunction args) {
+        if (!StringUtils.hasText(args.importerIso3) || !StringUtils.hasText(args.hsCode)) {
+            throw new ChatbotException("Importer ISO3 and HS code are required for tariff lookup.");
+        }
+        String importer = normalizeIso(args.importerIso3);
+        String origin = StringUtils.hasText(args.originIso3) ? normalizeIso(args.originIso3) : null;
+        String hsCode = sanitizeHsCode(args.hsCode);
+        try {
+            TariffRateLookupDto dto = tariffRateService.getTariffRateWithAgreement(importer, origin, hsCode);
+
+            TariffLookupResult result = new TariffLookupResult();
+            result.importerIso3 = dto.importerIso3();
+            result.originIso3 = dto.originIso3();
+            result.hsCode = dto.hsCode();
+            result.rates = dto.rates().stream()
+                    .map(rate -> {
+                        TariffRateSummary summary = new TariffRateSummary();
+                        summary.basis = rate.basis();
+                        summary.adValoremRate = rate.adValoremRate();
+                        summary.nonAdValorem = rate.nonAdValorem();
+                        summary.nonAdValoremText = rate.nonAdValoremText();
+                        summary.agreementName = rate.agreementName();
+                        summary.rvcThreshold = rate.rvcThreshold();
+                        return summary;
+                    })
+                    .toList();
+            return result;
+        } catch (TariffRateNotFoundException ex) {
+            logger.info("Tariff lookup missing for importer {} origin {} hs {}", importer, origin, hsCode);
+            TariffLookupResult fallback = new TariffLookupResult();
+            fallback.importerIso3 = importer;
+            fallback.originIso3 = origin;
+            fallback.hsCode = hsCode;
+            fallback.rates = java.util.List.of();
+            fallback.note = "TariffSheriff does not store HS " + hsCode + " for "
+                    + importer + (origin != null ? " <- " + origin : "")
+                    + ". Run HsSearchFunction to confirm the HS6 prefix, then use TariffSubcategoryFunction before retrying.";
+            return fallback;
+        }
+    }
+
+    private List<HsSearchResult> handleHsSearch(HsSearchFunction args) {
+        if (!StringUtils.hasText(args.description)) {
+            throw new ChatbotException("Description is required for HS search.");
+        }
+        int limit = args.limit != null ? Math.max(1, Math.min(args.limit, 10)) : 5;
+        List<HsProduct> matches = hsProductService.searchByDescription(args.description, limit);
+        return matches.stream().map(product -> {
+            HsSearchResult res = new HsSearchResult();
+            res.hsCode = product.getHsCode();
+            res.label = product.getHsLabel();
+            res.destinationIso3 = product.getDestinationIso3();
+            return res;
+        }).toList();
+    }
+
+    private List<AgreementSummary> handleAgreementLookup(AgreementLookupFunction args) {
+        if (!StringUtils.hasText(args.countryIso3)) {
+            throw new ChatbotException("Country ISO3 is required for agreement lookup.");
+        }
+        String iso = normalizeIso(args.countryIso3);
+        List<Agreement> agreements = agreementService.getAgreementsByCountry(iso);
+        return agreements.stream().map(agreement -> {
+            AgreementSummary summary = new AgreementSummary();
+            summary.name = agreement.getName();
+            summary.rvcThreshold = agreement.getRvcThreshold();
+            return summary;
+        }).toList();
+    }
+
+    private List<SubcategoryResult> handleTariffSubcategories(TariffSubcategoryFunction args) {
+        if (!StringUtils.hasText(args.importerIso3) || !StringUtils.hasText(args.hsCode)) {
+            throw new ChatbotException("Importer ISO3 and HS code prefix are required for subcategory lookup.");
+        }
+        String importer = normalizeIso(args.importerIso3);
+        String origin = StringUtils.hasText(args.originIso3) ? normalizeIso(args.originIso3) : null;
+        String prefix = sanitizeHsCode(args.hsCode);
+        int limit = args.limit != null ? Math.max(1, Math.min(args.limit, 500)) : 200;
+        List<TariffRateLookupDto> lookups = tariffRateService.getSubcategories(importer, origin, prefix, limit);
+        return lookups.stream().map(dto -> {
+            SubcategoryResult result = new SubcategoryResult();
+            result.importerIso3 = dto.importerIso3();
+            result.originIso3 = dto.originIso3();
+            result.hsCode = dto.hsCode();
+            result.rates = dto.rates().stream()
+                    .map(rate -> {
+                        TariffRateSummary summary = new TariffRateSummary();
+                        summary.basis = rate.basis();
+                        summary.adValoremRate = rate.adValoremRate();
+                        summary.nonAdValorem = rate.nonAdValorem();
+                        summary.nonAdValoremText = rate.nonAdValoremText();
+                        summary.agreementName = rate.agreementName();
+                        summary.rvcThreshold = rate.rvcThreshold();
+                        return summary;
+                    })
+                    .toList();
+            return result;
+        }).toList();
+    }
+
+    private String normalizeIso(String iso) {
+        return iso == null ? null : iso.trim().toUpperCase();
+    }
+
+    private String sanitizeHsCode(String code) {
+        if (code == null) return null;
+        String digits = code.replaceAll("[^0-9]", "");
+        if (digits.length() < 4) {
+            throw new IllegalArgumentException("HS code must contain digits");
+        }
+        return digits;
+    }
+
+    @JsonClassDescription("Look up tariff rates for an importer/origin HS code combination.")
+    static class TariffLookupFunction {
+        @JsonPropertyDescription("Importer/destination ISO3 code (e.g., USA)")
+        public String importerIso3;
+        @JsonPropertyDescription("Origin ISO3 code (e.g., KOR) - optional")
+        public String originIso3;
+        @JsonPropertyDescription("HS code (digits only)")
+        public String hsCode;
+    }
+
+    static class TariffLookupResult {
+        public String importerIso3;
+        public String originIso3;
+        public String hsCode;
+        public List<TariffRateSummary> rates;
+        public String note;
+    }
+
+    static class TariffRateSummary {
+        public String basis;
+        public java.math.BigDecimal adValoremRate;
+        public boolean nonAdValorem;
+        public String nonAdValoremText;
+        public String agreementName;
+        public java.math.BigDecimal rvcThreshold;
+    }
+
+    @JsonClassDescription("Search HS codes by description.")
+    static class HsSearchFunction {
+        @JsonPropertyDescription("Product description to search for")
+        public String description;
+        @JsonPropertyDescription("Maximum number of results (1-10)")
+        public Integer limit;
+    }
+
+    static class HsSearchResult {
+        public String hsCode;
+        public String label;
+        public String destinationIso3;
+    }
+
+    @JsonClassDescription("List trade agreements for a country.")
+    static class AgreementLookupFunction {
+        @JsonPropertyDescription("Country ISO3 code")
+        public String countryIso3;
+    }
+
+    static class AgreementSummary {
+        public String name;
+        public java.math.BigDecimal rvcThreshold;
+    }
+
+    @JsonClassDescription("List all more-specific HS subcategories for an importer/origin pair.")
+    static class TariffSubcategoryFunction {
+        @JsonPropertyDescription("Importer/destination ISO3 code (e.g., USA)")
+        public String importerIso3;
+        @JsonPropertyDescription("Origin ISO3 code (optional)")
+        public String originIso3;
+        @JsonPropertyDescription("HS code prefix (at least 4 digits, ideally 6)")
+        public String hsCode;
+        @JsonPropertyDescription("Maximum number of subcategories to return (default 200, max 500)")
+        public Integer limit;
+    }
+
+    static class SubcategoryResult {
+        public String importerIso3;
+        public String originIso3;
+        public String hsCode;
+        public List<TariffRateSummary> rates;
     }
 }

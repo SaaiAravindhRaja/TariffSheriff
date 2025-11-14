@@ -3,6 +3,7 @@ import { savedTariffsApi, SavedTariffSummary, PageResponse, tariffApi } from '@/
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import React from 'react'
 
 export function SavedTariffs() {
   const qc = useQueryClient()
@@ -275,8 +276,8 @@ export function SavedTariffs() {
           </thead>
           <tbody>
             {content.map(item => (
-              <>
-                <tr key={item.id} className="border-t">
+              <React.Fragment key={item.id}>
+                <tr className="border-t">
                   <td className="px-4 py-2">
                     <div className="flex flex-col">
                       <span className="font-medium">{item.name || 'Untitled'}</span>
@@ -435,7 +436,7 @@ export function SavedTariffs() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

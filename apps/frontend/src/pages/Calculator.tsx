@@ -6,7 +6,7 @@ import CountrySelect from '@/components/inputs/CountrySelect'
 import HsCodeSelect from '@/components/inputs/HsCodeSelect'
 import { useDbCountries } from '@/hooks/useDbCountries'
 import { useSettings } from '@/contexts/SettingsContext'
-import { tariffApi, savedTariffsApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
+import { api, tariffApi, savedTariffsApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
 import { TariffBreakdownChart } from '@/components/calculator/TariffBreakdownChart'
 import { formatCurrency } from '@/lib/utils'
 import SavedTariffs from '@/pages/SavedTariffs'
@@ -104,6 +104,12 @@ export function Calculator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // New state for filtered options
+  const [availableOrigins, setAvailableOrigins] = useState<string[]>([])
+  const [availableHsCodes, setAvailableHsCodes] = useState<string[]>([])
+  const [loadingOrigins, setLoadingOrigins] = useState(false)
+  const [loadingHsCodes, setLoadingHsCodes] = useState(false)
+
   const [backendRvc, setBackendRvc] = useState<number>(0)
   const [calcResult, setCalcResult] = useState<{
     basis: string
@@ -177,6 +183,84 @@ export function Calculator() {
       }
     }
   }, []) // Run once on mount
+
+  // Fetch available origin countries when importer is selected
+  useEffect(() => {
+    const fetchAvailableOrigins = async () => {
+      if (!form.importerIso3) {
+        setAvailableOrigins([])
+        return
+      }
+
+      setLoadingOrigins(true)
+      try {
+        // Use the faster /routes endpoint instead of fetching all rates
+        const response = await api.get<Array<{ importerIso3: string; originIso3: string; count: number }>>('/tariff-rate/routes')
+        const routes = response.data
+        
+        // Filter to get unique origins for the selected importer
+        const originsSet = new Set<string>()
+        routes.forEach((route) => {
+          if (route.importerIso3 === form.importerIso3 && route.originIso3) {
+            originsSet.add(route.originIso3)
+          }
+        })
+        
+        const originsArray = Array.from(originsSet)
+        setAvailableOrigins(originsArray)
+        console.log(`✅ Found ${originsArray.length} export countries for importer ${form.importerIso3}`)
+      } catch (err) {
+        console.error('Failed to fetch available origins:', err)
+        setAvailableOrigins([])
+      } finally {
+        setLoadingOrigins(false)
+      }
+    }
+
+    fetchAvailableOrigins()
+  }, [form.importerIso3])
+
+  // Fetch available HS codes when both importer and origin are selected
+  useEffect(() => {
+    const fetchAvailableHsCodes = async () => {
+      if (!form.importerIso3 || !form.originIso3) {
+        setAvailableHsCodes([])
+        return
+      }
+
+      setLoadingHsCodes(true)
+      try {
+        // Fetch actual tariff rates for this specific route to get HS codes
+        // This is more targeted than fetching all rates
+        const response = await api.get('/tariff-rate/', {
+          params: {
+            importerIso3: form.importerIso3,
+            originIso3: form.originIso3,
+            limit: 1000
+          }
+        })
+        
+        // Extract unique HS codes from the response
+        const hsCodesSet = new Set<string>()
+        response.data.forEach((rate: any) => {
+          if (rate.hsCode) {
+            hsCodesSet.add(rate.hsCode)
+          }
+        })
+        
+        const hsCodesArray = Array.from(hsCodesSet)
+        setAvailableHsCodes(hsCodesArray)
+        console.log(`✅ Found ${hsCodesArray.length} HS codes for route ${form.importerIso3} → ${form.originIso3}`)
+      } catch (err) {
+        console.error('Failed to fetch available HS codes:', err)
+        setAvailableHsCodes([])
+      } finally {
+        setLoadingHsCodes(false)
+      }
+    }
+
+    fetchAvailableHsCodes()
+  }, [form.importerIso3, form.originIso3])
 
   // Helper to find MFN ad valorem rate from lookup
   const mfnRate = useMemo(() => {
@@ -467,27 +551,52 @@ export function Calculator() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Exporter (Origin)</label>
+              <label className="text-sm font-medium">
+                Exporter (Origin)
+                {availableOrigins.length > 0 && (
+                  <span className="text-xs text-brand-500 ml-1">
+                    • {availableOrigins.length} trade route{availableOrigins.length !== 1 ? 's' : ''} available
+                  </span>
+                )}
+              </label>
               <CountrySelect
                 countries={countries}
                 value={form.originIso3}
                 onChange={(code) =>
                   handleFormChange('originIso3', Array.isArray(code) ? code[0] ?? '' : code ?? '')
                 }
-                loading={countriesLoading}
+                loading={countriesLoading || loadingOrigins}
                 error={countriesError}
                 placeholder="Select origin (optional)"
               />
+              {availableOrigins.length > 0 && !availableOrigins.includes(form.originIso3) && form.originIso3 && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ No direct trade data available for this route
+                </p>
+              )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">HS Code</label>
+              <label className="text-sm font-medium">
+                HS Code
+                {availableHsCodes.length > 0 && (
+                  <span className="text-xs text-brand-500 ml-1">
+                    • {availableHsCodes.length} code{availableHsCodes.length !== 1 ? 's' : ''} available for this route
+                  </span>
+                )}
+              </label>
               <HsCodeSelect
                 value={form.hsCode}
                 onChange={(code) => handleFormChange('hsCode', code || '')}
                 importerIso3={form.importerIso3}
                 placeholder="Type code (e.g., 8703) or product name"
                 required
+                filterCodes={availableHsCodes.length > 0 ? availableHsCodes : undefined}
               />
+              {availableHsCodes.length > 0 && !availableHsCodes.includes(form.hsCode.replace(/\./g, '')) && form.hsCode && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ This HS code may not have data for the selected route
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">

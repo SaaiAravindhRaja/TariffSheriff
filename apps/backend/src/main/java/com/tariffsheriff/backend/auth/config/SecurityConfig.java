@@ -63,6 +63,8 @@ public class SecurityConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain publicApiFilterChain(HttpSecurity http) throws Exception {
+        System.out.println(
+                "🔧 Configuring PUBLIC filter chain (Order 1) - /api/tariff-rate/**, /api/countries/**, /api/hs-products/**");
         http
                 .securityMatcher("/api/countries/**", "/api/hs-products/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

@@ -14,6 +14,7 @@ interface HsCodeSelectProps {
   required?: boolean
   disabled?: boolean
   importerIso3?: string
+  filterCodes?: string[] // Optional list of allowed HS codes
 }
 
 const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
@@ -24,6 +25,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   required = false,
   disabled = false,
   importerIso3,
+  filterCodes,
 }) => {
   const [query, setQuery] = React.useState('')
   const [open, setOpen] = React.useState(false)
@@ -61,11 +63,52 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
     }
     setLoading(true)
     setError(null)
+    
     const t = setTimeout(async () => {
       try {
+        // If filterCodes exist and query is short, show those first
+        if (filterCodes && filterCodes.length > 0 && q.length < 2) {
+          // Fetch details for filtered codes
+          const codePromises = filterCodes.slice(0, 10).map(async (code) => {
+            try {
+              const res = await tariffApi.searchHsProducts({ q: code, limit: 1 })
+              return res.data?.[0] || { hsCode: code, hsLabel: 'Product description' }
+            } catch {
+              return { hsCode: code, hsLabel: 'Product description' }
+            }
+          })
+          const codeDetails = await Promise.all(codePromises)
+          if (cancelled) return
+          setResults(codeDetails)
+          setLoading(false)
+          return
+        }
+        
+        // For queries with at least 1 character, do normal search
+        if (q.length < 1) {
+          // Show some popular/common codes as examples
+          const res = await tariffApi.searchHsProducts({ q: '87', limit: 10 })
+          if (cancelled) return
+          setResults(res.data || [])
+          setLoading(false)
+          return
+        }
+        
         const res = await tariffApi.searchHsProducts({ q, limit: 200, importerIso3 })
         if (cancelled) return
-        setResults(res.data || [])
+        
+        // If filterCodes is provided, prioritize them but don't exclude others
+        let filteredData = res.data || []
+        if (filterCodes && filterCodes.length > 0) {
+          // Sort: matching filterCodes first, then others
+          filteredData = filteredData.sort((a, b) => {
+            const aMatch = filterCodes.includes(a.hsCode) ? 0 : 1
+            const bMatch = filterCodes.includes(b.hsCode) ? 0 : 1
+            return aMatch - bMatch
+          })
+        }
+        
+        setResults(filteredData)
       } catch (e: any) {
         if (cancelled) return
         setResults([])
@@ -73,12 +116,13 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
       } finally {
         if (!cancelled) setLoading(false)
       }
-    }, 200)
+    }, q.length === 0 ? 0 : 200) // No delay for empty query, 200ms for others
+    
     return () => {
       cancelled = true
       clearTimeout(t)
     }
-  }, [query, importerIso3, open])
+  }, [query, filterCodes, importerIso3, open])
 
   const select = (item: HsCode) => {
     onChange?.(item.hsCode)
@@ -136,21 +180,29 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
           ) : results.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">No matches</li>
           ) : (
-            results.map((r, idx) => (
-              <li
-                key={`${r.hsCode}-${idx}`}
-                role="option"
-                aria-selected={value === r.hsCode}
-                onMouseDown={(e) => { e.preventDefault(); select(r) }}
-                onMouseEnter={() => setHighlight(idx)}
-                className={`px-3 py-2 cursor-pointer text-sm ${idx === highlight ? 'bg-brand-50 dark:bg-brand-800/40' : ''}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{r.hsCode}</span>
-                  <span className="text-xs text-muted-foreground flex-1 text-right">{r.hsLabel}</span>
-                </div>
-              </li>
-            ))
+            results.map((r, idx) => {
+              const isAvailable = filterCodes && filterCodes.length > 0 ? filterCodes.includes(r.hsCode) : true
+              return (
+                <li
+                  key={`${r.hsCode}-${idx}`}
+                  role="option"
+                  aria-selected={value === r.hsCode}
+                  onMouseDown={(e) => { e.preventDefault(); select(r) }}
+                  onMouseEnter={() => setHighlight(idx)}
+                  className={`px-3 py-2 cursor-pointer text-sm ${idx === highlight ? 'bg-brand-50 dark:bg-brand-800/40' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {filterCodes && filterCodes.length > 0 && (
+                        <span className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-green-500' : 'bg-gray-300'}`} title={isAvailable ? 'Data available for this route' : 'Limited data for this route'} />
+                      )}
+                      <span className="font-medium">{r.hsCode}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground flex-1 text-right">{r.hsLabel}</span>
+                  </div>
+                </li>
+              )
+            })
           )}
         </ul>
       )}

@@ -5,6 +5,7 @@
 
 @layer base {
   :root {
+    /* Purple-Black Theme - Light Mode */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -29,16 +30,17 @@
   }
 
   .dark {
-    --background: 230 25% 8%;
+    /* Purple-Black Theme - Dark Mode */
+    --background: 240 10% 8%;
     --foreground: 210 40% 98%;
-    --card: 232 25% 10%;
+    --card: 240 10% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 232 25% 10%;
+    --popover: 240 10% 10%;
     --popover-foreground: 210 40% 98%;
-    /* Primary: subdued, slightly blue-ish purple (indigo 500) */
+    /* Primary: slightly blue-ish purple (indigo 500) */
     --primary: 245 80% 67%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 234 22% 18%;
+    --secondary: 240 15% 18%;
     --secondary-foreground: 210 40% 98%;
     /* Cohesive dark surfaces (less blue, slightly deeper) */
     --muted: 235 18% 16%;

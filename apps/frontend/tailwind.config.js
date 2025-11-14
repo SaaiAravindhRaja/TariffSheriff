@@ -51,7 +51,7 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom TariffSheriff brand colors (subdued, slightly blue-ish purple/indigo)
+        // Custom TariffSheriff brand colors
         brand: {
           50:  '#eef2ff',
           100: '#e0e7ff',

@@ -93,7 +93,6 @@ When deploying TariffSheriff:
 3. **API Security**:
    - Rotate JWT secrets regularly
    - Use strong, randomly generated JWT secrets (minimum 256 bits)
-   - Enable rate limiting in production
 
 4. **Dependencies**:
    - Regularly update dependencies to patch known vulnerabilities
