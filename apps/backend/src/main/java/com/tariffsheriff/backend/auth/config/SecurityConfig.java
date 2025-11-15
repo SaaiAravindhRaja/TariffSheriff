@@ -70,9 +70,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/countries/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/hs-products/**").permitAll()
-                        .anyRequest().denyAll())
+                        // .requestMatchers(HttpMethod.GET, "/api/countries/**").permitAll()
+                        // .requestMatchers(HttpMethod.GET, "/api/hs-products/**").permitAll()
+                        .anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
@@ -91,6 +91,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll() // Keep for backwards compatibility if needed
                         .requestMatchers("/api/tariff-rate/routes").permitAll() // Public endpoint for map visualization
                         .requestMatchers(HttpMethod.GET, "/api/tariff-rate/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/tariff-rate/calculate").permitAll()
                         .requestMatchers("/api/profile/dashboard-stats").permitAll()
                         .requestMatchers("/api/news/**").permitAll() // Public news endpoints
                         .requestMatchers("/api/auth/**").permitAll()
