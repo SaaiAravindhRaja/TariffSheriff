@@ -204,8 +204,8 @@ export function TariffCart() {
       const calculationRequests = items.map((item) => ({
         name: saveName || `Multi-Product Import (${items.length} items)`,
         notes: saveNotes || `Includes: ${items.map(i => i.hsCode).join(', ')}`,
-        importerIso2: item.importerIso3?.substring(0, 2), // Convert ISO3 to ISO2
-        originIso2: item.originIso3?.substring(0, 2),
+        importerIso3: item.importerIso3 || '',
+        originIso3: item.originIso3 || '',
         hsCode: item.hsCode,
         quantity: item.quantity,
         unitValue: item.unitValue,
@@ -353,6 +353,11 @@ export function TariffCart() {
                   <input
                     type="number"
                     min="1"
+                    name="quantity-input"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     value={newItem.quantity}
                     onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
@@ -364,6 +369,11 @@ export function TariffCart() {
                     type="number"
                     min="0"
                     step="0.01"
+                    name="unit-value-input"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     value={newItem.unitValue}
                     onChange={(e) => setNewItem({ ...newItem, unitValue: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
@@ -524,6 +534,11 @@ export function TariffCart() {
                       <label className="block text-sm font-medium mb-1">Save As (Optional)</label>
                       <input
                         type="text"
+                        name="save-name-input"
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={saveName}
                         onChange={(e) => setSaveName(e.target.value)}
                         placeholder="e.g., EV Parts Import Q1 2025"
@@ -533,6 +548,11 @@ export function TariffCart() {
                     <div>
                       <label className="block text-sm font-medium mb-1">Notes (Optional)</label>
                       <textarea
+                        name="save-notes-input"
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={saveNotes}
                         onChange={(e) => setSaveNotes(e.target.value)}
                         placeholder="Add notes about this import scenario..."
