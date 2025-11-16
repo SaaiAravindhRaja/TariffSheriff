@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -65,8 +66,10 @@ class TariffRateServiceImplMoreEdgeTests {
         // rate has an agreement id, but repository will not return an Agreement
         pref.setAgreementId(5L);
 
-        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "MFN")).thenReturn(Optional.of(mfn));
-        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "PREF")).thenReturn(Optional.of(pref));
+        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "MFN"))
+                .thenReturn(List.of(mfn));
+        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "PREF"))
+                .thenReturn(List.of(pref));
 
         // agreements.findById returns empty -> agreement stays null
         when(agreements.findById(5L)).thenReturn(Optional.empty());
