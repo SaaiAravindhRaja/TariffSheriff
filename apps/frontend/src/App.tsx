@@ -20,6 +20,7 @@ import { Privacy } from '@/pages/Privacy'
 import { Team } from '@/pages/Team'
 import { Contact } from '@/pages/Contact'
 import { SavedTariffs } from '@/pages/SavedTariffs'
+import { TariffCart } from '@/pages/TariffCart'
  
 import '@/styles/globals.css'
 import BackgroundFX from '@/components/visual/BackgroundFX'
@@ -70,6 +71,7 @@ function AppContent() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/calculator" element={<Calculator />} />
+            <Route path="/cart" element={<TariffCart />} />
             <Route path="/database" element={<Database />} />
             <Route path="/ai-assistant" element={<AiAssistant />} />
             <Route path="/news" element={<News />} />

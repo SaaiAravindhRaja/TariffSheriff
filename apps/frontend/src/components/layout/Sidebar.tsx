@@ -12,9 +12,11 @@ import {
   Zap,
   Sparkles,
   Bot,
-  Newspaper
+  Newspaper,
+  ShoppingCart
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCartStore } from '@/store/cartStore'
 
 interface SidebarProps {
   className?: string
@@ -32,6 +34,13 @@ const navigationItems = [
     href: '/calculator',
     icon: Calculator,
     description: 'Calculate Import Costs'
+  },
+  {
+    title: 'Tariff Cart',
+    href: '/cart',
+    icon: ShoppingCart,
+    description: 'Multi-Product Imports',
+    badge: true
   },
   {
     title: 'Tariff Database',
@@ -61,6 +70,8 @@ const navigationItems = [
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation()
+  const { getItemCount } = useCartStore()
+  const cartItemCount = getItemCount()
 
   return (
     <motion.aside
@@ -109,6 +120,13 @@ export function Sidebar({ className }: SidebarProps) {
                     {item.description}
                   </span>
                 </div>
+
+                {/* Cart badge */}
+                {item.badge && cartItemCount > 0 && (
+                  <span className="bg-brand-600 text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
 
                 {isActive && (
                   <motion.div
