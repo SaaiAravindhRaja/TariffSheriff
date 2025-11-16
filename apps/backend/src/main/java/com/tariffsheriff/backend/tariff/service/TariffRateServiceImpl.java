@@ -3,9 +3,11 @@ package com.tariffsheriff.backend.tariff.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -146,14 +148,13 @@ public class TariffRateServiceImpl implements TariffRateService {
         // fall back to general MFN
         TariffRate tariffRateMfn = null;
         if (origin != null) {
-            tariffRateMfn = tariffRates
-                    .findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode, hsProductId, "MFN")
-                    .orElse(null);
+            tariffRateMfn = pickBestRate(
+                    tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode,
+                            hsProductId, "MFN"));
         }
         if (tariffRateMfn == null) {
-            tariffRateMfn = tariffRates
-                    .findByImporterIso3AndHsProductIdAndBasis(importerCode, hsProductId, "MFN")
-                    .orElse(null);
+            tariffRateMfn = pickBestRate(
+                    tariffRates.findByImporterIso3AndHsProductIdAndBasis(importerCode, hsProductId, "MFN"));
         }
 
         // Fallback MFN: when no MFN row found, synthesize an MFN rate based on importer name hash
@@ -182,10 +183,10 @@ public class TariffRateServiceImpl implements TariffRateService {
         // matching origin-specific PREF
         TariffRate tariffRatePref = null;
         if (origin != null) {
-            tariffRatePref = tariffRates
-                    .findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode, hsProductId,
-                            "PREF")
-                    .orElse(null);
+            tariffRatePref = pickBestRate(
+                    tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis(importerCode, originCode,
+                            hsProductId,
+                            "PREF"));
         }
 
         Agreement agreement = null;
@@ -205,6 +206,20 @@ public class TariffRateServiceImpl implements TariffRateService {
                 originCode,
                 hsCode,
                 options);
+    }
+
+    private TariffRate pickBestRate(List<TariffRate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        return candidates.stream()
+                .filter(Objects::nonNull)
+                .min(Comparator
+                        .comparing(TariffRate::isNonAdValorem) // prefer numeric rates
+                        .thenComparing(rate -> rate.getAdValoremRate() != null ? rate.getAdValoremRate()
+                                : BigDecimal.valueOf(Double.MAX_VALUE))
+                        .thenComparing(TariffRate::getId))
+                .orElse(null);
     }
 
     public com.tariffsheriff.backend.tariff.dto.TariffCalculationResponse calculateTariffRate(TariffRateRequestDto rq) {

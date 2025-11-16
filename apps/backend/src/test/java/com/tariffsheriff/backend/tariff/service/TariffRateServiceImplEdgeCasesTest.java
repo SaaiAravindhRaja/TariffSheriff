@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,7 +71,7 @@ class TariffRateServiceImplEdgeCasesTest {
         mfn.setBasis("MFN");
         mfn.setAdValoremRate(new BigDecimal("0.08"));
 
-        when(tariffRates.findByImporterIso3AndHsProductIdAndBasis("GBR", 11L, "MFN")).thenReturn(Optional.of(mfn));
+        when(tariffRates.findByImporterIso3AndHsProductIdAndBasis("GBR", 11L, "MFN")).thenReturn(List.of(mfn));
 
         var dto = svc.getTariffRateWithAgreement("GBR", null, "0101");
         assertEquals("GBR", dto.importerIso3());
@@ -98,9 +99,12 @@ class TariffRateServiceImplEdgeCasesTest {
         mfnGeneral.setBasis("MFN");
         mfnGeneral.setAdValoremRate(new BigDecimal("0.12"));
 
-        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "MFN")).thenReturn(Optional.empty());
-        when(tariffRates.findByImporterIso3AndHsProductIdAndBasis("GBR", 77L, "MFN")).thenReturn(Optional.of(mfnGeneral));
-        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "PREF")).thenReturn(Optional.empty());
+        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "MFN"))
+                .thenReturn(List.of());
+        when(tariffRates.findByImporterIso3AndHsProductIdAndBasis("GBR", 77L, "MFN"))
+                .thenReturn(List.of(mfnGeneral));
+        when(tariffRates.findByImporterIso3AndOriginIso3AndHsProductIdAndBasis("GBR", "CHN", 77L, "PREF"))
+                .thenReturn(List.of());
 
         var dto = svc.getTariffRateWithAgreement("GBR", "CHN", "0101");
         assertEquals(1, dto.rates().size());
