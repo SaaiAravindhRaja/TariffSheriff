@@ -42,14 +42,7 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_API_ENDPOINTS = {
-            "/api/auth/**",
-            "/api/tariff-rate/routes",
-            "/api/news/**",
-            "/api/profile/dashboard-stats"
-    };
-
-    private static final String[] PUBLIC_GET_ENDPOINTS = {
-            "/api/tariff-rate/**"
+            "/api/auth/**"
     };
 
     @Value("${cors.allowed-origins:}")
@@ -112,7 +105,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_INFRA_ENDPOINTS).permitAll()
                         .requestMatchers(PUBLIC_API_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tariff-rate/calculate").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
