@@ -62,7 +62,7 @@ class TariffCalculationServiceImplTest {
         ArgumentCaptor<TariffCalculation> cap = ArgumentCaptor.forClass(TariffCalculation.class);
         when(repo.save(cap.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        TariffCalculation saved = svc.saveForUser(user, input, result, "n", "notes", "HS123", "GB", "CN");
+        TariffCalculation saved = svc.saveForUser(user, input, result, "n", "notes", "HS123", "GBR", "CHN");
 
         // verify repo.save was called and fields mapped
         verify(repo).save(saved);

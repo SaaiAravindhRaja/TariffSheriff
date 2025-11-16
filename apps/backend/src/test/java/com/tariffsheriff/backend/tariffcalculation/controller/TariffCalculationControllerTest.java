@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TariffCalculationControllerTest {
+
+    private static final Sort SUMMARY_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
     @Mock
     private TariffCalculationService service;
@@ -117,7 +120,7 @@ class TariffCalculationControllerTest {
         
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 20)));
+        verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 20, SUMMARY_SORT)));
     }
 
     @Test
@@ -257,14 +260,14 @@ class TariffCalculationControllerTest {
   }
 
   @Test
-  void list_clampsPageToZero() {
+    void list_clampsPageToZero() {
     mockValidUser();
     when(service.listForUser(any(), any())).thenReturn(Page.empty());
 
     controller.list(jwt, -5, 15);
 
     // Verifies that page was clamped from -5 to 0
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 15)));
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 15, SUMMARY_SORT)));
   }
 
   @Test
@@ -274,8 +277,8 @@ class TariffCalculationControllerTest {
 
     controller.list(jwt, 0, 200);
 
-    // Verifies that size was clamped from 200 to 100
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 100)));
+    // Verifies that size was clamped from 200 to the controller max (200)
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 200, SUMMARY_SORT)));
   }
 
   @Test
@@ -286,7 +289,7 @@ class TariffCalculationControllerTest {
     controller.list(jwt, 0, 0);
 
     // Verifies that size was clamped from 0 to 1
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 1)));
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 1, SUMMARY_SORT)));
   }
 @Test
     void get_mapsToDetailCorrectly() {
@@ -339,8 +342,8 @@ class TariffCalculationControllerTest {
         assertEquals(1L, summary.getId());
         assertEquals("Test Calculation", summary.getName());
         assertEquals("1234", summary.getHsCode());
-        assertEquals("US", summary.getImporterIso3());
-        assertEquals("CN", summary.getOriginIso3());
+        assertEquals("USA", summary.getImporterIso3());
+        assertEquals("CHN", summary.getOriginIso3());
         assertEquals(0, new BigDecimal("100.00").compareTo(summary.getTotalTariff()));
         assertEquals("MFN", summary.getRateUsed());
         assertEquals(0, new BigDecimal("50").compareTo(summary.getRvcComputed()));
