@@ -34,6 +34,17 @@ const initialCosts: CostState = {
   nonOriginValue: 0,
 }
 
+const percentFormatter = new Intl.NumberFormat(undefined, {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const formatPercent = (value?: number | null) => {
+  const numeric = Number(value ?? 0)
+  if (!Number.isFinite(numeric)) return '0%'
+  return `${percentFormatter.format(numeric * 100)}%`
+}
+
 function parseNumber(value: string): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 0
@@ -620,6 +631,7 @@ export function Calculator() {
                       <Input
                         type="number"
                         inputMode="decimal"
+                        autoComplete="off"
                         value={costs[field]}
                         onChange={(event) => handleCostChange(field, event.target.value)}
                         onFocus={(event) => {
@@ -664,7 +676,7 @@ export function Calculator() {
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-semibold">
-                                {(option.adValoremRate ?? 0) * 100}%
+                                {formatPercent(option.adValoremRate)}
                               </p>
                               {option.rvcThreshold != null && (
                                 <p className="text-xs text-muted-foreground">
@@ -738,7 +750,7 @@ export function Calculator() {
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Applied Rate</p>
-              <p className="text-lg font-semibold">{(calcResult.appliedRate * 100).toFixed(2)}%</p>
+              <p className="text-lg font-semibold">{formatPercent(calcResult.appliedRate)}</p>
             </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Total Cost</p>
@@ -780,6 +792,7 @@ export function Calculator() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">Label</label>
                 <Input
+                  autoComplete="off"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   placeholder="e.g., Chile → US EV shipment"
@@ -788,6 +801,7 @@ export function Calculator() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">Notes</label>
                 <Input
+                  autoComplete="off"
                   value={saveNotes}
                   onChange={(e) => setSaveNotes(e.target.value)}
                   placeholder="Optional notes"

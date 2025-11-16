@@ -251,7 +251,7 @@ public class TariffRateServiceImpl implements TariffRateService {
 
     private TariffRateOptionDto toOptionDto(TariffRate rate, Agreement agreement) {
         BigDecimal rvcThreshold = agreement != null ? agreement.getRvcThreshold() : null;
-        String agreementName = agreement != null ? agreement.getName() : null;
+        String agreementName = agreement != null ? formatAgreementName(rate.getImporterIso3(), agreement.getName()) : null;
         Long agreementId = agreement != null ? agreement.getId() : rate.getAgreementId();
 
         return new TariffRateOptionDto(
@@ -263,6 +263,21 @@ public class TariffRateServiceImpl implements TariffRateService {
                 agreementId,
                 agreementName,
                 rvcThreshold);
+    }
+
+    private String formatAgreementName(String importerIso3, String rawName) {
+        if (!StringUtils.hasText(rawName)) {
+            return rawName;
+        }
+        String name = rawName.trim();
+        String importer = normalizeIso3(importerIso3);
+        String pattern = "preferential tariff for ";
+        if (name.toLowerCase().startsWith(pattern)) {
+            String suffix = name.substring(pattern.length()).trim();
+            String importerCountry = importer != null ? importer : "";
+            return "FTA " + importerCountry + " - " + suffix;
+        }
+        return name;
     }
 
     @Override
