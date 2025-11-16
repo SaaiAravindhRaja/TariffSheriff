@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { api, chatbotApi } from '@/services/api'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/toast'
 import { useChatStore, type ChatMessage } from '@/store/chatStore'
 
 interface ChatQueryRequest {
@@ -63,7 +63,7 @@ export function AiAssistant() {
   const [isVoiceSupported, setIsVoiceSupported] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const { toast } = useToast()
+  const { showToast } = useToast()
 
   const conversationId = activeConversationId
 
@@ -135,7 +135,7 @@ export function AiAssistant() {
 
   const startVoiceInput = () => {
     if (!isVoiceSupported) {
-      toast({ description: 'Voice input is not supported in this browser.' })
+      showToast('Voice input is not supported in this browser.', 'info')
       return
     }
 
@@ -158,9 +158,9 @@ export function AiAssistant() {
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         setIsListening(false)
         if (event.error === 'not-allowed') {
-          toast({ variant: 'destructive', description: 'Microphone access denied.' })
+          showToast('Microphone access denied.', 'error')
         } else if (!['no-speech', 'aborted'].includes(event.error)) {
-          toast({ variant: 'destructive', description: `Voice input error: ${event.error}` })
+          showToast(`Voice input error: ${event.error}`, 'error')
         }
       }
       recognition.onend = () => {
@@ -172,7 +172,7 @@ export function AiAssistant() {
     } catch (error) {
       console.error('Failed to start voice recognition:', error)
       setIsListening(false)
-      toast({ variant: 'destructive', description: 'Failed to start voice input.' })
+      showToast('Failed to start voice input.', 'error')
     }
   }
 

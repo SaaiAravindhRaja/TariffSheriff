@@ -37,9 +37,15 @@ export const setAuth0TokenGetter = (getter: (options?: any) => Promise<string>) 
 
 api.interceptors.request.use(
   async (config) => {
-    // Skip auth for public endpoints
-    const publicEndpoints = ['/tariff-rate', '/countries', '/hs-products']
-    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.startsWith(endpoint))
+    // Only these are truly public; lookup must be authenticated
+    const urlPath = config.url || ''
+    const isPublicEndpoint =
+      urlPath === '/tariff-rate' ||
+      urlPath === '/tariff-rate/' ||
+      urlPath.startsWith('/tariff-rate?') ||
+      urlPath.startsWith('/tariff-rate/routes') ||
+      urlPath.startsWith('/countries') ||
+      urlPath.startsWith('/hs-products')
     
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
       isPublic: isPublicEndpoint,
@@ -52,7 +58,7 @@ api.interceptors.request.use(
           const token = await getAccessTokenSilently({
             authorizationParams: {
               audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.tariffsheriff.com',
-            }
+            },
           })
           config.headers = config.headers ?? {}
           if (token) {
@@ -194,6 +200,7 @@ export const chatbotApi = {
 }
 
 export interface Article {
+  id?: number
   title: string
   url: string
   content: string

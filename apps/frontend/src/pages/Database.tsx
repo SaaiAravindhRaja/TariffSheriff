@@ -232,50 +232,32 @@ export function Database() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [selectedMapRoute, setSelectedMapRoute] = useState<{importer: string, origin: string} | null>(null)
-  const [manualImporter, setManualImporter] = useState<string>('')
-  const [manualOrigin, setManualOrigin] = useState<string>('')
 
   useEffect(() => {
     fetchTariffRates()
-  }, [selectedMapRoute, selectedCategory, selectedSubcategory, manualImporter, manualOrigin]) // Re-fetch when filters change
+  }, [selectedMapRoute])
 
   useEffect(() => {
     filterRates()
-  }, [searchQuery, selectedCategory, selectedSubcategory, tariffRates, selectedMapRoute, manualImporter, manualOrigin])
+  }, [searchQuery, selectedCategory, selectedSubcategory, tariffRates, selectedMapRoute])
 
   const fetchTariffRates = async () => {
     try {
       setLoading(true)
       
-      // Build query parameters for filtering
-      const params: any = {}
-      
-      // Prioritize manual country selection over map selection
-      const effectiveImporter = manualImporter || selectedMapRoute?.importer
-      const effectiveOrigin = manualOrigin || selectedMapRoute?.origin
-      
-      // Add country filter if route selected
-      if (effectiveImporter) {
-        console.log('🔍 Fetching tariff rates for route:', effectiveImporter, '←', effectiveOrigin)
-        params.importerIso3 = effectiveImporter
-        if (effectiveOrigin) {
-          params.originIso3 = effectiveOrigin
+      const params: Record<string, string> = {}
+      const importer = selectedMapRoute?.importer
+      const origin = selectedMapRoute?.origin
+
+      if (importer) {
+        params.importerIso3 = importer
+        if (origin) {
+          params.originIso3 = origin
         }
-      } else {
-        console.log('🔍 Fetching all tariff rates (no route selected)')
       }
       
-      // REMOVED HS code filtering for now - just get all rates for country pair
-      
-      console.log('📤 Sending request with params:', params)
-      
-      // Fetch filtered tariff rates from backend
       const response = await api.get('/tariff-rate', { params })
       const data = response.data.content || response.data
-      
-      console.log('📥 Received tariff rates:', data.length, 'records')
-      console.log('📊 Sample data:', data.slice(0, 3))
-      
       setTariffRates(data)
     } catch (error) {
       console.error('❌ Failed to fetch tariff rates:', error)
@@ -287,10 +269,9 @@ export function Database() {
   const filterRates = () => {
     let filtered = tariffRates
 
-    const effectiveImporter = manualImporter || selectedMapRoute?.importer
-    const effectiveOrigin = manualOrigin || selectedMapRoute?.origin
+    const effectiveImporter = selectedMapRoute?.importer
+    const effectiveOrigin = selectedMapRoute?.origin
 
-    // Filter by selected map route or manual country selection
     if (effectiveImporter) {
       filtered = filtered.filter(rate => 
         rate.importerIso3 === effectiveImporter && 
@@ -525,43 +506,6 @@ export function Database() {
               })}
             </div>
 
-            {/* Country Filter Dropdowns */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Filter by Trade Route</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Importer Country</label>
-                  {/* <CountrySelect
-                    value={manualImporter}
-                    onChange={setManualImporter}
-                    placeholder="Select importer..."
-                  /> */}
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Exporter Country</label>
-                  {/* <CountrySelect
-                    value={manualOrigin}
-                    onChange={setManualOrigin}
-                    placeholder="Select exporter..."
-                  /> */}
-                </div>
-              </div>
-              {(manualImporter || manualOrigin) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setManualImporter('')
-                    setManualOrigin('')
-                  }}
-                  className="mt-2 text-xs"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Clear Country Filters
-                </Button>
-              )}
-            </div>
-
             {/* Tariff Rates Table */}
             {(selectedCategory || searchQuery) && (
               <div className="mt-6">
@@ -632,4 +576,3 @@ export function Database() {
     </div>
   )
 }
-

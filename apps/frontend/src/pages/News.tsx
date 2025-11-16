@@ -3,21 +3,19 @@ import { Newspaper, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/loading'
-import { newsApi, type Article, type NewsQueryResponse } from '@/services/api'
+import { newsApi, type Article } from '@/services/api'
 import { useAuth } from '@/hooks/useAuth'
-import { ArticleCard, ArticleModal, NewsSearchBar, SynthesizedAnswer } from '@/components/news'
+import { ArticleCard, ArticleModal, NewsSearchBar } from '@/components/news'
 
 export function News() {
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
-  const [synthesizedAnswer, setSynthesizedAnswer] = useState<string | null>(null)
-  const [conversationId, setConversationId] = useState<number | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
-  const [answerSource, setAnswerSource] = useState<'db' | 'api' | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [isSearchActive, setIsSearchActive] = useState(false)
   const articlesPerPage = 3
   const { user } = useAuth()
 
@@ -33,8 +31,8 @@ export function News() {
       const response = await newsApi.getAllArticles(page, articlesPerPage)
       setArticles(response.data)
       setCurrentPage(page)
-      // If we got fewer articles than requested, there are no more pages
       setHasMore(response.data.length === articlesPerPage)
+      setIsSearchActive(false)
     } catch (err: any) {
       console.error('Error fetching articles:', err)
       setError(err.message || 'Failed to load articles. Please try again later.')
@@ -49,31 +47,17 @@ export function News() {
     try {
       setSearchLoading(true)
       setError(null)
-      
-      const requestData: any = {
-        query: query.trim(),
-      }
-      
+      const payload: { query: string; username?: string } = { query: query.trim() }
       if (user?.email) {
-        requestData.username = user.email
+        payload.username = user.email
       }
-      
-      if (conversationId) {
-        requestData.conversationId = conversationId
-      }
-
-      const response = await newsApi.queryNews(requestData)
-      
-      setArticles(response.data.articles)
-      setSynthesizedAnswer(response.data.synthesizedAnswer)
-      setAnswerSource(response.data.source)
-      
-      if (response.data.conversationId) {
-        setConversationId(response.data.conversationId)
-      }
+      const response = await newsApi.queryNews(payload)
+      setArticles(response.data.articles ?? [])
+      setIsSearchActive(true)
+      setHasMore(false)
+      setCurrentPage(0)
     } catch (err: any) {
       console.error('Error searching articles:', err)
-      
       let errorMessage = 'Failed to search articles. Please try again.'
       
       if (err.message) {
@@ -83,6 +67,7 @@ export function News() {
       }
       
       setError(errorMessage)
+      setIsSearchActive(false)
     } finally {
       setSearchLoading(false)
     }
@@ -97,10 +82,8 @@ export function News() {
   }
 
   const handleClearSearch = () => {
-    setSynthesizedAnswer(null)
-    setAnswerSource(null)
-    setConversationId(null)
     setCurrentPage(0)
+    setIsSearchActive(false)
     fetchArticles(0)
   }
 
@@ -144,17 +127,6 @@ export function News() {
         />
       </div>
 
-      {/* Synthesized Answer */}
-      {synthesizedAnswer && (
-        <div className="mb-6">
-          <SynthesizedAnswer
-            answer={synthesizedAnswer}
-            articles={articles}
-            source={answerSource || undefined}
-          />
-        </div>
-      )}
-
       {/* Error Message */}
       {error && (
         <Card className="mb-6 border-red-200 bg-red-50">
@@ -193,11 +165,11 @@ export function News() {
               <Newspaper className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <h3 className="text-xl font-semibold mb-2">No articles found</h3>
               <p className="text-gray-600 mb-4">
-                {synthesizedAnswer
+                {isSearchActive
                   ? 'Try adjusting your search query or search for different topics.'
                   : 'No articles are currently available. Check back later for updates.'}
               </p>
-              {synthesizedAnswer && (
+              {isSearchActive && (
                 <Button
                   variant="outline"
                   onClick={handleClearSearch}
@@ -224,7 +196,7 @@ export function News() {
           </div>
 
           {/* Pagination Controls */}
-          {!synthesizedAnswer && (
+          {!isSearchActive && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <Button
                 variant="outline"
