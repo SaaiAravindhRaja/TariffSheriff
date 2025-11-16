@@ -4,8 +4,8 @@ CREATE TABLE tariff_calculation (
     name VARCHAR(255),
     notes TEXT,
     hs_code VARCHAR(32),
-    importer_iso2 VARCHAR(2),
-    origin_iso2 VARCHAR(2),
+    importer_iso3 VARCHAR(3),
+    origin_iso3 VARCHAR(3),
 
     mfn_rate NUMERIC(18,6),
     pref_rate NUMERIC(18,6),

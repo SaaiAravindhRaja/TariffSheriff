@@ -66,11 +66,13 @@ public class SecurityConfig {
         System.out.println(
                 "🔧 Configuring PUBLIC filter chain (Order 1) - /api/tariff-rate/**, /api/countries/**, /api/hs-products/**");
         http
-                .securityMatcher("/api/tariff-rate/**", "/api/countries/**", "/api/hs-products/**")
+                .securityMatcher("/api/countries/**", "/api/hs-products/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()) // Permit ALL requests that match the securityMatcher
+                        // .requestMatchers(HttpMethod.GET, "/api/countries/**").permitAll()
+                        // .requestMatchers(HttpMethod.GET, "/api/hs-products/**").permitAll()
+                        .anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
@@ -88,6 +90,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/auth/**").permitAll() // Keep for backwards compatibility if needed
                         .requestMatchers("/api/tariff-rate/routes").permitAll() // Public endpoint for map visualization
+                        .requestMatchers(HttpMethod.GET, "/api/tariff-rate/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/tariff-rate/calculate").permitAll()
+                        .requestMatchers("/api/profile/dashboard-stats").permitAll()
                         .requestMatchers("/api/news/**").permitAll() // Public news endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/**").authenticated()

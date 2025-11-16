@@ -37,11 +37,17 @@ export const setAuth0TokenGetter = (getter: (options?: any) => Promise<string>) 
 
 api.interceptors.request.use(
   async (config) => {
-    // Skip auth for public endpoints
-    const publicEndpoints = ['/tariff-rate', '/countries', '/hs-products']
-    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.startsWith(endpoint))
+    // Only these are truly public; lookup must be authenticated
+    const urlPath = config.url || ''
+    const isPublicEndpoint =
+      urlPath === '/tariff-rate' ||
+      urlPath === '/tariff-rate/' ||
+      urlPath.startsWith('/tariff-rate?') ||
+      urlPath.startsWith('/tariff-rate/routes') ||
+      urlPath.startsWith('/countries') ||
+      urlPath.startsWith('/hs-products')
     
-    console.log(`🔐 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
       isPublic: isPublicEndpoint,
       hasTokenGetter: !!getAccessTokenSilently
     })
@@ -52,10 +58,12 @@ api.interceptors.request.use(
           const token = await getAccessTokenSilently({
             authorizationParams: {
               audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.tariffsheriff.com',
-            }
+            },
           })
           config.headers = config.headers ?? {}
-          config.headers.Authorization = `Bearer ${token}`
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+          }
           console.log(`✅ Auth token attached for ${config.url}`, {
             tokenLength: token?.length,
             tokenPreview: token?.substring(0, 20) + '...'
@@ -127,8 +135,8 @@ export const tariffApi = {
     originIso3?: string
     hsCode: string
     limit?: number
-  }) => api.get<TariffRateLookupResponse[]>('/tariff-rate/subcategories', { params }),
-  searchHsProducts: (params: { q: string; limit?: number }) =>
+  }) => api.get<TariffLookupResponse[]>('/tariff-rate/subcategories', { params }),
+  searchHsProducts: (params: { q: string; limit?: number; importerIso3?: string }) =>
     api.get<{ hsCode: string; hsLabel: string }[]>('/hs-products/search', { params }),
 }
 
@@ -143,8 +151,8 @@ export interface SavedTariffSummary {
   rvcComputed: number | null
   rvcThreshold: number | null
   hsCode: string | null
-  importerIso2: string | null
-  originIso2: string | null
+  importerIso3: string | null
+  originIso3: string | null
   agreementName: string | null
 }
 
@@ -192,6 +200,7 @@ export const chatbotApi = {
 }
 
 export interface Article {
+  id?: number
   title: string
   url: string
   content: string

@@ -16,7 +16,7 @@ public interface TariffCalculationRepository extends JpaRepository<TariffCalcula
 
     Optional<TariffCalculation> findByIdAndUser_Id(Long id, Long userId);
 
-    void deleteByIdAndUser_Id(Long id, Long userId);
+    long deleteByIdAndUser_Id(Long id, Long userId);
 
     // Dashboard stats queries
     @Query("SELECT COALESCE(SUM(tc.totalTariff), 0) FROM TariffCalculation tc WHERE tc.user.id = :userId")

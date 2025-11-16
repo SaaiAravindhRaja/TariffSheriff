@@ -15,12 +15,12 @@ public interface TariffCalculationService {
                                   String name,
                                   String notes,
                                   String hsCode,
-                                  String importerIso2,
-                                  String originIso2);
+                                  String importerIso3,
+                                  String originIso3);
 
     Page<TariffCalculation> listForUser(Long userId, Pageable pageable);
 
     Optional<TariffCalculation> getForUser(Long id, Long userId);
 
-    void deleteForUser(Long id, Long userId);
+    boolean deleteForUser(Long id, Long userId);
 }

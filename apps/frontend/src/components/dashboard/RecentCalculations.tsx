@@ -17,8 +17,8 @@ interface Calculation {
   rateUsed: string
   appliedRate: number
   hsCode: string
-  importerIso2: string
-  originIso2: string
+  importerIso3: string
+  originIso3: string
   agreementName: string | null
 }
 
@@ -138,9 +138,9 @@ export function RecentCalculations() {
               <div className="flex items-center space-x-3 flex-1">
                 {/* Route Flags */}
                 <div className="flex items-center space-x-1">
-                  <span className="text-lg">{getCountryFlag(calc.originIso2 || 'XX')}</span>
+                  <span className="text-lg">{getCountryFlag(calc.originIso3 || 'XX')}</span>
                   <span className="text-xs text-muted-foreground">→</span>
-                  <span className="text-lg">{getCountryFlag(calc.importerIso2 || 'XX')}</span>
+                  <span className="text-lg">{getCountryFlag(calc.importerIso3 || 'XX')}</span>
                 </div>
 
                 {/* Calculation Details */}

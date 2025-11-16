@@ -1,5 +1,7 @@
 node_modules/
 dist/
+!packages/react-simple-maps/dist/
+!packages/react-simple-maps/dist/**
 target/
 .env
 .ssh/

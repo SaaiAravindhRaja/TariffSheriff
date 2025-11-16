@@ -1,17 +1,7 @@
 import { useEffect } from 'react'
 import { Calendar, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-interface Article {
-  id?: number
-  title: string
-  url: string
-  content: string
-  queryContext?: string
-  source?: 'db' | 'api'
-  publishedAt?: string
-  imageUrl?: string
-}
+import type { Article } from '@/services/api'
 
 interface ArticleModalProps {
   article: Article | null

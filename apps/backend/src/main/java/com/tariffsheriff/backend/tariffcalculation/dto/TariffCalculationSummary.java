@@ -23,7 +23,7 @@ public class TariffCalculationSummary {
     private BigDecimal rvcComputed;
     private BigDecimal rvcThreshold;
     private String hsCode;
-    private String importerIso2;
-    private String originIso2;
+    private String importerIso3;
+    private String originIso3;
     private String agreementName;
 }

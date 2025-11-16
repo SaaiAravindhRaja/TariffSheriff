@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import CountrySelect from '@/components/inputs/CountrySelect'
-import HsCodeSelect from '@/components/inputs/HsCodeSelect'
+import HsCodeSelect, { type HsCodeOption } from '@/components/inputs/HsCodeSelect'
 import { useDbCountries } from '@/hooks/useDbCountries'
 import { useSettings } from '@/contexts/SettingsContext'
 import { api, tariffApi, savedTariffsApi, type TariffLookupResponse, type TariffRateOption } from '@/services/api'
@@ -106,7 +106,7 @@ export function Calculator() {
 
   // New state for filtered options
   const [availableOrigins, setAvailableOrigins] = useState<string[]>([])
-  const [availableHsCodes, setAvailableHsCodes] = useState<string[]>([])
+  const [availableHsCodes, setAvailableHsCodes] = useState<HsCodeOption[]>([])
   const [loadingOrigins, setLoadingOrigins] = useState(false)
   const [loadingHsCodes, setLoadingHsCodes] = useState(false)
 
@@ -128,37 +128,6 @@ export function Calculator() {
   const phase2AbortRef = useRef<AbortController | null>(null)
   const phase1ResultRef = useRef<any>(null)
 
-  // Minimal ISO conversion helper (iso3 -> iso2); extend as needed
-  const iso3ToIso2 = (code?: string | null): string | undefined => {
-    if (!code) return undefined
-    const map: Record<string, string> = {
-      USA: 'US',
-      CHL: 'CL',
-      CHN: 'CN',
-      KOR: 'KR',
-      JPN: 'JP',
-      CAN: 'CA',
-      MEX: 'MX',
-      AUS: 'AU',
-      NZL: 'NZ',
-      GBR: 'GB',
-      DEU: 'DE',
-      FRA: 'FR',
-      ITA: 'IT',
-      ESP: 'ES',
-      PRT: 'PT',
-      NLD: 'NL',
-      SWE: 'SE',
-      NOR: 'NO',
-      DNK: 'DK',
-      FIN: 'FI',
-      EU: 'EU',
-      EUR: 'EU',
-    }
-    const c = code.trim().toUpperCase()
-    return map[c] || undefined
-  }
-  
   // Auto-fill form from Database page transfer
   useEffect(() => {
     const prefilledData = sessionStorage.getItem('prefilledTariff')
@@ -220,7 +189,7 @@ export function Calculator() {
     fetchAvailableOrigins()
   }, [form.importerIso3])
 
-  // Fetch available HS codes when both importer and origin are selected
+  // Fetch available HS codes only when both importer and origin are selected
   useEffect(() => {
     const fetchAvailableHsCodes = async () => {
       if (!form.importerIso3 || !form.originIso3) {
@@ -230,27 +199,28 @@ export function Calculator() {
 
       setLoadingHsCodes(true)
       try {
-        // Fetch actual tariff rates for this specific route to get HS codes
-        // This is more targeted than fetching all rates
         const response = await api.get('/tariff-rate/', {
           params: {
             importerIso3: form.importerIso3,
             originIso3: form.originIso3,
-            limit: 1000
-          }
+            limit: 1000,
+          },
         })
-        
-        // Extract unique HS codes from the response
-        const hsCodesSet = new Set<string>()
+
+        const unique = new Map<string, string>()
         response.data.forEach((rate: any) => {
-          if (rate.hsCode) {
-            hsCodesSet.add(rate.hsCode)
+          if (!rate.hsCode) return
+          const normalized = String(rate.hsCode).trim()
+          if (!unique.has(normalized)) {
+            unique.set(normalized, rate.description || 'No description available')
           }
         })
-        
-        const hsCodesArray = Array.from(hsCodesSet)
-        setAvailableHsCodes(hsCodesArray)
-        console.log(`✅ Found ${hsCodesArray.length} HS codes for route ${form.importerIso3} → ${form.originIso3}`)
+
+        const options: HsCodeOption[] = Array.from(unique.entries())
+          .map(([code, description]) => ({ code, description }))
+          .sort((a, b) => a.code.localeCompare(b.code))
+
+        setAvailableHsCodes(options)
       } catch (err) {
         console.error('Failed to fetch available HS codes:', err)
         setAvailableHsCodes([])
@@ -587,15 +557,23 @@ export function Calculator() {
               <HsCodeSelect
                 value={form.hsCode}
                 onChange={(code) => handleFormChange('hsCode', code || '')}
-                placeholder="Type code (e.g., 8703) or product name"
+                options={availableHsCodes}
+                disabled={!form.importerIso3 || !form.originIso3}
+                loading={loadingHsCodes}
+                placeholder={
+                  form.importerIso3 && form.originIso3
+                    ? 'Choose an HS code'
+                    : 'Select importer and exporter first'
+                }
                 required
-                filterCodes={availableHsCodes.length > 0 ? availableHsCodes : undefined}
               />
-              {availableHsCodes.length > 0 && !availableHsCodes.includes(form.hsCode.replace(/\./g, '')) && form.hsCode && (
-                <p className="text-xs text-amber-600">
-                  ⚠️ This HS code may not have data for the selected route
-                </p>
-              )}
+              {form.hsCode &&
+                availableHsCodes.length > 0 &&
+                !availableHsCodes.some((option) => option.code === form.hsCode) && (
+                  <p className="text-xs text-amber-600">
+                    ⚠️ This HS code may not have data for the selected route
+                  </p>
+                )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -708,8 +686,18 @@ export function Calculator() {
                   <p className="text-sm font-medium">RVC</p>
                   <p className="text-2xl font-bold">{backendRvc.toFixed(2)}%</p>
                   <p className="text-xs text-muted-foreground">
-                    {(selection?.selected?.agreementName ?? 'Current selection')}{' '}
-                    requires {selection?.selected?.rvcThreshold ?? 'N/A'}%.
+                    {selection?.selected?.agreementName ?
+                        <>
+                            {selection.selected.agreementName}{' '}
+                            requires {selection.selected.rvcThreshold
+                                ? `${selection.selected.rvcThreshold}%` 
+                                : 'no RVC threshold' 
+                            }
+                        </>
+                        :
+                        'MFN rate does not have RVC requirement.'
+                    }.
+                    
                   </p>
                 </div>
               </div>
@@ -842,8 +830,8 @@ export function Calculator() {
                       name: saveName,
                       notes: saveNotes,
                       hsCode,
-                      importerIso2: iso3ToIso2(form.importerIso3),
-                      originIso2: iso3ToIso2(form.originIso3),
+                      importerIso3: form.importerIso3,
+                      originIso3: form.originIso3,
                     })
                     setSaveName("")
                     setSaveNotes("")

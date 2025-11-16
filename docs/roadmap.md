@@ -54,7 +54,7 @@ infrastructure/
 - Tariff
   - Entities: `Country`, `Agreement`, `AgreementParty`, `HsProduct`, `TariffRate`, `Vat`, `RooRule`.
   - Lookup algorithm (server returns both MFN and PREF candidates):
-    1) Resolve importer by `iso2` (2 letters, uppercase). Resolve origin if provided (optional).
+    1) Resolve importer by `iso3` (3 letters, uppercase). Resolve origin if provided (optional).
     2) Resolve product by `(destination_id, hs_version, hs_code)`. Default `hs_version = '2022'` unless specified.
     3) MFN candidate: find most recent row effective on date D for `(importer, product, basis='MFN')` with `origin_id IS NULL`. If an origin‑specific MFN row exists and origin was provided, return it as `mfnOriginOverride` alongside the general MFN (client can ignore if not needed).
     4) Preferential candidate: if origin provided, find most recent row for `(importer, origin, product, basis='PREF')` effective on D; only include if the linked agreement is in force on D.
@@ -67,10 +67,10 @@ infrastructure/
     - Rates are decimals (e.g., `0.10` for 10%). `totalDuty = totalValue * appliedRate`.
     - Response: `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`.
   - Endpoints:
-    - `GET /api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=&date=` (date optional, default today).
+    - `GET /api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=&date=` (date optional, default today).
     - `POST /api/tariff-rate/calculate` (RVC‑aware calculator).
   - Validation & errors:
-    - `importerIso2/originIso2`: exactly 2 letters; 400 on invalid or unknown code.
+    - `importerIso3/originIso3`: exactly 3 letters; 400 on invalid or unknown code.
     - `hsCode`: 4–10 digits; 400 on invalid; 404 if product not found.
     - Date parsing: ISO‑8601 `YYYY‑MM‑DD`; defaults to `LocalDate.now()`.
 - Web/Config
@@ -103,7 +103,7 @@ infrastructure/
   - `POST /api/tariff-rate/calculate` → 200 `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }` or 400.
 - Reference
   - `GET /api/countries` → basic list for selectors.
-  - `GET /api/products?importerIso2=&q=` (only if UI requires text search for HS lines).
+  - `GET /api/products?importerIso3=&q=` (only if UI requires text search for HS lines).
 
 ## Frontend
 
