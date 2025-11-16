@@ -28,6 +28,30 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String[] PUBLIC_BROWSER_ENDPOINTS = {
+            "/api/countries/**",
+            "/api/hs-products/**"
+    };
+
+    private static final String[] PUBLIC_INFRA_ENDPOINTS = {
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/",
+            "/actuator/health"
+    };
+
+    private static final String[] PUBLIC_API_ENDPOINTS = {
+            "/api/auth/**",
+            "/api/tariff-rate/routes",
+            "/api/news/**",
+            "/api/profile/dashboard-stats"
+    };
+
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/api/tariff-rate/**"
+    };
+
     @Value("${cors.allowed-origins:}")
     private String corsAllowedOrigins;
 
@@ -66,7 +90,7 @@ public class SecurityConfig {
         System.out.println(
                 "🔧 Configuring PUBLIC filter chain (Order 1) - /api/tariff-rate/**, /api/countries/**, /api/hs-products/**");
         http
-                .securityMatcher("/api/countries/**", "/api/hs-products/**")
+                .securityMatcher(PUBLIC_BROWSER_ENDPOINTS)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
@@ -86,15 +110,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll() // Keep for backwards compatibility if needed
-                        .requestMatchers("/api/tariff-rate/routes").permitAll() // Public endpoint for map visualization
-                        .requestMatchers(HttpMethod.GET, "/api/tariff-rate/**").permitAll()
+                        .requestMatchers(PUBLIC_INFRA_ENDPOINTS).permitAll()
+                        .requestMatchers(PUBLIC_API_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tariff-rate/calculate").permitAll()
-                        .requestMatchers("/api/profile/dashboard-stats").permitAll()
-                        .requestMatchers("/api/news/**").permitAll() // Public news endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
