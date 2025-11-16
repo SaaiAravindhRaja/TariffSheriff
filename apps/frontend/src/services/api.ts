@@ -40,12 +40,9 @@ api.interceptors.request.use(
     // Only these are truly public; lookup must be authenticated
     const urlPath = config.url || ''
     const isPublicEndpoint =
-      urlPath === '/tariff-rate' ||
-      urlPath === '/tariff-rate/' ||
-      urlPath.startsWith('/tariff-rate?') ||
-      urlPath.startsWith('/tariff-rate/routes') ||
       urlPath.startsWith('/countries') ||
-      urlPath.startsWith('/hs-products')
+      urlPath.startsWith('/hs-products') ||
+      urlPath.startsWith('/auth/')
     
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
       isPublic: isPublicEndpoint,
