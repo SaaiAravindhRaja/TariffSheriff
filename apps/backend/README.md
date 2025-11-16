@@ -74,7 +74,7 @@ All endpoints use JSON and require a Bearer token, except `/api/auth/**` and hea
 - POST `/api/auth/login` → same as register
 - POST `/api/auth/validate` → same as register
 - GET `/api/countries?q=&page=&size=` → list of countries
-- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=` → `{ mfn, pref, agreement }`
+- GET `/api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=` → `{ mfn, pref, agreement }`
 - POST `/api/tariff-rate/calculate` → `{ basis, appliedRate, totalDuty, rvc, rvcThreshold }`
 
 Example usage:
@@ -95,7 +95,7 @@ curl -s http://localhost:8080/api/countries \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Lookup (seeded example)
-curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso3=USA&originIso3=KOR&hsCode=870380" \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Calculator

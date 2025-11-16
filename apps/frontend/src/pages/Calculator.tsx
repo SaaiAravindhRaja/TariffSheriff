@@ -128,37 +128,6 @@ export function Calculator() {
   const phase2AbortRef = useRef<AbortController | null>(null)
   const phase1ResultRef = useRef<any>(null)
 
-  // Minimal ISO conversion helper (iso3 -> iso2); extend as needed
-  const iso3ToIso2 = (code?: string | null): string | undefined => {
-    if (!code) return undefined
-    const map: Record<string, string> = {
-      USA: 'US',
-      CHL: 'CL',
-      CHN: 'CN',
-      KOR: 'KR',
-      JPN: 'JP',
-      CAN: 'CA',
-      MEX: 'MX',
-      AUS: 'AU',
-      NZL: 'NZ',
-      GBR: 'GB',
-      DEU: 'DE',
-      FRA: 'FR',
-      ITA: 'IT',
-      ESP: 'ES',
-      PRT: 'PT',
-      NLD: 'NL',
-      SWE: 'SE',
-      NOR: 'NO',
-      DNK: 'DK',
-      FIN: 'FI',
-      EU: 'EU',
-      EUR: 'EU',
-    }
-    const c = code.trim().toUpperCase()
-    return map[c] || undefined
-  }
-  
   // Auto-fill form from Database page transfer
   useEffect(() => {
     const prefilledData = sessionStorage.getItem('prefilledTariff')
