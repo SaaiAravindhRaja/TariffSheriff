@@ -7,13 +7,13 @@ import { ShoppingCart, Trash2, Plus, Save, AlertCircle, Loader2 } from 'lucide-r
 import CountrySelect from '@/components/inputs/CountrySelect'
 import HsCodeSelect from '@/components/inputs/HsCodeSelect'
 import { api, tariffApi, savedTariffsApi } from '@/services/api'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/toast'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDbCountries } from '@/hooks/useDbCountries'
 
 export function TariffCart() {
   const { isAuthenticated } = useAuth0()
-  const { toast } = useToast()
+  const { showToast } = useToast()
   const { items, addItem, updateItem, removeItem, clearCart, getTotalValue, getTotalTariff, getTotalWithTariff, getItemCount } = useCartStore()
   const { countries, loading: countriesLoading } = useDbCountries()
   
@@ -113,11 +113,7 @@ export function TariffCart() {
 
   const handleAddToCart = async () => {
     if (!newItem.hsCode || !newItem.importerIso3 || !newItem.originIso3 || newItem.unitValue <= 0) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      })
+      showToast('Missing Information: Please fill in all required fields', 'error')
       return
     }
 
@@ -146,11 +142,7 @@ export function TariffCart() {
       const selectedRate = prefRate || mfnRate
       
       if (!selectedRate || selectedRate.adValoremRate === null) {
-        toast({
-          title: 'No Tariff Rate Found',
-          description: `Could not find tariff rate for HS code ${hsCode}`,
-          variant: 'destructive',
-        })
+        showToast(`No Tariff Rate Found: Could not find rate for HS code ${hsCode}`, 'error')
         setCalculating(false)
         return
       }
@@ -183,17 +175,13 @@ export function TariffCart() {
         unitValue: 0,
       })
       
-      toast({
-        title: 'Added to Cart',
-        description: `Item added with ${selectedRate.adValoremRate}% tariff rate`,
-      })
+      showToast(`Added to Cart: ${selectedRate.adValoremRate}% tariff rate applied`, 'success')
     } catch (error: any) {
       console.error('Failed to calculate tariff:', error)
-      toast({
-        title: 'Failed to Add Item',
-        description: error.response?.data?.message || 'Could not calculate tariff rate',
-        variant: 'destructive',
-      })
+      showToast(
+        `Failed to Add Item: ${error?.response?.data?.message || 'Could not calculate tariff rate'}`,
+        'error'
+      )
     } finally {
       setCalculating(false)
     }
@@ -201,20 +189,12 @@ export function TariffCart() {
 
   const handleSaveCart = async () => {
     if (!isAuthenticated) {
-      toast({
-        title: 'Login Required',
-        description: 'Please login to save your cart',
-        variant: 'destructive',
-      })
+      showToast('Login Required: Please login to save your cart', 'error')
       return
     }
 
     if (items.length === 0) {
-      toast({
-        title: 'Empty Cart',
-        description: 'Add items to cart before saving',
-        variant: 'destructive',
-      })
+      showToast('Empty Cart: Add items to cart before saving', 'error')
       return
     }
 
@@ -244,21 +224,14 @@ export function TariffCart() {
         await savedTariffsApi.save(calc)
       }
 
-      toast({
-        title: 'Cart Saved',
-        description: `Saved ${items.length} calculations`,
-      })
+      showToast(`Cart Saved: Saved ${items.length} calculations`, 'success')
       
       clearCart()
       setSaveName('')
       setSaveNotes('')
     } catch (error) {
       console.error('Failed to save cart:', error)
-      toast({
-        title: 'Save Failed',
-        description: 'Failed to save cart',
-        variant: 'destructive',
-      })
+      showToast('Save Failed: Failed to save cart', 'error')
     } finally {
       setSaving(false)
     }
@@ -356,11 +329,16 @@ export function TariffCart() {
                 </label>
                 <HsCodeSelect
                   value={newItem.hsCode}
-                  onChange={(code: string, label?: string) => {
-                    setNewItem({ ...newItem, hsCode: code, hsLabel: label || '' })
+                  onChange={(code: string) => {
+                    setNewItem({ ...newItem, hsCode: code, hsLabel: '' })
                   }}
                   placeholder="Search HS code..."
-                  filterCodes={availableHsCodes.length > 0 ? availableHsCodes : undefined}
+                  disabled={!newItem.importerIso3 || !newItem.originIso3}
+                  loading={loadingHsCodes}
+                  options={(availableHsCodes || []).map((code) => ({
+                    code,
+                    description: '',
+                  }))}
                 />
                 {availableHsCodes.length > 0 && !availableHsCodes.includes(newItem.hsCode.replace(/\./g, '')) && newItem.hsCode && (
                   <p className="text-xs text-amber-600 mt-1">
