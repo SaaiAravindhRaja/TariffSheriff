@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { GlobalTradeRoutes } from '@/components/dashboard/GlobalTradeRoutes'
 import { Search, ChevronDown, ChevronRight, Calculator, Battery, Zap, Cpu, ThermometerSun, Box, Gauge, Eye, Lightbulb, Magnet, X } from 'lucide-react'
 import api from '@/services/api'
+// import { CountrySelect } from '@/components/inputs/CountrySelect'
 
 interface TariffRate {
   id: number
@@ -229,43 +230,34 @@ export function Database() {
   const [filteredRates, setFilteredRates] = useState<TariffRate[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [selectedMapRoute, setSelectedMapRoute] = useState<{importer: string, origin: string} | null>(null)
 
   useEffect(() => {
     fetchTariffRates()
-  }, [selectedMapRoute, selectedCategory]) // Re-fetch when filters change
+  }, [selectedMapRoute])
 
   useEffect(() => {
     filterRates()
-  }, [searchQuery, selectedCategory, tariffRates, selectedMapRoute])
+  }, [searchQuery, selectedCategory, selectedSubcategory, tariffRates, selectedMapRoute])
 
   const fetchTariffRates = async () => {
     try {
       setLoading(true)
       
-      // Build query parameters for filtering
-      const params: any = {}
-      
-      // Add country filter if route selected
-      if (selectedMapRoute) {
-        console.log('🔍 Fetching tariff rates for route:', selectedMapRoute)
-        params.importerIso3 = selectedMapRoute.importer
-        params.originIso3 = selectedMapRoute.origin
-      } else {
-        console.log('🔍 Fetching all tariff rates (no route selected)')
+      const params: Record<string, string> = {}
+      const importer = selectedMapRoute?.importer
+      const origin = selectedMapRoute?.origin
+
+      if (importer) {
+        params.importerIso3 = importer
+        if (origin) {
+          params.originIso3 = origin
+        }
       }
       
-      // REMOVED HS code filtering for now - just get all rates for country pair
-      
-      console.log('📤 Sending request with params:', params)
-      
-      // Fetch filtered tariff rates from backend
       const response = await api.get('/tariff-rate', { params })
       const data = response.data.content || response.data
-      
-      console.log('📥 Received tariff rates:', data.length, 'records')
-      console.log('📊 Sample data:', data.slice(0, 3))
-      
       setTariffRates(data)
     } catch (error) {
       console.error('❌ Failed to fetch tariff rates:', error)
@@ -277,21 +269,23 @@ export function Database() {
   const filterRates = () => {
     let filtered = tariffRates
 
-    // Filter by selected map route first
-    if (selectedMapRoute) {
+    const effectiveImporter = selectedMapRoute?.importer
+    const effectiveOrigin = selectedMapRoute?.origin
+
+    if (effectiveImporter) {
       filtered = filtered.filter(rate => 
-        rate.importerIso3 === selectedMapRoute.importer && 
-        (rate.originIso3 === selectedMapRoute.origin || !rate.originIso3)
+        rate.importerIso3 === effectiveImporter && 
+        (!effectiveOrigin || rate.originIso3 === effectiveOrigin || !rate.originIso3)
       )
     }
 
-    // Filter by selected category
-    if (selectedCategory) {
+    // Filter by selected subcategory (changed from category)
+    if (selectedSubcategory && selectedCategory) {
       const category = hsCodeCategories.find(c => c.name === selectedCategory)
-      if (category && category.subcategories.length > 0) {
-        const categoryCodes = category.subcategories.flatMap(sub => sub.codes)
+      const subcategory = category?.subcategories.find(s => s.name === selectedSubcategory)
+      if (subcategory) {
         filtered = filtered.filter(rate => 
-          categoryCodes.some(code => rate.hsCode?.startsWith(code.replace('.', '')))
+          subcategory.codes.some(code => rate.hsCode?.startsWith(code.replace('.', '')))
         )
       }
     }
@@ -315,6 +309,7 @@ export function Database() {
       newExpanded.delete(categoryName)
       if (selectedCategory === categoryName) {
         setSelectedCategory(null)
+        setSelectedSubcategory(null)
       }
     } else {
       newExpanded.add(categoryName)
@@ -322,8 +317,21 @@ export function Database() {
     setExpandedCategories(newExpanded)
   }
 
-  const selectCategory = (categoryName: string) => {
-    setSelectedCategory(categoryName === selectedCategory ? null : categoryName)
+  const selectSubcategory = (categoryName: string, subcategoryName: string) => {
+    console.log('🔘 selectSubcategory called:', { categoryName, subcategoryName })
+    console.log('📊 Current state:', { selectedCategory, selectedSubcategory })
+    
+    if (selectedCategory === categoryName && selectedSubcategory === subcategoryName) {
+      // Deselect if clicking the same subcategory
+      console.log('❌ Deselecting subcategory')
+      setSelectedCategory(null)
+      setSelectedSubcategory(null)
+    } else {
+      // Select the subcategory
+      console.log('✅ Selecting subcategory:', categoryName, '-', subcategoryName)
+      setSelectedCategory(categoryName)
+      setSelectedSubcategory(subcategoryName)
+    }
   }
 
   const transferToCalculator = (rate: any) => {
@@ -389,7 +397,7 @@ export function Database() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>EV Component Categories</CardTitle>
+                <CardTitle id="ev-categories">EV Component Categories</CardTitle>
                 <CardDescription>
                   {selectedMapRoute 
                     ? `Showing tariff rates for ${selectedMapRoute.origin} → ${selectedMapRoute.importer}`
@@ -436,7 +444,7 @@ export function Database() {
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.name)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-accent/50 dark:hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-100 dark:bg-blue-900/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
@@ -465,10 +473,10 @@ export function Database() {
 
                     {/* Subcategories */}
                     {isExpanded && category.subcategories.length > 0 && (
-                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-4">
+                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-background/50 p-4">
                         <div className="space-y-2">
                           {category.subcategories.map((subcategory) => (
-                            <div key={subcategory.name} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div key={subcategory.name} className="bg-card dark:bg-card rounded-lg p-3 border border-gray-200 dark:border-gray-700">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <h4 className="text-sm font-medium text-gray-900 dark:text-white">{subcategory.name}</h4>
@@ -482,10 +490,10 @@ export function Database() {
                                 </div>
                                 <Button
                                   size="sm"
-                                  variant={isSelected ? "default" : "outline"}
-                                  onClick={() => selectCategory(category.name)}
+                                  variant={selectedCategory === category.name && selectedSubcategory === subcategory.name ? "default" : "outline"}
+                                  onClick={() => selectSubcategory(category.name, subcategory.name)}
                                 >
-                                  {isSelected ? 'Selected' : 'View Rates'}
+                                  {selectedCategory === category.name && selectedSubcategory === subcategory.name ? 'Selected' : 'View Rates'}
                                 </Button>
                               </div>
                             </div>
@@ -503,7 +511,11 @@ export function Database() {
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedCategory ? `${selectedCategory} - Tariff Rates` : 'Search Results'}
+                    {selectedCategory && selectedSubcategory 
+                      ? `${selectedCategory} - ${selectedSubcategory}` 
+                      : selectedCategory 
+                      ? selectedCategory 
+                      : 'Search Results'}
                   </h3>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {filteredRates.length} rates found
@@ -519,19 +531,18 @@ export function Database() {
                     No tariff rates found for this category
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-card dark:bg-card">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                      <thead className="bg-gray-50 dark:bg-card border-b border-gray-200 dark:border-gray-700">
                         <tr>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">HS Code</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Description</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Route</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">MFN Rate</th>
-                          <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Pref. Rate</th>
                           <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-card dark:bg-card">
                         {filteredRates.slice(0, 100).map((rate) => (
                           <tr key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                             <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 font-medium">{rate.hsCode}</td>
@@ -539,8 +550,7 @@ export function Database() {
                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                               <span className="font-mono text-xs">{rate.originIso3 || 'Any'} → {rate.importerIso3}</span>
                             </td>
-                            <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{rate.mfnRate}%</td>
-                            <td className="px-4 py-3 text-green-600 dark:text-green-400 font-medium">{rate.preferentialRate}%</td>
+                            <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{rate.mfnRate != null ? `${rate.mfnRate}%` : '-'}</td>
                             <td className="px-4 py-3">
                               <Button
                                 size="sm"

@@ -10,6 +10,7 @@ import com.tariffsheriff.backend.tariffcalculation.service.TariffCalculationServ
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -82,8 +83,8 @@ public class TariffCalculationController {
             req.getName(),
             req.getNotes(),
             req.getHsCode(),
-            req.getImporterIso2(),
-            req.getOriginIso2()
+            req.getImporterIso3(),
+            req.getOriginIso3()
         );
         return toDetail(saved);
     }
@@ -91,9 +92,14 @@ public class TariffCalculationController {
     @GetMapping
     public Page<TariffCalculationSummary> list(@AuthenticationPrincipal Jwt jwt,
                                                @RequestParam(defaultValue = "0") int page,
-                                               @RequestParam(defaultValue = "20") int size) {
+                                               @RequestParam(defaultValue = "25") int size) {
         User currentUser = requireUserFromJwt(jwt);
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        int normalizedSize = Math.min(Math.max(size, 1), 200);
+        Pageable pageable = PageRequest.of(
+            Math.max(page, 0),
+            normalizedSize,
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
         return service.listForUser(currentUser.getId(), pageable).map(this::toSummary);
     }
 
@@ -107,10 +113,12 @@ public class TariffCalculationController {
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id,
+    public org.springframework.http.ResponseEntity<Void> delete(@PathVariable Long id,
                        @AuthenticationPrincipal Jwt jwt) {
         User currentUser = requireUserFromJwt(jwt);
-        service.deleteForUser(id, currentUser.getId());
+        boolean deleted = service.deleteForUser(id, currentUser.getId());
+        return deleted ? org.springframework.http.ResponseEntity.noContent().build()
+                       : org.springframework.http.ResponseEntity.notFound().build();
     }
 
     private TariffCalculationSummary toSummary(TariffCalculation tc) {
@@ -141,8 +149,8 @@ public class TariffCalculationController {
             tc.getRvcComputed(),
             tc.getRvc(),
             tc.getHsCode(),
-            tc.getImporterIso2(),
-            tc.getOriginIso2(),
+            tc.getImporterIso3(),
+            tc.getOriginIso3(),
             agreementName
         );
     }
@@ -177,8 +185,8 @@ public class TariffCalculationController {
             tc.getName(),
             tc.getNotes(),
             tc.getHsCode(),
-            tc.getImporterIso2(),
-            tc.getOriginIso2(),
+            tc.getImporterIso3(),
+            tc.getOriginIso3(),
             tc.getCreatedAt()
         );
     }

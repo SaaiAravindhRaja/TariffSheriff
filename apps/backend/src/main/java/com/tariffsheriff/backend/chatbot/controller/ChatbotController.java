@@ -1,19 +1,17 @@
 package com.tariffsheriff.backend.chatbot.controller;
 
+import com.tariffsheriff.backend.chatbot.dto.ChatConversationDetailDto;
+import com.tariffsheriff.backend.chatbot.dto.ChatConversationSummaryDto;
 import com.tariffsheriff.backend.chatbot.dto.ChatErrorResponse;
 import com.tariffsheriff.backend.chatbot.dto.ChatQueryRequest;
 import com.tariffsheriff.backend.chatbot.dto.ChatQueryResponse;
 import com.tariffsheriff.backend.chatbot.exception.ChatbotException;
 import com.tariffsheriff.backend.chatbot.exception.InvalidQueryException;
 import com.tariffsheriff.backend.chatbot.exception.LlmServiceException;
-import com.tariffsheriff.backend.chatbot.exception.RateLimitExceededException;
-import com.tariffsheriff.backend.chatbot.exception.ToolExecutionException;
 import com.tariffsheriff.backend.chatbot.service.ChatbotService;
-import com.tariffsheriff.backend.chatbot.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +30,6 @@ public class ChatbotController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatbotController.class);
 
     private final ChatbotService chatbotService;
-    private final RateLimitService rateLimitService;
 
     /**
      * Process a natural language query and return AI-generated response
@@ -43,7 +40,7 @@ public class ChatbotController {
      * @return ChatQueryResponse with AI-generated answer or error details
      */
     @PostMapping("/query")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> processQuery(
             @Valid @RequestBody ChatQueryRequest request,
             Authentication authentication,
@@ -56,34 +53,13 @@ public class ChatbotController {
                 userEmail, clientIp, sanitizeForLogging(request.getQuery()));
         
         try {
-            // Check rate limits first
-            if (!rateLimitService.isAllowed(userEmail)) {
-                RateLimitService.RateLimitStatus status = rateLimitService.getRateLimitStatus(userEmail);
-                throw new RateLimitExceededException(
-                        status.getRequestsInLastMinute(),
-                        status.getRequestsInLastHour(),
-                        status.getMaxRequestsPerMinute(),
-                        status.getMaxRequestsPerHour()
-                );
-            }
-            
-            // Set user ID in request for conversation tracking
-            request.setUserId(userEmail);
-            
-            // Process the query through the chatbot service
-            ChatQueryResponse response = chatbotService.processQuery(request);
+            ChatQueryResponse response = chatbotService.processQuery(request, userEmail);
             
             // Log successful processing
             log.info("Chat query processed successfully for user: {} - Conversation: {} - Processing time: {}ms", 
                     userEmail, response.getConversationId(), response.getProcessingTimeMs());
             
             return ResponseEntity.ok(response);
-            
-        } catch (RateLimitExceededException e) {
-            log.warn("Rate limit exceeded for user: {} - Minute: {}/{}, Hour: {}/{}", 
-                    userEmail, e.getRequestsInLastMinute(), e.getMaxRequestsPerMinute(),
-                    e.getRequestsInLastHour(), e.getMaxRequestsPerHour());
-            return handleChatbotException(e, request.getConversationId(), HttpStatus.TOO_MANY_REQUESTS);
             
         } catch (InvalidQueryException e) {
             log.warn("Invalid query from user: {} - Error: {}", userEmail, e.getMessage());
@@ -92,11 +68,6 @@ public class ChatbotController {
         } catch (LlmServiceException e) {
             log.error("LLM service error for user: {} - Error: {}", userEmail, e.getMessage(), e);
             return handleChatbotException(e, request.getConversationId(), HttpStatus.SERVICE_UNAVAILABLE);
-            
-        } catch (ToolExecutionException e) {
-            log.error("Tool execution error for user: {} - Tool: {} - Error: {}", 
-                    userEmail, e.getToolName(), e.getMessage(), e);
-            return handleChatbotException(e, request.getConversationId(), HttpStatus.INTERNAL_SERVER_ERROR);
             
         } catch (ChatbotException e) {
             log.error("Chatbot error for user: {} - Error: {}", userEmail, e.getMessage(), e);
@@ -108,33 +79,77 @@ public class ChatbotController {
         }
     }
 
+    @GetMapping("/conversations")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> listConversations(Authentication authentication) {
+        String userEmail = authentication != null ? authentication.getName() : "anonymous";
+        try {
+            java.util.List<ChatConversationSummaryDto> summaries = chatbotService.listConversations(userEmail);
+            return ResponseEntity.ok(summaries);
+        } catch (ChatbotException e) {
+            return handleChatbotException(e, null, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            log.error("Unexpected error listing conversations for user {}", userEmail, e);
+            return handleUnexpectedError(null);
+        }
+    }
+
+    @GetMapping("/conversations/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getConversation(
+            @PathVariable String conversationId,
+            Authentication authentication) {
+        String userEmail = authentication != null ? authentication.getName() : "anonymous";
+        try {
+            ChatConversationDetailDto detail = chatbotService.getConversationDetail(conversationId, userEmail);
+            return ResponseEntity.ok(detail);
+        } catch (ChatbotException e) {
+            return handleChatbotException(e, conversationId, HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Unexpected error loading conversation {} for user {}", conversationId, userEmail, e);
+            return handleUnexpectedError(conversationId);
+        }
+    }
+
+    @DeleteMapping("/conversations/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> deleteConversation(
+            @PathVariable String conversationId,
+            Authentication authentication) {
+        String userEmail = authentication != null ? authentication.getName() : "anonymous";
+        try {
+            chatbotService.deleteConversation(conversationId, userEmail);
+            return ResponseEntity.noContent().build();
+        } catch (ChatbotException e) {
+            return handleChatbotException(e, conversationId, HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Unexpected error deleting conversation {} for user {}", conversationId, userEmail, e);
+            return handleUnexpectedError(conversationId);
+        }
+    }
+
     /**
      * Get health status of the chatbot service
      * 
      * @return Health status and available tools count
      */
     @GetMapping("/health")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getHealth() {
         try {
             boolean isHealthy = chatbotService.isHealthy();
-            int toolCount = chatbotService.getAvailableTools().size();
-            int trackedUsers = rateLimitService.getTrackedUsersCount();
-            
-            if (isHealthy) {
-                return ResponseEntity.ok(new HealthResponse(true, 
-                        "Chatbot service is healthy", toolCount, trackedUsers));
-            } else {
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .body(new HealthResponse(false, 
-                                "Chatbot service is not available", toolCount, trackedUsers));
-            }
-            
+            var capabilities = chatbotService.getCapabilities();
+            HealthResponse body = new HealthResponse(
+                    isHealthy,
+                    isHealthy ? "Chatbot service is healthy" : "Chatbot service is not available",
+                    capabilities
+            );
+            return isHealthy ? ResponseEntity.ok(body)
+                    : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
         } catch (Exception e) {
             log.error("Error checking chatbot health", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new HealthResponse(false, 
-                            "Health check failed", 0, 0));
+                    .body(new HealthResponse(false, "Health check failed", java.util.List.of()));
         }
     }
 
@@ -205,20 +220,17 @@ public class ChatbotController {
     public static class HealthResponse {
         private boolean healthy;
         private String message;
-        private int availableTools;
-        private int trackedUsers;
+        private java.util.List<String> capabilities;
 
-        public HealthResponse(boolean healthy, String message, int availableTools, int trackedUsers) {
+        public HealthResponse(boolean healthy, String message, java.util.List<String> capabilities) {
             this.healthy = healthy;
             this.message = message;
-            this.availableTools = availableTools;
-            this.trackedUsers = trackedUsers;
+            this.capabilities = capabilities;
         }
 
         // Getters
         public boolean isHealthy() { return healthy; }
         public String getMessage() { return message; }
-        public int getAvailableTools() { return availableTools; }
-        public int getTrackedUsers() { return trackedUsers; }
+        public java.util.List<String> getCapabilities() { return capabilities; }
     }
 }

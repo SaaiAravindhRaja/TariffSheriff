@@ -1,17 +1,12 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { 
-  Shield, 
   User, 
-  Bell,
-  Search,
   LogOut,
-  Settings,
   ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
-import { CountrySearch } from '@/components/search/CountrySearch'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import api from '@/services/api'
@@ -34,10 +29,8 @@ export function Header({ className }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
-  const [showNotifications, setShowNotifications] = React.useState(false)
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
-  const notificationsRef = React.useRef<HTMLDivElement>(null)
 
   const handleLogout = () => {
     logout()
@@ -84,19 +77,16 @@ export function Header({ className }: HeaderProps) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
       }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
-      }
     }
 
-    if (showUserMenu || showNotifications) {
+    if (showUserMenu) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showUserMenu, showNotifications])
+  }, [showUserMenu])
 
   const displayName = userProfile?.name || auth0User?.name || auth0User?.email || 'User'
   const displayEmail = userProfile?.email || auth0User?.email || ''
@@ -122,7 +112,7 @@ export function Header({ className }: HeaderProps) {
           title="Go to home"
         >
           <div className="flex flex-col items-start">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent">
               TariffSheriff
             </h1>
             <p className="text-xs text-muted-foreground -mt-1">
@@ -131,13 +121,8 @@ export function Header({ className }: HeaderProps) {
           </div>
         </button>
 
-        {/* Country Search */}
-        <div className="flex-1 max-w-md mx-8">
-          <CountrySearch 
-            placeholder="Search countries for trade data..."
-            className="w-full"
-          />
-        </div>
+        {/* Spacer */}
+        <div className="flex-1"></div>
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
@@ -155,38 +140,6 @@ export function Header({ className }: HeaderProps) {
               <Moon className="w-5 h-5" />
             )}
           </Button>
-          {/* Notifications */}
-          <div className="relative" ref={notificationsRef}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative" 
-              aria-label="Notifications"
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Bell className="w-5 h-5" />
-            </Button>
-
-            {/* Notifications Dropdown */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Updates</h3>
-                </div>
-                
-                <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    No updates about the platform yet
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    We'll notify you when there's something new
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* User Menu */}
           <div className="relative" ref={dropdownRef}>
             <button 

@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TariffCalculationControllerTest {
+
+    private static final Sort SUMMARY_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
     @Mock
     private TariffCalculationService service;
@@ -93,8 +96,8 @@ class TariffCalculationControllerTest {
         assertEquals(1L, result.getId());
         assertEquals("Test Calculation", result.getName());
         assertEquals("1234", result.getHsCode());
-        assertEquals("US", result.getImporterIso2());
-        assertEquals("CN", result.getOriginIso2());
+        assertEquals("USA", result.getImporterIso3());
+        assertEquals("CHN", result.getOriginIso3());
         verify(service).saveForUser(
             eq(testUser),
             any(TariffRateRequestDto.class),
@@ -102,8 +105,8 @@ class TariffCalculationControllerTest {
             eq("Test Calculation"),
             eq("Test Notes"),
             eq("1234"),
-            eq("US"),
-            eq("CN")
+            eq("USA"),
+            eq("CHN")
         );
     }
 
@@ -117,7 +120,7 @@ class TariffCalculationControllerTest {
         
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 20)));
+        verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 20, SUMMARY_SORT)));
     }
 
     @Test
@@ -185,8 +188,8 @@ class TariffCalculationControllerTest {
     validRequest.setName("Test Calculation");
     validRequest.setNotes("Test Notes");
     validRequest.setHsCode("1234");
-    validRequest.setImporterIso2("US");
-    validRequest.setOriginIso2("CN");
+    validRequest.setImporterIso3("USA");
+    validRequest.setOriginIso3("CHN");
 
     // Setup saved calculation (with all mappable fields)
     savedCalculation = new TariffCalculation();
@@ -194,8 +197,8 @@ class TariffCalculationControllerTest {
     savedCalculation.setName("Test Calculation");
     savedCalculation.setNotes("Test Notes");
     savedCalculation.setHsCode("1234");
-    savedCalculation.setImporterIso2("US");
-    savedCalculation.setOriginIso2("CN");
+    savedCalculation.setImporterIso3("USA");
+    savedCalculation.setOriginIso3("CHN");
     savedCalculation.setCreatedAt(LocalDateTime.now());
         
     // Fields for toDetail mapping
@@ -257,14 +260,14 @@ class TariffCalculationControllerTest {
   }
 
   @Test
-  void list_clampsPageToZero() {
+    void list_clampsPageToZero() {
     mockValidUser();
     when(service.listForUser(any(), any())).thenReturn(Page.empty());
 
     controller.list(jwt, -5, 15);
 
     // Verifies that page was clamped from -5 to 0
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 15)));
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 15, SUMMARY_SORT)));
   }
 
   @Test
@@ -274,8 +277,8 @@ class TariffCalculationControllerTest {
 
     controller.list(jwt, 0, 200);
 
-    // Verifies that size was clamped from 200 to 100
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 100)));
+    // Verifies that size was clamped from 200 to the controller max (200)
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 200, SUMMARY_SORT)));
   }
 
   @Test
@@ -286,7 +289,7 @@ class TariffCalculationControllerTest {
     controller.list(jwt, 0, 0);
 
     // Verifies that size was clamped from 0 to 1
-    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 1)));
+    verify(service).listForUser(eq(testUser.getId()), eq(PageRequest.of(0, 1, SUMMARY_SORT)));
   }
 @Test
     void get_mapsToDetailCorrectly() {
@@ -339,8 +342,8 @@ class TariffCalculationControllerTest {
         assertEquals(1L, summary.getId());
         assertEquals("Test Calculation", summary.getName());
         assertEquals("1234", summary.getHsCode());
-        assertEquals("US", summary.getImporterIso2());
-        assertEquals("CN", summary.getOriginIso2());
+        assertEquals("USA", summary.getImporterIso3());
+        assertEquals("CHN", summary.getOriginIso3());
         assertEquals(0, new BigDecimal("100.00").compareTo(summary.getTotalTariff()));
         assertEquals("MFN", summary.getRateUsed());
         assertEquals(0, new BigDecimal("50").compareTo(summary.getRvcComputed()));

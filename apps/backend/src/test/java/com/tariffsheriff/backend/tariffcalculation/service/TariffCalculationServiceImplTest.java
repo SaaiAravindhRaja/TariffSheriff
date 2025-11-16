@@ -62,7 +62,7 @@ class TariffCalculationServiceImplTest {
         ArgumentCaptor<TariffCalculation> cap = ArgumentCaptor.forClass(TariffCalculation.class);
         when(repo.save(cap.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        TariffCalculation saved = svc.saveForUser(user, input, result, "n", "notes", "HS123", "GB", "CN");
+        TariffCalculation saved = svc.saveForUser(user, input, result, "n", "notes", "HS123", "GBR", "CHN");
 
         // verify repo.save was called and fields mapped
         verify(repo).save(saved);
@@ -72,8 +72,8 @@ class TariffCalculationServiceImplTest {
         assertEquals("n", tc.getName());
         assertEquals("notes", tc.getNotes());
         assertEquals("HS123", tc.getHsCode());
-        assertEquals("GB", tc.getImporterIso2());
-        assertEquals("CN", tc.getOriginIso2());
+        assertEquals("GBR", tc.getImporterIso3());
+        assertEquals("CHN", tc.getOriginIso3());
 
         // inputs mapped
         assertEquals(new BigDecimal("0.05"), tc.getMfnRate());

@@ -42,9 +42,12 @@ Authentication: Most endpoints require JWT Bearer token.
 
 ### Tariff
 
-- GET `/api/tariff-rate/lookup?importerIso2=&originIso2=&hsCode=`
+- GET `/api/tariff-rate/lookup?importerIso3=&originIso3=&hsCode=`
   - 200: `{ mfn: {...}, pref: {...}|null, agreement: {...}|null }`
   - Notes: Simple selection (no date window logic yet).
+- GET `/api/tariff-rate/subcategories?importerIso3=&originIso3=&hsCode=&limit=`
+  - 200: `[ { importerIso3, originIso3, hsCode, rates: [...] }, ... ]`
+  - Notes: Returns every HS subcode (default limit 200) matching the prefix plus MFN/PREF options for each.
 
 - POST `/api/tariff-rate/calculate`
   - Body: `{ totalValue, mfnRate, prefRate, rvcThreshold, materialCost, labourCost, overheadCost, profit, otherCosts, fob }`
@@ -71,7 +74,7 @@ curl -s http://localhost:8080/api/countries \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Lookup (seeded example)
-curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso2=EU&originIso2=KR&hsCode=870380" \
+curl -s "http://localhost:8080/api/tariff-rate/lookup?importerIso3=USA&originIso3=KOR&hsCode=870380" \
   -H "Authorization: Bearer YOUR_JWT"
 
 # Calculator
@@ -85,7 +88,33 @@ curl -s -X POST http://localhost:8080/api/tariff-rate/calculate \
 
 ---
 
-### 5. Get Conversation Details
+### 5. List Conversations
+
+Retrieve every conversation for the authenticated user ordered by most recent activity.
+
+**Endpoint**: `GET /api/chatbot/conversations`
+
+**Authentication**: Required (Bearer token)
+
+**Success Response** (200 OK):
+```json
+[
+  {
+    "conversationId": "b879d6c1-1b4a-4f39-a2d9-1f4debc22a9a",
+    "createdAt": "2025-10-19T14:00:00",
+    "updatedAt": "2025-10-19T14:05:12"
+  },
+  {
+    "conversationId": "af2c1b91-45e3-4f63-8b4a-9c78e6b5a210",
+    "createdAt": "2025-10-18T09:12:44",
+    "updatedAt": "2025-10-18T09:30:10"
+  }
+]
+```
+
+---
+
+### 6. Get Conversation Details
 
 Get detailed information about a specific conversation including full message history.
 
@@ -99,24 +128,21 @@ Get detailed information about a specific conversation including full message hi
 **Success Response** (200 OK):
 ```json
 {
-  "conversationId": "conv_abc123xyz",
-  "userId": "user@example.com",
+  "conversationId": "b879d6c1-1b4a-4f39-a2d9-1f4debc22a9a",
+  "createdAt": "2025-10-19T14:00:00",
+  "updatedAt": "2025-10-19T14:05:12",
   "messages": [
     {
       "role": "user",
       "content": "What's the tariff rate for importing steel from China to USA?",
-      "toolsUsed": [],
-      "timestamp": "2025-10-19T14:00:00"
+      "createdAt": "2025-10-19T14:00:00"
     },
     {
       "role": "assistant",
-      "content": "The tariff rate for importing steel from China to the USA...",
-      "toolsUsed": ["getTariffRateLookup"],
-      "timestamp": "2025-10-19T14:00:03"
+      "content": "The MFN rate for HS 7208.10 into the USA is 0%...",
+      "createdAt": "2025-10-19T14:00:02"
     }
-  ],
-  "createdAt": "2025-10-19T14:00:00",
-  "updatedAt": "2025-10-19T14:00:03"
+  ]
 }
 ```
 
@@ -130,7 +156,7 @@ Get detailed information about a specific conversation including full message hi
 
 ---
 
-### 6. Delete Conversation
+### 7. Delete Conversation
 
 Delete a specific conversation and its message history.
 
@@ -141,10 +167,7 @@ Delete a specific conversation and its message history.
 **Path Parameters**:
 - `conversationId` (string): The ID of the conversation to delete
 
-**Success Response** (200 OK):
-```json
-{}
-```
+**Success Response** (204 No Content)
 
 **Error Response** (404 Not Found):
 ```json
@@ -237,6 +260,16 @@ The AI Assistant can automatically select and use the following tools to answer 
 - "What are the risks of importing from China?"
 - "Assess trade risks for automotive parts"
 
+### 9. Tariff Subcategory Tool
+**Tool Name**: `TariffSubcategoryFunction`
+
+**Purpose**: Given an importer, optional origin, and HS prefix, return every more specific HS subcode plus its MFN/PREF options.
+
+**Example Queries**:
+- "Show all HS8 subcategories under 850760 for USA vs KOR"
+- "List detailed HS codes beneath 870380 for Canada"
+- "Break down 854430 subcodes for USA imports"
+
 ---
 
 ## Example Usage
@@ -315,19 +348,6 @@ curl -X POST http://localhost:8080/api/chatbot/query \
 }
 ```
 
----
-
-## Rate Limiting
-
-The API implements rate limiting to ensure fair usage:
-
-- **Per Minute**: 10 requests
-- **Per Hour**: 100 requests
-
-When rate limits are exceeded, the API returns a `429 Too Many Requests` error with information about when you can retry.
-
----
-
 ## Error Handling
 
 All errors follow a consistent format:
@@ -347,7 +367,6 @@ All errors follow a consistent format:
 | Error Type | HTTP Status | Description |
 |------------|-------------|-------------|
 | `InvalidQueryException` | 400 | Query is empty, too long, or malformed |
-| `RateLimitExceededException` | 429 | User has exceeded rate limits |
 | `LlmServiceException` | 503 | OpenAI API is unavailable or returned an error |
 | `ToolExecutionException` | 500 | A tool failed to execute (e.g., database error) |
 | `ChatbotException` | 500 | General chatbot error |

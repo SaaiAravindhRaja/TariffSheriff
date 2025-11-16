@@ -36,9 +36,9 @@ class HsProductControllerTest {
     @Test
     void search_withEmptyQuery_returnsEmptyList() {
         // --- Act ---
-        List<Map<String, Object>> result1 = controller.search("", 10);
-        List<Map<String, Object>> result2 = controller.search("   ", 10);
-        List<Map<String, Object>> result3 = controller.search(null, 10);
+        List<Map<String, Object>> result1 = controller.search("", 10, null);
+        List<Map<String, Object>> result2 = controller.search("   ", 10, null);
+        List<Map<String, Object>> result3 = controller.search(null, 10, null);
 
         // --- Assert ---
         assertTrue(result1.isEmpty());
@@ -62,7 +62,7 @@ class HsProductControllerTest {
         when(hsProductRepository.findByHsCodePrefix(query, limit)).thenReturn(codeResults);
 
         // --- Act ---
-        List<Map<String, Object>> result = controller.search(query, limit);
+        List<Map<String, Object>> result = controller.search(query, limit, null);
 
         // --- Assert ---
         assertEquals(2, result.size());
@@ -87,7 +87,7 @@ class HsProductControllerTest {
         when(hsProductService.searchByDescription(query, limit)).thenReturn(descResults);
 
         // --- Act ---
-        List<Map<String, Object>> result = controller.search(query, limit);
+        List<Map<String, Object>> result = controller.search(query, limit, null);
 
         // --- Assert ---
         assertEquals(1, result.size());
@@ -118,7 +118,7 @@ class HsProductControllerTest {
         when(hsProductService.searchByDescription(query, limit)).thenReturn(descResults);
 
         // --- Act ---
-        List<Map<String, Object>> result = controller.search(query, limit);
+        List<Map<String, Object>> result = controller.search(query, limit, null);
 
         // --- Assert ---
         // We expect 3 unique results: prod1_code, prod2_common, and prod3_desc
@@ -138,17 +138,17 @@ class HsProductControllerTest {
     void search_limitIsCapped_aboveMax() {
         // --- Arrange ---
         String query = "test";
-        int overLimit = 100; // Will be capped at 25
+        int overLimit = 100; // Will be capped at 100 (max is 200)
         
         // Return an empty list just to complete the call
         when(hsProductService.searchByDescription(any(), anyInt())).thenReturn(List.of());
 
         // --- Act ---
-        controller.search(query, overLimit);
+        controller.search(query, overLimit, null);
 
         // --- Assert / Verify ---
-        // Verify that the service was called with the *capped* limit of 25
-        verify(hsProductService).searchByDescription(query, 25);
+        // Verify that the service was called with the *capped* limit of 100
+        verify(hsProductService).searchByDescription(query, 100);
     }
 
     @Test
@@ -160,14 +160,14 @@ class HsProductControllerTest {
         when(hsProductService.searchByDescription(any(), anyInt())).thenReturn(List.of());
 
         // --- Act ---
-        controller.search(query, underLimit);
+        controller.search(query, underLimit, null);
 
         // --- Assert / Verify ---
         // Verify that the service was called with the *capped* limit of 1
         verify(hsProductService).searchByDescription(query, 1);
     }
 
-  @Test
+    @Test
     void search_resultIsMappedCorrectly() {
         // --- Arrange ---
         String query = "0101";
@@ -183,7 +183,7 @@ class HsProductControllerTest {
         when(hsProductRepository.findByHsCodePrefix(any(), anyInt())).thenReturn(List.of(product));
 
         // --- Act ---
-        List<Map<String, Object>> result = controller.search(query, 5);
+        List<Map<String, Object>> result = controller.search(query, 5, null);
 
         // --- Assert ---
         assertEquals(1, result.size());

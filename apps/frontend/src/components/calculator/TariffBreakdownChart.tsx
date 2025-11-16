@@ -18,14 +18,16 @@ interface TariffBreakdownChartProps {
   }
 }
 
-const COLORS = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+// Harmonized, accessible palette aligned with subdued indigo brand
+const COLORS = ['#6366f1', '#818cf8', '#22c55e', '#f59e0b', '#06b6d4', '#ef4444']
 
 export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
   const chartData = [
     {
       name: 'Base Value',
       value: data.baseValue,
-      color: '#0ea5e9',
+      // Subdued, more purple base slice with sufficient contrast
+      color: '#a78bfa', // violet-400
       rate: undefined as number | undefined,
     },
     ...data.breakdown.map((item, index) => ({
@@ -90,7 +92,7 @@ export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
                 labelLine={false}
                 label={({ payload }) => `${payload.name}: ${getDisplayPercent(payload).toFixed(1)}%`}
                 outerRadius={80}
-                fill="#8884d8"
+                fill="#818cf8"
                 dataKey="value"
               >
                 {chartData.map((entry, index) => (
@@ -106,7 +108,7 @@ export function TariffBreakdownChart({ data }: TariffBreakdownChartProps) {
         {/* Summary Stats */}
         <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Total Fees:</span>
+            <span className="text-muted-foreground">Duty (Total Fees):</span>
             <span className="font-medium">
               {formatCurrency(data.tariffAmount + data.additionalFees)}
             </span>

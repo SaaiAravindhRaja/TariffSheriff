@@ -246,7 +246,7 @@ export function GlobalTradeRoutes({ onRouteSelect }: GlobalTradeRoutesProps = {}
             No trade routes data available
           </div>
         ) : (
-          <div className="w-full h-[500px] relative bg-gray-900 rounded-lg overflow-hidden">
+          <div className="w-full h-[500px] relative bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
@@ -302,10 +302,10 @@ export function GlobalTradeRoutes({ onRouteSelect }: GlobalTradeRoutesProps = {}
                   key={`route-${idx}`}
                   from={route.originCoords}
                   to={route.importerCoords}
-                  stroke="#3b82f6"
+                  stroke="currentColor"
                   strokeWidth={hoveredRoute?.importer === route.importer && hoveredRoute?.origin === route.origin ? 4 : 2.5}
                   strokeLinecap="round"
-                  className="opacity-60 hover:opacity-100 transition-all cursor-pointer"
+                  className="opacity-60 hover:opacity-100 transition-all cursor-pointer text-brand-600 dark:text-brand-400"
                   onClick={() => {
                     const routeInfo = {
                       importer: route.importer,

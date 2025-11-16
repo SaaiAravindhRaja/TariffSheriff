@@ -3,13 +3,18 @@ import { savedTariffsApi, SavedTariffSummary, PageResponse, tariffApi } from '@/
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import React from 'react'
 
 export function SavedTariffs() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
-  const [size, setSize] = useState(10)
+  const size = 25
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [exportingDetails, setExportingDetails] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTargetId, setConfirmTargetId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['saved-tariffs', page, size],
@@ -66,8 +71,8 @@ export function SavedTariffs() {
       for (const r of rows) {
         lines.push([
           esc(r.name || 'Untitled'),
-          esc(r.importerIso2 ?? ''),
-          esc(r.originIso2 ?? ''),
+          esc(r.importerIso3 ?? ''),
+          esc(r.originIso3 ?? ''),
           esc(toFixedOrEmpty(r.totalValue as any)),
           esc(toFixedOrEmpty(r.totalTariff as any)),
           esc(r.agreementName ?? ''),
@@ -157,8 +162,8 @@ export function SavedTariffs() {
         lines.push([
           esc(d.name || summary.name || 'Untitled'),
           esc(d.notes || ''),
-          esc(d.importerIso2 ?? summary.importerIso2 ?? ''),
-          esc(d.originIso2 ?? summary.originIso2 ?? ''),
+          esc(d.importerIso3 ?? (summary).importerIso3 ?? ''),
+          esc(d.originIso3 ?? (summary).originIso3 ?? ''),
           esc(d.hsCode ?? ''),
           esc(hsLabel ?? ''),
           esc(summary.agreementName ?? ''),
@@ -197,9 +202,37 @@ export function SavedTariffs() {
     mutationFn: async (id: number) => {
       await savedTariffsApi.delete(id)
     },
-    onSuccess: () => {
+    onMutate: async (id: number) => {
+      setDeletingId(id)
+      setDeleteError(null)
+      await qc.cancelQueries({ queryKey: ['saved-tariffs'] })
+      const prev = qc.getQueryData<PageResponse<SavedTariffSummary>>(['saved-tariffs', page, size])
+      if (prev) {
+        const next: PageResponse<SavedTariffSummary> = {
+          ...prev,
+          content: prev.content.filter((row) => row.id !== id),
+          totalElements: Math.max(0, prev.totalElements - 1),
+        }
+        qc.setQueryData(['saved-tariffs', page, size], next)
+      }
+      return { prev }
+    },
+    onError: (err: any, _id, ctx) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete'
+      setDeleteError(msg)
+      if (ctx?.prev) {
+        qc.setQueryData(['saved-tariffs', page, size], ctx.prev)
+      }
+    },
+    onSuccess: (_data, id) => {
+      if (expandedId === id) setExpandedId(null)
+    },
+    onSettled: () => {
+      setDeletingId(null)
+      setConfirmOpen(false)
+      setConfirmTargetId(null)
       qc.invalidateQueries({ queryKey: ['saved-tariffs'] })
-    }
+    },
   })
 
   if (isLoading) {
@@ -214,6 +247,7 @@ export function SavedTariffs() {
   const { content, totalPages } = data
 
   return (
+    <>
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Saved Tariffs</h1>
@@ -242,16 +276,16 @@ export function SavedTariffs() {
           </thead>
           <tbody>
             {content.map(item => (
-              <>
-                <tr key={item.id} className="border-t">
+              <React.Fragment key={item.id}>
+                <tr className="border-t">
                   <td className="px-4 py-2">
                     <div className="flex flex-col">
                       <span className="font-medium">{item.name || 'Untitled'}</span>
                       <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2">{item.importerIso2 ?? '-'}</td>
-                  <td className="px-4 py-2">{item.originIso2 ?? '-'}</td>
+                  <td className="px-4 py-2">{(item).importerIso3 ?? '-'}</td>
+                  <td className="px-4 py-2">{(item).originIso3 ?? '-'}</td>
                   <td className="px-4 py-2 text-right">{item.totalValue != null ? item.totalValue.toFixed(2) : '-'}</td>
                   <td className="px-4 py-2 text-right">{item.totalTariff != null ? item.totalTariff.toFixed(2) : '-'}</td>
                   <td className="px-4 py-2">{item.agreementName ?? '-'}</td>
@@ -264,8 +298,18 @@ export function SavedTariffs() {
                     >
                       {expandedId === item.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => del.mutate(item.id)} title="Delete">
-                      <Trash2 className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setConfirmTargetId(item.id); setConfirmOpen(true); }}
+                      title="Delete"
+                      disabled={deletingId === item.id}
+                    >
+                      {deletingId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </td>
                 </tr>
@@ -297,11 +341,11 @@ export function SavedTariffs() {
                                   <div className="grid gap-3 md:grid-cols-2">
                                     <div>
                                       <div className="text-xs text-muted-foreground">Importer</div>
-                                      <div className="font-medium">{expandedDetail.data.importerIso2 ?? '-'}</div>
+                                      <div className="font-medium">{expandedDetail.data.importerIso3 ?? '-'}</div>
                                     </div>
                                     <div>
                                       <div className="text-xs text-muted-foreground">Origin</div>
-                                      <div className="font-medium">{expandedDetail.data.originIso2 ?? '-'}</div>
+                                      <div className="font-medium">{expandedDetail.data.originIso3 ?? '-'}</div>
                                     </div>
                                   </div>
                                   <div className="grid gap-3 md:grid-cols-2">
@@ -392,7 +436,7 @@ export function SavedTariffs() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -404,6 +448,30 @@ export function SavedTariffs() {
         <Button variant="outline" disabled={page+1>=totalPages} onClick={() => setPage(p => p+1)}>Next</Button>
       </div>
     </div>
+      {/* Confirm Delete Modal */}
+      {confirmOpen && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmOpen(false)} />
+          <div className="relative z-10 w-full max-w-sm rounded-md border bg-white dark:bg-slate-900 p-5 shadow-xl">
+            <h2 className="text-lg font-semibold mb-2">Delete Saved Tariff</h2>
+            <p className="text-sm text-muted-foreground mb-4">This action cannot be undone. Do you want to proceed?</p>
+            {deleteError && (
+              <div className="mb-3 text-sm text-red-600">{deleteError}</div>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={deletingId != null}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => { if (confirmTargetId != null) del.mutate(confirmTargetId) }}
+                disabled={deletingId != null}
+              >
+                {deletingId != null ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Deleting…</span> : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

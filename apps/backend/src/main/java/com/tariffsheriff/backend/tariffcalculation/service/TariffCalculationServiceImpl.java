@@ -28,8 +28,8 @@ public class TariffCalculationServiceImpl implements TariffCalculationService {
                                          String name,
                                          String notes,
                                          String hsCode,
-                                         String importerIso2,
-                                         String originIso2) {
+                                         String importerIso3,
+                                         String originIso3) {
         // Trust frontend-provided results
         BigDecimal rvcComputed = result != null ? result.getCalculatedRvc() : null;
         String rateUsed = result != null ? result.getTariffBasis() : null;
@@ -41,8 +41,8 @@ public class TariffCalculationServiceImpl implements TariffCalculationService {
         tc.setName(name);
         tc.setNotes(notes);
         tc.setHsCode(hsCode);
-        tc.setImporterIso2(importerIso2);
-        tc.setOriginIso2(originIso2);
+        tc.setImporterIso3(importerIso3);
+        tc.setOriginIso3(originIso3);
 
         // inputs
         tc.setMfnRate(input.getMfnRate());
@@ -84,7 +84,8 @@ public class TariffCalculationServiceImpl implements TariffCalculationService {
     }
 
     @Override
-    public void deleteForUser(Long id, Long userId) {
-        repo.deleteByIdAndUser_Id(id, userId);
+    public boolean deleteForUser(Long id, Long userId) {
+        long deleted = repo.deleteByIdAndUser_Id(id, userId);
+        return deleted > 0;
     }
 }

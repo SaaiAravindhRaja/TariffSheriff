@@ -18,8 +18,8 @@ public class TariffCalculationDetail {
     private String name;
     private String notes;
     private String hsCode;
-    private String importerIso2;
-    private String originIso2;
+    private String importerIso3;
+    private String originIso3;
     private LocalDateTime createdAt;
 }
 

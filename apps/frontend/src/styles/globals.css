@@ -5,50 +5,53 @@
 
 @layer base {
   :root {
+    /* Purple-Black Theme - Light Mode */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    /* Primary back to original blue */
-    --primary: 200 98% 39%;
+    /* Primary: subdued, slightly blue-ish purple (indigo 500) */
+    --primary: 245 80% 67%;
     --primary-foreground: 210 40% 98%;
     --secondary: 240 33% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
     --muted: 220 20% 96%;
     --muted-foreground: 220 15% 35%;
-    --accent: 246 100% 97%;
-    --accent-foreground: 232 65% 20%;
+    --accent: 245 100% 97%;
+    --accent-foreground: 245 40% 22%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 220 20% 92%;
     --input: 220 20% 92%;
-    --ring: 200 98% 39%;
+    --ring: 245 80% 67%;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 230 25% 8%;
+    /* Purple-Black Theme - Dark Mode */
+    --background: 240 10% 8%;
     --foreground: 210 40% 98%;
-    --card: 232 25% 10%;
+    --card: 240 10% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 232 25% 10%;
+    --popover: 240 10% 10%;
     --popover-foreground: 210 40% 98%;
-    /* Primary back to original blue */
-    --primary: 200 98% 39%;
+    /* Primary: slightly blue-ish purple (indigo 500) */
+    --primary: 245 80% 67%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 234 22% 18%;
+    --secondary: 240 15% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 234 22% 18%;
-    --muted-foreground: 215 20% 70%;
-    --accent: 246 35% 22%;
+    /* Cohesive dark surfaces (less blue, slightly deeper) */
+    --muted: 235 18% 16%;
+    --muted-foreground: 215 18% 72%;
+    --accent: 235 22% 20%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 65% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 236 20% 22%;
-    --input: 236 20% 22%;
-    --ring: 200 98% 39%;
+    --border: 235 18% 24%;
+    --input: 235 18% 24%;
+    --ring: 245 80% 67%;
   }
 }
 
@@ -68,11 +71,32 @@
   }
   
   .gradient-bg {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Subdued indigo gradient */
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
   }
   
   .tariff-gradient {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+  }
+
+  /* Smooth anchor scroll for route -> section transitions */
+  html { scroll-behavior: smooth; }
+
+  /* Highlight target section briefly on navigation */
+  :target { animation: target-glow 700ms ease-out 1; }
+  @keyframes target-glow {
+    0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.0); }
+    40% { box-shadow: 0 0 0 6px rgba(99,102,241,0.25); }
+    100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.0); }
+  }
+
+  /* Slide-down entrance when jumping to EV categories via map selection */
+  .route-jump-animate {
+    animation: slide-down-soft 420ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+  }
+  @keyframes slide-down-soft {
+    0% { opacity: 0; transform: translateY(-12px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
   
   .card-hover {
@@ -81,6 +105,25 @@
   
   .input-focus {
     @apply focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200;
+  }
+
+  /* Normalize inputs in dark mode to blend with page background
+     without separate grey field fills. Keep light mode unchanged. */
+  .dark input[type="text"],
+  .dark input[type="search"],
+  .dark input[type="number"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark textarea,
+  .dark select {
+    /* Use theme background and border to match surrounding surface */
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border)) !important;
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(148 163 184 / 0.8); /* slate-400 */
   }
 }
 

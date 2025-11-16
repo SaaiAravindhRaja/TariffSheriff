@@ -1,17 +1,7 @@
 import { Calendar, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-
-interface Article {
-  id?: number
-  title: string
-  url: string
-  content: string
-  queryContext?: string
-  source?: 'db' | 'api'
-  publishedAt?: string
-  imageUrl?: string
-}
+import type { Article } from '@/services/api'
 
 interface ArticleCardProps {
   article: Article

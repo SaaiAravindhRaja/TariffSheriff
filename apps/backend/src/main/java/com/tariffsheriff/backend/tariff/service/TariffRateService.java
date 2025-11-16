@@ -28,4 +28,10 @@ public interface TariffRateService {
     TariffRateLookupDto getTariffRateWithAgreement(String importerIso3, String originIso3, String hsCode);
 
     TariffCalculationResponse calculateTariffRate(TariffRateRequestDto tariffCalculationData);
+
+    List<TariffRateLookupDto> getSubcategories(
+            String importerIso3,
+            String originIso3,
+            String hsCodePrefix,
+            int limit);
 }
