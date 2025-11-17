@@ -92,16 +92,23 @@ export function TariffCart() {
           }
         })
 
-        const unique = new Map<string, string>()
-        response.data.forEach((rate: any) => {
-          if (!rate.hsCode) return
+        // Only include HS codes that have at least one trade route (i.e., originIso3 present)
+        const grouped = new Map<string, { description: string; hasOrigin: boolean }>()
+        ;(Array.isArray(response.data) ? response.data : []).forEach((rate: any) => {
+          if (!rate?.hsCode) return
           const code = String(rate.hsCode).trim()
-          if (!unique.has(code)) {
-            unique.set(code, rate.description || 'No description available')
+          const description = rate.description || 'No description available'
+          const hasOrigin = !!rate.originIso3
+          const existing = grouped.get(code)
+          if (existing) {
+            existing.hasOrigin = existing.hasOrigin || hasOrigin
+          } else {
+            grouped.set(code, { description, hasOrigin })
           }
         })
-        const options: HsCodeOption[] = Array.from(unique.entries())
-          .map(([code, description]) => ({ code, description }))
+        const options: HsCodeOption[] = Array.from(grouped.entries())
+          .filter(([, meta]) => meta.hasOrigin)
+          .map(([code, meta]) => ({ code, description: meta.description }))
           .sort((a, b) => a.code.localeCompare(b.code))
 
         setAvailableHsCodes(options)
@@ -182,12 +189,13 @@ export function TariffCart() {
               const { originIso3, data } = r.value as any
               const pref = data?.rates?.find((x: any) => x.basis === 'PREF' && x.adValoremRate != null)
               if (!pref) continue
-              const rvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : null
-              if (rvc == null) continue
-              if (bestRvc == null || rvc < bestRvc) {
-                bestRvc = rvc
+              const candRate = Number(pref.adValoremRate)
+              const candRvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : Number.POSITIVE_INFINITY
+
+              if (bestPrefRate == null || candRate < bestPrefRate || (candRate === bestPrefRate && (bestRvc == null || candRvc < bestRvc))) {
+                bestPrefRate = candRate
+                bestRvc = isFinite(candRvc) ? candRvc : null
                 bestOrigin = originIso3
-                bestPrefRate = Number(pref.adValoremRate)
                 bestAgreementName = pref.agreementName ?? null
               }
             }
@@ -381,6 +389,7 @@ export function TariffCart() {
                   }}
                   placeholder="Search HS code..."
                   disabled={!newItem.importerIso3}
+                  disabledMessage="Select importer first to load HS codes."
                   loading={loadingHsCodes}
                   options={availableHsCodes}
                 />

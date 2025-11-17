@@ -14,6 +14,7 @@ interface HsCodeSelectProps {
   values?: string[]
   onChangeValues?: (codes: string[]) => void
   placeholder?: string
+  disabledMessage?: string
   className?: string
   required?: boolean
   disabled?: boolean
@@ -28,6 +29,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   values = [],
   onChangeValues,
   placeholder = 'Search HS by code or name',
+  disabledMessage = 'Select importer and exporter first to load HS codes.',
   className = '',
   required = false,
   disabled = false,
@@ -206,7 +208,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
 
       {disabled && (
         <p className="mt-1 text-xs text-muted-foreground">
-          Select importer and exporter first to load HS codes.
+          {disabledMessage}
         </p>
       )}
     </div>
