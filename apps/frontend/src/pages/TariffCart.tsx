@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart, Trash2, Plus, Save, AlertCircle, Loader2 } from 'lucide-react'
 import CartItemCard from '@/components/cart/CartItemCard'
 import CountrySelect from '@/components/inputs/CountrySelect'
-import HsCodeSelect from '@/components/inputs/HsCodeSelect'
+import HsCodeSelect, { type HsCodeOption } from '@/components/inputs/HsCodeSelect'
 import { api, tariffApi, savedTariffsApi } from '@/services/api'
 import { useToast } from '@/components/ui/toast'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -26,6 +26,8 @@ export function TariffCart() {
     quantity: 1,
     unitValue: 0,
   })
+  // Multi-select HS lines with per-line quantity and unit value
+  const [selectedLines, setSelectedLines] = useState<Array<{ code: string; quantity: number; unitValue: number }>>([])
   
   const [calculating, setCalculating] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -35,7 +37,7 @@ export function TariffCart() {
 
   // Smart filtering state
   const [availableOrigins, setAvailableOrigins] = useState<string[]>([])
-  const [availableHsCodes, setAvailableHsCodes] = useState<string[]>([])
+  const [availableHsCodes, setAvailableHsCodes] = useState<HsCodeOption[]>([])
   const [loadingOrigins, setLoadingOrigins] = useState(false)
   const [loadingHsCodes, setLoadingHsCodes] = useState(false)
 
@@ -89,17 +91,21 @@ export function TariffCart() {
             limit: 1000
           }
         })
-        
-        const hsCodesSet = new Set<string>()
+
+        const unique = new Map<string, string>()
         response.data.forEach((rate: any) => {
-          if (rate.hsCode) {
-            hsCodesSet.add(rate.hsCode)
+          if (!rate.hsCode) return
+          const code = String(rate.hsCode).trim()
+          if (!unique.has(code)) {
+            unique.set(code, rate.description || 'No description available')
           }
         })
-        
-        const hsCodesArray = Array.from(hsCodesSet)
-        setAvailableHsCodes(hsCodesArray)
-        console.log(`✅ Cart: Found ${hsCodesArray.length} HS codes for importer ${newItem.importerIso3}`)
+        const options: HsCodeOption[] = Array.from(unique.entries())
+          .map(([code, description]) => ({ code, description }))
+          .sort((a, b) => a.code.localeCompare(b.code))
+
+        setAvailableHsCodes(options)
+        console.log(`✅ Cart: Found ${options.length} HS codes for importer ${newItem.importerIso3}`)
       } catch (err) {
         console.error('Failed to fetch available HS codes:', err)
         setAvailableHsCodes([])
@@ -112,106 +118,122 @@ export function TariffCart() {
   }, [newItem.importerIso3])
 
   const handleAddToCart = async () => {
-    if (!newItem.hsCode || !newItem.importerIso3) {
+    if (!newItem.importerIso3 || selectedLines.length === 0) {
       showToast('Missing Information: Please fill in all required fields', 'error')
       return
     }
 
     setCalculating(true)
-    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    setPendingAdds((prev) => [...prev, { id: pendingId, hsCode: newItem.hsCode, importerIso3: newItem.importerIso3 }])
+    const batchPending = selectedLines.map((l) => ({
+      id: `pending-${l.code}-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+      hsCode: l.code,
+      importerIso3: newItem.importerIso3,
+    }))
+    setPendingAdds((prev) => [...prev, ...batchPending])
+    const codeToPendingId = new Map(batchPending.map((p) => [p.hsCode, p.id]))
+    // Build a quick map from current dropdown options for accurate descriptions
+    const codeToDescription = new Map<string, string>(
+      (availableHsCodes || []).map((o) => [o.code.replace(/\./g, ''), o.description || '']),
+    )
     
     try {
-      // Pad HS code to 8 digits with trailing zeros if needed
-      let hsCode = newItem.hsCode.replace(/\./g, '').trim()
-      if (hsCode.length > 0 && hsCode.length < 8 && /^\d+$/.test(hsCode)) {
-        hsCode = hsCode.padEnd(8, '0')
-        console.log(`⚠️ TariffCart: Padded HS code from ${newItem.hsCode} to ${hsCode}`)
-      }
+      for (const line of selectedLines) {
+        const pendingId = codeToPendingId.get(line.code)
+        try {
+          let hsCode = line.code.replace(/\./g, '').trim()
+          if (hsCode.length > 0 && hsCode.length < 8 && /^\d+$/.test(hsCode)) {
+            hsCode = hsCode.padEnd(8, '0')
+          }
 
-      // Resolve best origin and rates for this HS code under the chosen importer
-      const resolveCandidateOrigins = async () => {
-        const listResp = await api.get('/tariff-rate/', {
-          params: { importerIso3: newItem.importerIso3, hsCodes: [hsCode] }
-        })
-        const rows = (Array.isArray(listResp.data) ? listResp.data : listResp.data?.content || []) as any[]
-        const origins = Array.from(new Set<string>(rows.map((row: any) => row.originIso3).filter((o: any) => !!o)))
-        const description = (rows.find((r: any) => r.hsCode)?.description as string) || ''
-        return { origins, description }
-      }
+          const resolveCandidateOrigins = async () => {
+            const listResp = await api.get('/tariff-rate/', {
+              params: { importerIso3: newItem.importerIso3, hsCodes: [hsCode] }
+            })
+            const rows = (Array.isArray(listResp.data) ? listResp.data : listResp.data?.content || []) as any[]
+            const origins = Array.from(new Set<string>(rows.map((row: any) => row.originIso3).filter((o: any) => !!o)))
+            const description = (rows.find((r: any) => r.hsCode)?.description as string) || ''
+            return { origins, description }
+          }
 
-      const { origins, description } = await resolveCandidateOrigins()
+          const { origins, description } = await resolveCandidateOrigins()
 
-      // Always fetch MFN (origin-agnostic)
-      let mfnRate: number | null = null
-      try {
-        const mfnResp = await tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, hsCode })
-        const mfn = mfnResp.data?.rates?.find((r: any) => r.basis === 'MFN')
-        mfnRate = mfn?.adValoremRate ?? null
-      } catch {}
+          // Always fetch MFN (origin-agnostic)
+          let mfnRate: number | null = null
+          try {
+            const mfnResp = await tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, hsCode })
+            const mfn = mfnResp.data?.rates?.find((r: any) => r.basis === 'MFN')
+            mfnRate = mfn?.adValoremRate ?? null
+          } catch {}
 
-      let bestOrigin: string | null = null
-      let bestPrefRate: number | null = null
-      let bestRvc: number | null = null
-      let bestAgreementName: string | null = null
+          let bestOrigin: string | null = null
+          let bestPrefRate: number | null = null
+          let bestRvc: number | null = null
+          let bestAgreementName: string | null = null
 
-      if (origins.length > 0) {
-        const lookups = await Promise.allSettled(
-          origins.map((originIso3) =>
-            tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, originIso3, hsCode })
-              .then(res => ({ originIso3, data: res.data }))
+          if (origins.length > 0) {
+            const lookups = await Promise.allSettled(
+              origins.map((originIso3) =>
+                tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, originIso3, hsCode })
+                  .then(res => ({ originIso3, data: res.data }))
+              )
+            )
+            for (const r of lookups) {
+              if (r.status !== 'fulfilled') continue
+              const { originIso3, data } = r.value as any
+              const pref = data?.rates?.find((x: any) => x.basis === 'PREF' && x.adValoremRate != null)
+              if (!pref) continue
+              const rvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : null
+              if (rvc == null) continue
+              if (bestRvc == null || rvc < bestRvc) {
+                bestRvc = rvc
+                bestOrigin = originIso3
+                bestPrefRate = Number(pref.adValoremRate)
+                bestAgreementName = pref.agreementName ?? null
+              }
+            }
+          }
+
+          if (mfnRate == null && bestPrefRate == null) {
+            showToast(`No Tariff Rate Found: Could not find rate for HS code ${hsCode}`, 'error')
+          } else {
+            const normalizedCode = line.code.replace(/\./g, '')
+            const finalDescription =
+              codeToDescription.get(normalizedCode) ||
+              description ||
+              ''
+            addItem({
+              importerIso3: newItem.importerIso3,
+              originIso3: bestOrigin || '',
+              hsCode,
+              hsLabel: finalDescription,
+              mfnRate: mfnRate ?? undefined,
+              preferentialRate: bestPrefRate ?? undefined,
+              rvcThreshold: (bestRvc ?? undefined) as any,
+              agreementName: bestAgreementName ?? undefined,
+              quantity: line.quantity,
+              unitValue: line.unitValue,
+              selectedBasis: undefined as any,
+              selectedRate: undefined as any,
+              tariffAmount: 0,
+              totalWithTariff: (line.quantity * line.unitValue),
+            } as any)
+
+            showToast(`Added HS ${hsCode}: best origin ${bestOrigin ?? 'N/A'}`, 'success')
+          }
+        } catch (err: any) {
+          console.error('Failed to calculate tariff for line:', line.code, err)
+          showToast(
+            `Failed to add ${line.code}: ${err?.response?.data?.message || err?.message || 'Unknown error'}`,
+            'error'
           )
-        )
-        for (const r of lookups) {
-          if (r.status !== 'fulfilled') continue
-          const { originIso3, data } = r.value as any
-          const pref = data?.rates?.find((x: any) => x.basis === 'PREF' && x.adValoremRate != null)
-          if (!pref) continue
-          const rvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : null
-          if (rvc == null) continue
-          if (bestRvc == null || rvc < bestRvc) {
-            bestRvc = rvc
-            bestOrigin = originIso3
-            bestPrefRate = Number(pref.adValoremRate)
-            bestAgreementName = pref.agreementName ?? null
+        } finally {
+          if (pendingId) {
+            setPendingAdds((prev) => prev.filter((p) => p.id !== pendingId))
           }
         }
       }
 
-      if (mfnRate == null && bestPrefRate == null) {
-        showToast(`No Tariff Rate Found: Could not find rate for HS code ${hsCode}`, 'error')
-        setCalculating(false)
-        return
-      }
-
-      // Add item (value fields unused in rate-only mode)
-      addItem({
-        importerIso3: newItem.importerIso3,
-        originIso3: bestOrigin || '',
-        hsCode,
-        hsLabel: description || newItem.hsLabel,
-        mfnRate: mfnRate ?? undefined,
-        preferentialRate: bestPrefRate ?? undefined,
-        rvcThreshold: (bestRvc ?? undefined) as any,
-        agreementName: bestAgreementName ?? undefined,
-        quantity: newItem.quantity,
-        unitValue: newItem.unitValue,
-        selectedBasis: undefined as any,
-        selectedRate: undefined as any,
-        tariffAmount: 0,
-        totalWithTariff: (newItem.quantity * newItem.unitValue),
-      } as any)
-      
-      // Reset form
-      setNewItem({
-        hsCode: '',
-        importerIso3: '',
-        hsLabel: '',
-        quantity: 1,
-        unitValue: 0,
-      })
-      
-      showToast(`Added HS ${hsCode}: best origin ${bestOrigin ?? 'N/A'}`, 'success')
+      setSelectedLines([])
     } catch (error: any) {
       console.error('Failed to calculate tariff:', error)
       showToast(
@@ -219,8 +241,8 @@ export function TariffCart() {
         'error'
       )
     } finally {
-      // Remove pending loader
-      setPendingAdds((prev) => prev.filter((p) => p.id !== pendingId))
+      // any remaining pending (if any error path skipped finally) - clean up
+      setPendingAdds((prev) => prev.filter((p) => !batchPending.find((b) => b.id === p.id)))
       setCalculating(false)
     }
   }
@@ -332,7 +354,7 @@ export function TariffCart() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  HS Code & Product
+                  HS Codes
                   {availableHsCodes.length > 0 && (
                     <span className="text-xs text-brand-500 ml-1">
                       • {availableHsCodes.length} available for this importer
@@ -340,78 +362,110 @@ export function TariffCart() {
                   )}
                 </label>
                 <HsCodeSelect
-                  value={newItem.hsCode}
-                  onChange={(code: string) => {
-                    setNewItem({ ...newItem, hsCode: code, hsLabel: '' })
+                  multi
+                  values={selectedLines.map((l) => l.code)}
+                  onChangeValues={(codes: string[]) => {
+                    setSelectedLines((prev) => {
+                      const prevMap = new Map(prev.map((l) => [l.code, l]))
+                      const next: Array<{ code: string; quantity: number; unitValue: number }> = []
+                      for (const code of codes) {
+                        const existing = prevMap.get(code)
+                        next.push({
+                          code,
+                          quantity: existing?.quantity ?? newItem.quantity,
+                          unitValue: existing?.unitValue ?? newItem.unitValue,
+                        })
+                      }
+                      return next
+                    })
                   }}
                   placeholder="Search HS code..."
                   disabled={!newItem.importerIso3}
                   loading={loadingHsCodes}
-                  options={(availableHsCodes || []).map((code) => ({
-                    code,
-                    description: '',
-                  }))}
+                  options={availableHsCodes}
                 />
-                {availableHsCodes.length > 0 && !availableHsCodes.includes(newItem.hsCode.replace(/\./g, '')) && newItem.hsCode && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ This HS code may not have data for the selected importer
-                  </p>
+
+                {/* Per-line quantity and unit value editors */}
+                {selectedLines.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {selectedLines.map((line, idx) => (
+                      <div key={line.code} className="grid grid-cols-3 gap-2 items-end">
+                        <div>
+                          <label className="block text-xs text-gray-500">HS Code</label>
+                          <div className="px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-800 text-sm font-mono">
+                            {line.code}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 1
+                              setSelectedLines((prev) =>
+                                prev.map((l) => (l.code === line.code ? { ...l, quantity: val } : l)),
+                              )
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500">Unit Value (USD)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={line.unitValue}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0
+                              setSelectedLines((prev) =>
+                                prev.map((l) => (l.code === line.code ? { ...l, unitValue: val } : l)),
+                              )
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    name="quantity-input"
-                    autoComplete="new-password"
-                    autoCorrect="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    value={newItem.quantity}
-                    onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Unit Value (USD)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    name="unit-value-input"
-                    autoComplete="new-password"
-                    autoCorrect="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    value={newItem.unitValue}
-                    onChange={(e) => setNewItem({ ...newItem, unitValue: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                  />
-                </div>
-              </div>
-
               <div className="pt-2 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                {selectedLines.length > 0 && (
+                  <div className="mb-2 space-y-1 text-xs">
+                    {selectedLines.map((line) => (
+                      <div key={`subtotal-${line.code}`} className="flex justify-between">
+                        <span className="font-mono">
+                          {line.code} × {line.quantity} @ ${line.unitValue.toFixed(2)}
+                        </span>
+                        <span className="font-semibold">
+                          ${(line.quantity * line.unitValue).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Value:</span>
                   <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    ${(newItem.quantity * newItem.unitValue).toFixed(2)}
+                    ${selectedLines.reduce((sum, l) => sum + (l.quantity * l.unitValue), 0).toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              <Button onClick={handleAddToCart} className="w-full" disabled={calculating}>
+              <Button onClick={handleAddToCart} className="w-full" disabled={calculating || !newItem.importerIso3 || selectedLines.length === 0}>
                 {calculating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Calculating...
+                    Finding best origin...
                   </>
                 ) : (
                   <>
                     <Plus className="w-4 h-4 mr-2" />
-                    Add to Cart
+                    Add Selected HS Codes
                   </>
                 )}
               </Button>
