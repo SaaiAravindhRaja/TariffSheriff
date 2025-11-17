@@ -17,11 +17,10 @@ export function TariffCart() {
   const { items, addItem, updateItem, removeItem, clearCart, getTotalValue, getTotalTariff, getTotalWithTariff, getItemCount } = useCartStore()
   const { countries, loading: countriesLoading } = useDbCountries()
   
-  // Form state for adding new item
+  // Form state: destination importer + one-at-a-time HS code entry
   const [newItem, setNewItem] = useState({
     hsCode: '',
     hsLabel: '',
-    originIso3: '',
     importerIso3: '',
     quantity: 1,
     unitValue: 0,
@@ -31,6 +30,7 @@ export function TariffCart() {
   const [saving, setSaving] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saveNotes, setSaveNotes] = useState('')
+  const [pendingAdds, setPendingAdds] = useState<Array<{ id: string; hsCode: string; importerIso3: string }>>([])
 
   // Smart filtering state
   const [availableOrigins, setAvailableOrigins] = useState<string[]>([])
@@ -72,10 +72,10 @@ export function TariffCart() {
     fetchAvailableOrigins()
   }, [newItem.importerIso3])
 
-  // Fetch available HS codes when both importer and origin are selected
+  // Fetch available HS codes when importer is selected
   useEffect(() => {
     const fetchAvailableHsCodes = async () => {
-      if (!newItem.importerIso3 || !newItem.originIso3) {
+      if (!newItem.importerIso3) {
         setAvailableHsCodes([])
         return
       }
@@ -85,7 +85,6 @@ export function TariffCart() {
         const response = await api.get('/tariff-rate/', {
           params: {
             importerIso3: newItem.importerIso3,
-            originIso3: newItem.originIso3,
             limit: 1000
           }
         })
@@ -99,7 +98,7 @@ export function TariffCart() {
         
         const hsCodesArray = Array.from(hsCodesSet)
         setAvailableHsCodes(hsCodesArray)
-        console.log(`✅ Cart: Found ${hsCodesArray.length} HS codes for route ${newItem.importerIso3} → ${newItem.originIso3}`)
+        console.log(`✅ Cart: Found ${hsCodesArray.length} HS codes for importer ${newItem.importerIso3}`)
       } catch (err) {
         console.error('Failed to fetch available HS codes:', err)
         setAvailableHsCodes([])
@@ -109,15 +108,17 @@ export function TariffCart() {
     }
 
     fetchAvailableHsCodes()
-  }, [newItem.importerIso3, newItem.originIso3])
+  }, [newItem.importerIso3])
 
   const handleAddToCart = async () => {
-    if (!newItem.hsCode || !newItem.importerIso3 || !newItem.originIso3 || newItem.unitValue <= 0) {
+    if (!newItem.hsCode || !newItem.importerIso3) {
       showToast('Missing Information: Please fill in all required fields', 'error')
       return
     }
 
     setCalculating(true)
+    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    setPendingAdds((prev) => [...prev, { id: pendingId, hsCode: newItem.hsCode, importerIso3: newItem.importerIso3 }])
     
     try {
       // Pad HS code to 8 digits with trailing zeros if needed
@@ -126,56 +127,90 @@ export function TariffCart() {
         hsCode = hsCode.padEnd(8, '0')
         console.log(`⚠️ TariffCart: Padded HS code from ${newItem.hsCode} to ${hsCode}`)
       }
-      
-      // Calculate tariff immediately when adding
-      const response = await tariffApi.getTariffRateLookup({
-        importerIso3: newItem.importerIso3,
-        originIso3: newItem.originIso3,
-        hsCode: hsCode,
-      })
-      
-      const data = response.data
-      const mfnRate = data.rates?.find((r) => r.basis === 'MFN')
-      const prefRate = data.rates?.find((r) => r.basis === 'PREF')
-      
-      // Use preferential rate if available, otherwise MFN
-      const selectedRate = prefRate || mfnRate
-      
-      if (!selectedRate || selectedRate.adValoremRate === null) {
+
+      // Resolve best origin and rates for this HS code under the chosen importer
+      const resolveCandidateOrigins = async () => {
+        const listResp = await api.get('/tariff-rate/', {
+          params: { importerIso3: newItem.importerIso3, hsCodes: [hsCode] }
+        })
+        return Array.from(
+          new Set<string>(
+            (Array.isArray(listResp.data) ? listResp.data : listResp.data?.content || [])
+              .map((row: any) => row.originIso3)
+              .filter((o: any) => !!o)
+          )
+        )
+      }
+
+      const origins = await resolveCandidateOrigins()
+
+      // Always fetch MFN (origin-agnostic)
+      let mfnRate: number | null = null
+      try {
+        const mfnResp = await tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, hsCode })
+        const mfn = mfnResp.data?.rates?.find((r: any) => r.basis === 'MFN')
+        mfnRate = mfn?.adValoremRate ?? null
+      } catch {}
+
+      let bestOrigin: string | null = null
+      let bestPrefRate: number | null = null
+      let bestRvc: number | null = null
+
+      if (origins.length > 0) {
+        const lookups = await Promise.allSettled(
+          origins.map((originIso3) =>
+            tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, originIso3, hsCode })
+              .then(res => ({ originIso3, data: res.data }))
+          )
+        )
+        for (const r of lookups) {
+          if (r.status !== 'fulfilled') continue
+          const { originIso3, data } = r.value as any
+          const pref = data?.rates?.find((x: any) => x.basis === 'PREF' && x.adValoremRate != null)
+          if (!pref) continue
+          const rvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : null
+          if (rvc == null) continue
+          if (bestRvc == null || rvc < bestRvc) {
+            bestRvc = rvc
+            bestOrigin = originIso3
+            bestPrefRate = Number(pref.adValoremRate)
+          }
+        }
+      }
+
+      if (mfnRate == null && bestPrefRate == null) {
         showToast(`No Tariff Rate Found: Could not find rate for HS code ${hsCode}`, 'error')
         setCalculating(false)
         return
       }
-      
-      const totalValue = newItem.quantity * newItem.unitValue
-      const tariffAmount = (totalValue * selectedRate.adValoremRate) / 100
-      
-      // Add item to cart with calculated tariff (use padded HS code)
+
+      // Add item (value fields unused in rate-only mode)
       addItem({
-        ...newItem,
-        hsCode: hsCode,  // Use the padded HS code
-        mfnRate: mfnRate?.adValoremRate,
-        preferentialRate: prefRate?.adValoremRate,
-        selectedBasis: selectedRate.basis as 'MFN' | 'PREF',
-        selectedRate: selectedRate.adValoremRate,
-        tariffAmount,
-        totalWithTariff: totalValue + tariffAmount,
-        agreementId: selectedRate.agreementId,
-        agreementName: selectedRate.agreementName,
-        rvcThreshold: selectedRate.rvcThreshold,
+        importerIso3: newItem.importerIso3,
+        originIso3: bestOrigin || '',
+        hsCode,
+        hsLabel: newItem.hsLabel,
+        mfnRate: mfnRate ?? undefined,
+        preferentialRate: bestPrefRate ?? undefined,
+        rvcThreshold: (bestRvc ?? undefined) as any,
+        quantity: newItem.quantity,
+        unitValue: newItem.unitValue,
+        selectedBasis: undefined as any,
+        selectedRate: undefined as any,
+        tariffAmount: 0,
+        totalWithTariff: (newItem.quantity * newItem.unitValue),
       } as any)
       
       // Reset form
       setNewItem({
         hsCode: '',
-        hsLabel: '',
-        originIso3: '',
         importerIso3: '',
+        hsLabel: '',
         quantity: 1,
         unitValue: 0,
       })
       
-      showToast(`Added to Cart: ${selectedRate.adValoremRate}% tariff rate applied`, 'success')
+      showToast(`Added HS ${hsCode}: best origin ${bestOrigin ?? 'N/A'}`, 'success')
     } catch (error: any) {
       console.error('Failed to calculate tariff:', error)
       showToast(
@@ -183,6 +218,8 @@ export function TariffCart() {
         'error'
       )
     } finally {
+      // Remove pending loader
+      setPendingAdds((prev) => prev.filter((p) => p.id !== pendingId))
       setCalculating(false)
     }
   }
@@ -294,36 +331,10 @@ export function TariffCart() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Origin Country
-                  {availableOrigins.length > 0 && (
-                    <span className="text-xs text-brand-500 ml-1">
-                      • {availableOrigins.length} trade route{availableOrigins.length !== 1 ? 's' : ''} available
-                    </span>
-                  )}
-                </label>
-                <CountrySelect
-                  value={newItem.originIso3}
-                  onChange={(value: string | string[]) => {
-                    const code = Array.isArray(value) ? value[0] : value
-                    setNewItem({ ...newItem, originIso3: code })
-                  }}
-                  placeholder="Select origin..."
-                  countries={countries}
-                  loading={countriesLoading || loadingOrigins}
-                />
-                {availableOrigins.length > 0 && !availableOrigins.includes(newItem.originIso3) && newItem.originIso3 && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ No direct trade data available for this route
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
                   HS Code & Product
                   {availableHsCodes.length > 0 && (
                     <span className="text-xs text-brand-500 ml-1">
-                      • {availableHsCodes.length} code{availableHsCodes.length !== 1 ? 's' : ''} available for this route
+                      • {availableHsCodes.length} available for this importer
                     </span>
                   )}
                 </label>
@@ -333,7 +344,7 @@ export function TariffCart() {
                     setNewItem({ ...newItem, hsCode: code, hsLabel: '' })
                   }}
                   placeholder="Search HS code..."
-                  disabled={!newItem.importerIso3 || !newItem.originIso3}
+                  disabled={!newItem.importerIso3}
                   loading={loadingHsCodes}
                   options={(availableHsCodes || []).map((code) => ({
                     code,
@@ -342,7 +353,7 @@ export function TariffCart() {
                 />
                 {availableHsCodes.length > 0 && !availableHsCodes.includes(newItem.hsCode.replace(/\./g, '')) && newItem.hsCode && (
                   <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ This HS code may not have data for the selected route
+                    ⚠️ This HS code may not have data for the selected importer
                   </p>
                 )}
               </div>
@@ -434,7 +445,7 @@ export function TariffCart() {
               </div>
             </CardHeader>
             <CardContent>
-              {items.length === 0 ? (
+              {items.length === 0 && pendingAdds.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-20" />
                   <p>Your cart is empty</p>
@@ -470,19 +481,24 @@ export function TariffCart() {
                             <div>
                               <span className="text-gray-500">Total Value:</span> ${item.totalValue.toFixed(2)}
                             </div>
-                            {item.selectedRate !== undefined && (
-                              <>
-                                <div>
-                                  <span className="text-gray-500">Rate:</span> {item.selectedRate}% ({item.selectedBasis})
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Tariff:</span> ${item.tariffAmount?.toFixed(2)}
-                                </div>
-                                <div className="font-semibold">
-                                  <span className="text-gray-500">Total:</span> ${item.totalWithTariff?.toFixed(2)}
-                                </div>
-                              </>
-                            )}
+                            <div>
+                              <span className="text-gray-500">MFN Rate:</span> {item.mfnRate != null ? `${(item.mfnRate * 100).toFixed(2)}%` : '-'}
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Best PREF:</span> {item.preferentialRate != null ? `${(item.preferentialRate * 100).toFixed(2)}%` : '-'}
+                            </div>
+                            {(() => {
+                              const minRate = (item.preferentialRate ?? item.mfnRate) || 0
+                              const maxRate = (item.mfnRate ?? item.preferentialRate) || 0
+                              const minTotal = item.totalValue + (item.totalValue * minRate)
+                              const maxTotal = item.totalValue + (item.totalValue * maxRate)
+                              return (
+                                <>
+                                  <div><span className="text-gray-500">Min Total:</span> ${minTotal.toFixed(2)}</div>
+                                  <div><span className="text-gray-500">Max Total:</span> ${maxTotal.toFixed(2)}</div>
+                                </>
+                              )
+                            })()}
                             {item.agreementName && (
                               <div className="col-span-2 text-xs text-green-600 dark:text-green-400">
                                 Agreement: {item.agreementName}
@@ -501,6 +517,62 @@ export function TariffCart() {
                       </div>
                     </div>
                   ))}
+                  {pendingAdds.map((p) => (
+                    <div key={p.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                              {p.hsCode}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              → {p.importerIso3}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              Finding optimal origin…
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                            We’re scanning agreements and Rules of Origin to pick the lowest RVC threshold.
+                          </p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Quantity:</span>{' '}
+                              <span className="inline-block h-3 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Unit Value:</span>{' '}
+                              <span className="inline-block h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Total Value:</span>{' '}
+                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">MFN Rate:</span>{' '}
+                              <span className="inline-block h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Best PREF:</span>{' '}
+                              <span className="inline-block h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Min Total:</span>{' '}
+                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Max Total:</span>{' '}
+                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="mt-3 h-2 w-full rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div className="h-2 w-1/3 bg-blue-500/70 animate-pulse rounded" />
+                          </div>
+                        </div>
+                        <Loader2 className="w-5 h-5 animate-spin mt-0.5 text-blue-600" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -514,67 +586,39 @@ export function TariffCart() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-lg">
-                    <span>Total Value:</span>
-                    <span className="font-semibold">${getTotalValue().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg text-orange-600 dark:text-orange-400">
-                    <span>Total Tariffs:</span>
-                    <span className="font-semibold">${getTotalTariff().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold border-t pt-2">
-                    <span>Total with Tariffs:</span>
-                    <span>${getTotalWithTariff().toFixed(2)}</span>
-                  </div>
+                  {(() => {
+                    const totals = items.reduce(
+                      (acc, it: any) => {
+                        const minRate = (it.preferentialRate ?? it.mfnRate) || 0
+                        const maxRate = (it.mfnRate ?? it.preferentialRate) || 0
+                        const minTotal = it.totalValue + (it.totalValue * minRate)
+                        const maxTotal = it.totalValue + (it.totalValue * maxRate)
+                        acc.min += minTotal
+                        acc.max += maxTotal
+                        return acc
+                      },
+                      { min: 0, max: 0 }
+                    )
+                    return (
+                      <>
+                        <div className="flex justify-between text-lg">
+                          <span>Estimated minimum total (all PREF apply):</span>
+                          <span className="font-semibold">${totals.min.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-lg">
+                          <span>Estimated maximum total (MFN only):</span>
+                          <span className="font-semibold">${totals.max.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xl font-bold border-t pt-2">
+                          <span>Price range:</span>
+                          <span>${totals.min.toFixed(2)} – ${totals.max.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
 
-                {isAuthenticated && (
-                  <div className="border-t pt-4 space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Save As (Optional)</label>
-                      <input
-                        type="text"
-                        name="save-name-input"
-                        autoComplete="new-password"
-                        autoCorrect="off"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        value={saveName}
-                        onChange={(e) => setSaveName(e.target.value)}
-                        placeholder="e.g., EV Parts Import Q1 2025"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Notes (Optional)</label>
-                      <textarea
-                        name="save-notes-input"
-                        autoComplete="new-password"
-                        autoCorrect="off"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        value={saveNotes}
-                        onChange={(e) => setSaveNotes(e.target.value)}
-                        placeholder="Add notes about this import scenario..."
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none"
-                      />
-                    </div>
-                    <Button onClick={handleSaveCart} disabled={saving} className="w-full">
-                      <Save className="w-4 h-4 mr-2" />
-                      {saving ? 'Saving...' : 'Save Cart'}
-                    </Button>
-                  </div>
-                )}
-
-                {!isAuthenticated && (
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
-                    <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />
-                    <p className="text-blue-700 dark:text-blue-300">
-                      Login to save your cart for later
-                    </p>
-                  </div>
-                )}
+                {/* Saving disabled in this mode; calculations are rate+value derived */}
               </CardContent>
             </Card>
           )}
