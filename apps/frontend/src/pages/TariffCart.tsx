@@ -551,7 +551,132 @@ export function TariffCart() {
           {items.length > 0 && (
             <Card className="mt-4">
               <CardHeader>
-                <CardTitle>Summary</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Summary</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        const style = `
+                          <style>
+                            :root { color-scheme: light dark; }
+                            body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'; margin: 24px; }
+                            h1 { font-size: 20px; margin: 0 0 16px 0; }
+                            h2 { font-size: 16px; margin: 16px 0 8px 0; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                            th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }
+                            th { background: #f5f5f5; text-align: left; }
+                            .right { text-align: right; }
+                            .muted { color: #666; font-size: 11px; }
+                            .totals { margin-top: 16px; font-size: 14px; }
+                          </style>
+                        `
+                        const currency = (n: number) => `$${(n || 0).toFixed(2)}`
+                        const percent = (n?: number) => (n != null ? `${(n * 100).toFixed(2)}%` : '-') 
+                        const rows = items.map((it: any) => {
+                          const minRate = (it.preferentialRate ?? it.mfnRate) || 0
+                          const maxRate = (it.mfnRate ?? it.preferentialRate) || 0
+                          const minTotal = it.totalValue + (it.totalValue * minRate)
+                          const maxTotal = it.totalValue + (it.totalValue * maxRate)
+                          return `
+                            <tr>
+                              <td><div><strong>${it.hsCode}</strong></div><div class="muted">${it.hsLabel ?? ''}</div></td>
+                              <td>${it.originIso3 || '-'}</td>
+                              <td>${it.importerIso3 || '-'}</td>
+                              <td class="right">${it.quantity}</td>
+                              <td class="right">${currency(it.unitValue)}</td>
+                              <td class="right">${currency(it.totalValue)}</td>
+                              <td class="right">${percent(it.mfnRate)}</td>
+                              <td class="right">${percent(it.preferentialRate)}</td>
+                              <td class="right">${currency(minTotal)}</td>
+                              <td class="right">${currency(maxTotal)}</td>
+                            </tr>
+                          `
+                        }).join('')
+                        const totals = items.reduce(
+                          (acc: any, it: any) => {
+                            const minRate = (it.preferentialRate ?? it.mfnRate) || 0
+                            const maxRate = (it.mfnRate ?? it.preferentialRate) || 0
+                            const minTotal = it.totalValue + (it.totalValue * minRate)
+                            const maxTotal = it.totalValue + (it.totalValue * maxRate)
+                            acc.min += minTotal
+                            acc.max += maxTotal
+                            acc.base += it.totalValue || 0
+                            return acc
+                          },
+                          { min: 0, max: 0, base: 0 }
+                        )
+                        const html = `
+                          <!doctype html>
+                          <html>
+                            <head>
+                              <meta charset="utf-8" />
+                              <title>Tariff Cart Export</title>
+                              ${style}
+                            </head>
+                            <body>
+                              <h1>Tariff Cart Export</h1>
+                              <div class="muted">Generated on ${new Date().toLocaleString()}</div>
+                              <h2>Items</h2>
+                              <table>
+                                <thead>
+                                  <tr>
+                                    <th>HS Code & Description</th>
+                                    <th>Origin</th>
+                                    <th>Importer</th>
+                                    <th class="right">Qty</th>
+                                    <th class="right">Unit</th>
+                                    <th class="right">Value</th>
+                                    <th class="right">MFN</th>
+                                    <th class="right">Best PREF</th>
+                                    <th class="right">Min Total</th>
+                                    <th class="right">Max Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  ${rows}
+                                </tbody>
+                              </table>
+                              <div class="totals">
+                                <div><strong>Base Value:</strong> ${currency(totals.base)}</div>
+                                <div><strong>Estimated minimum total (all PREF apply):</strong> ${currency(totals.min)}</div>
+                                <div><strong>Estimated maximum total (MFN only):</strong> ${currency(totals.max)}</div>
+                              </div>
+                              <script>
+                                window.onload = () => { window.print(); }
+                              </script>
+                            </body>
+                          </html>
+                        `
+                        // Use an off-DOM iframe with srcdoc for reliable printing without pop-up blockers
+                        const iframe = document.createElement('iframe')
+                        iframe.style.position = 'fixed'
+                        iframe.style.right = '0'
+                        iframe.style.bottom = '0'
+                        iframe.style.width = '0'
+                        iframe.style.height = '0'
+                        iframe.style.border = '0'
+                        iframe.srcdoc = html
+                        iframe.onload = () => {
+                          try {
+                            iframe.contentWindow?.focus()
+                            iframe.contentWindow?.print()
+                          } catch (e) {
+                            console.error('Print failed:', e)
+                          } finally {
+                            setTimeout(() => iframe.remove(), 1500)
+                          }
+                        }
+                        document.body.appendChild(iframe)
+                      } catch (e) {
+                        console.error('PDF export failed:', e)
+                      }
+                    }}
+                  >
+                    Export PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
