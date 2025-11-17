@@ -4,6 +4,7 @@ import { useCartStore, CartItem } from '@/store/cartStore'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Trash2, Plus, Save, AlertCircle, Loader2 } from 'lucide-react'
+import CartItemCard from '@/components/cart/CartItemCard'
 import CountrySelect from '@/components/inputs/CountrySelect'
 import HsCodeSelect from '@/components/inputs/HsCodeSelect'
 import { api, tariffApi, savedTariffsApi } from '@/services/api'
@@ -133,16 +134,13 @@ export function TariffCart() {
         const listResp = await api.get('/tariff-rate/', {
           params: { importerIso3: newItem.importerIso3, hsCodes: [hsCode] }
         })
-        return Array.from(
-          new Set<string>(
-            (Array.isArray(listResp.data) ? listResp.data : listResp.data?.content || [])
-              .map((row: any) => row.originIso3)
-              .filter((o: any) => !!o)
-          )
-        )
+        const rows = (Array.isArray(listResp.data) ? listResp.data : listResp.data?.content || []) as any[]
+        const origins = Array.from(new Set<string>(rows.map((row: any) => row.originIso3).filter((o: any) => !!o)))
+        const description = (rows.find((r: any) => r.hsCode)?.description as string) || ''
+        return { origins, description }
       }
 
-      const origins = await resolveCandidateOrigins()
+      const { origins, description } = await resolveCandidateOrigins()
 
       // Always fetch MFN (origin-agnostic)
       let mfnRate: number | null = null
@@ -155,6 +153,7 @@ export function TariffCart() {
       let bestOrigin: string | null = null
       let bestPrefRate: number | null = null
       let bestRvc: number | null = null
+      let bestAgreementName: string | null = null
 
       if (origins.length > 0) {
         const lookups = await Promise.allSettled(
@@ -174,6 +173,7 @@ export function TariffCart() {
             bestRvc = rvc
             bestOrigin = originIso3
             bestPrefRate = Number(pref.adValoremRate)
+            bestAgreementName = pref.agreementName ?? null
           }
         }
       }
@@ -189,10 +189,11 @@ export function TariffCart() {
         importerIso3: newItem.importerIso3,
         originIso3: bestOrigin || '',
         hsCode,
-        hsLabel: newItem.hsLabel,
+        hsLabel: description || newItem.hsLabel,
         mfnRate: mfnRate ?? undefined,
         preferentialRate: bestPrefRate ?? undefined,
         rvcThreshold: (bestRvc ?? undefined) as any,
+        agreementName: bestAgreementName ?? undefined,
         quantity: newItem.quantity,
         unitValue: newItem.unitValue,
         selectedBasis: undefined as any,
@@ -454,124 +455,29 @@ export function TariffCart() {
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div
+                    <CartItemCard
                       key={item.id}
-                      className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
-                              {item.hsCode}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {item.originIso3} → {item.importerIso3}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                            {item.hsLabel || 'Product description not available'}
-                          </p>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <span className="text-gray-500">Quantity:</span> {item.quantity}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Unit Value:</span> ${item.unitValue.toFixed(2)}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Total Value:</span> ${item.totalValue.toFixed(2)}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">MFN Rate:</span> {item.mfnRate != null ? `${(item.mfnRate * 100).toFixed(2)}%` : '-'}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Best PREF:</span> {item.preferentialRate != null ? `${(item.preferentialRate * 100).toFixed(2)}%` : '-'}
-                            </div>
-                            {(() => {
-                              const minRate = (item.preferentialRate ?? item.mfnRate) || 0
-                              const maxRate = (item.mfnRate ?? item.preferentialRate) || 0
-                              const minTotal = item.totalValue + (item.totalValue * minRate)
-                              const maxTotal = item.totalValue + (item.totalValue * maxRate)
-                              return (
-                                <>
-                                  <div><span className="text-gray-500">Min Total:</span> ${minTotal.toFixed(2)}</div>
-                                  <div><span className="text-gray-500">Max Total:</span> ${maxTotal.toFixed(2)}</div>
-                                </>
-                              )
-                            })()}
-                            {item.agreementName && (
-                              <div className="col-span-2 text-xs text-green-600 dark:text-green-400">
-                                Agreement: {item.agreementName}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeItem(item.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      hsCode={item.hsCode}
+                      importerIso3={item.importerIso3}
+                      originIso3={item.originIso3}
+                      hsLabel={item.hsLabel}
+                      agreementName={item.agreementName}
+                      quantity={item.quantity}
+                      unitValue={item.unitValue}
+                      totalValue={item.totalValue}
+                      mfnRate={item.mfnRate}
+                      prefRate={item.preferentialRate}
+                      rvcThreshold={item.rvcThreshold as any}
+                      onRemove={() => removeItem(item.id)}
+                    />
                   ))}
                   {pendingAdds.map((p) => (
-                    <div key={p.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
-                              {p.hsCode}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              → {p.importerIso3}
-                            </span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                              Finding optimal origin…
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                            We’re scanning agreements and Rules of Origin to pick the lowest RVC threshold.
-                          </p>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <span className="text-gray-500">Quantity:</span>{' '}
-                              <span className="inline-block h-3 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Unit Value:</span>{' '}
-                              <span className="inline-block h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Total Value:</span>{' '}
-                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">MFN Rate:</span>{' '}
-                              <span className="inline-block h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Best PREF:</span>{' '}
-                              <span className="inline-block h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Min Total:</span>{' '}
-                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Max Total:</span>{' '}
-                              <span className="inline-block h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                          </div>
-                          <div className="mt-3 h-2 w-full rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                            <div className="h-2 w-1/3 bg-blue-500/70 animate-pulse rounded" />
-                          </div>
-                        </div>
-                        <Loader2 className="w-5 h-5 animate-spin mt-0.5 text-blue-600" />
-                      </div>
-                    </div>
+                    <CartItemCard
+                      key={p.id}
+                      hsCode={p.hsCode}
+                      importerIso3={p.importerIso3}
+                      isLoading
+                    />
                   ))}
                 </div>
               )}
