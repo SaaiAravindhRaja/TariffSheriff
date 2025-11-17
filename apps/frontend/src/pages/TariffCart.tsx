@@ -8,6 +8,8 @@ import CartItemCard from '@/components/cart/CartItemCard'
 import CountrySelect from '@/components/inputs/CountrySelect'
 import HsCodeSelect, { type HsCodeOption } from '@/components/inputs/HsCodeSelect'
 import { api, tariffApi, savedTariffsApi } from '@/services/api'
+import { getDistance } from 'geolib'
+import wc from 'world-countries'
 import { useToast } from '@/components/ui/toast'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDbCountries } from '@/hooks/useDbCountries'
@@ -178,26 +180,72 @@ export function TariffCart() {
           let bestAgreementName: string | null = null
 
           if (origins.length > 0) {
+            const importerCenter = (() => {
+              const c = (wc as any[]).find((x) => (x?.cca3 ?? '').toUpperCase() === newItem.importerIso3.toUpperCase())
+              const latlng = c?.latlng as [number, number] | undefined // [lat, lon]
+              if (!latlng) return null
+              const [lat, lon] = latlng
+              return { latitude: lat, longitude: lon }
+            })()
+
             const lookups = await Promise.allSettled(
               origins.map((originIso3) =>
                 tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, originIso3, hsCode })
                   .then(res => ({ originIso3, data: res.data }))
               )
             )
+
+            type Candidate = {
+              originIso3: string
+              rvc: number | null
+              rate: number | null
+              agreementName: string | null
+              distance: number | null
+            }
+            const candidates: Candidate[] = []
             for (const r of lookups) {
               if (r.status !== 'fulfilled') continue
               const { originIso3, data } = r.value as any
               const pref = data?.rates?.find((x: any) => x.basis === 'PREF' && x.adValoremRate != null)
               if (!pref) continue
-              const candRate = Number(pref.adValoremRate)
-              const candRvc = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : Number.POSITIVE_INFINITY
-
-              if (bestPrefRate == null || candRate < bestPrefRate || (candRate === bestPrefRate && (bestRvc == null || candRvc < bestRvc))) {
-                bestPrefRate = candRate
-                bestRvc = isFinite(candRvc) ? candRvc : null
-                bestOrigin = originIso3
-                bestAgreementName = pref.agreementName ?? null
+              const rvcVal = pref.rvcThreshold != null ? Number(pref.rvcThreshold) : null
+              const rateVal = pref.adValoremRate != null ? Number(pref.adValoremRate) : null
+              let dist: number | null = null
+              if (importerCenter) {
+                const ocountry = (wc as any[]).find((x) => (x?.cca3 ?? '').toUpperCase() === originIso3.toUpperCase())
+                const olatlng = ocountry?.latlng as [number, number] | undefined
+                if (olatlng) {
+                  const [olat, olon] = olatlng
+                  dist = getDistance(importerCenter, { latitude: olat, longitude: olon })
+                }
               }
+              candidates.push({
+                originIso3,
+                rvc: rvcVal,
+                rate: rateVal,
+                agreementName: pref.agreementName ?? null,
+                distance: dist,
+              })
+            }
+
+            if (candidates.length > 0) {
+              // Priority: lowest RVC (null => Infinity), then smallest distance, then lowest pref rate
+              candidates.sort((a, b) => {
+                const arvc = a.rvc == null ? Number.POSITIVE_INFINITY : a.rvc
+                const brvc = b.rvc == null ? Number.POSITIVE_INFINITY : b.rvc
+                if (arvc !== brvc) return arvc - brvc
+                const ad = a.distance == null ? Number.POSITIVE_INFINITY : a.distance
+                const bd = b.distance == null ? Number.POSITIVE_INFINITY : b.distance
+                if (ad !== bd) return ad - bd
+                const arate = a.rate == null ? Number.POSITIVE_INFINITY : a.rate
+                const brate = b.rate == null ? Number.POSITIVE_INFINITY : b.rate
+                return arate - brate
+              })
+              const top = candidates[0]
+              bestOrigin = top.originIso3
+              bestRvc = top.rvc
+              bestPrefRate = top.rate
+              bestAgreementName = top.agreementName
             }
           }
 
