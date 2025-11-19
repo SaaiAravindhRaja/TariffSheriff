@@ -172,7 +172,9 @@ export function TariffCart() {
             const mfnResp = await tariffApi.getTariffRateLookup({ importerIso3: newItem.importerIso3, hsCode })
             const mfn = mfnResp.data?.rates?.find((r: any) => r.basis === 'MFN')
             mfnRate = mfn?.adValoremRate ?? null
-          } catch {}
+          } catch (error) {
+            console.error('Failed to fetch MFN rate', error)
+          }
 
           let bestOrigin: string | null = null
           let bestPrefRate: number | null = null

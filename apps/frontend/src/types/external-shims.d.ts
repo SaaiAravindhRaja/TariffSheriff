@@ -9,5 +9,4 @@ declare module 'world-countries' {
   const countries: Array<any>
   export default countries
 }
-*** End Patch```} />
 
