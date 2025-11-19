@@ -6,9 +6,15 @@ export interface HsCodeOption {
 }
 
 interface HsCodeSelectProps {
-  value: string
-  onChange: (code: string) => void
+  // single-select
+  value?: string
+  onChange?: (code: string) => void
+  // multi-select
+  multi?: boolean
+  values?: string[]
+  onChangeValues?: (codes: string[]) => void
   placeholder?: string
+  disabledMessage?: string
   className?: string
   required?: boolean
   disabled?: boolean
@@ -17,9 +23,13 @@ interface HsCodeSelectProps {
 }
 
 const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
-  value,
+  value = '',
   onChange,
+  multi = false,
+  values = [],
+  onChangeValues,
   placeholder = 'Search HS by code or name',
+  disabledMessage = 'Select importer and exporter first to load HS codes.',
   className = '',
   required = false,
   disabled = false,
@@ -32,8 +42,8 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   const containerRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
-    setQuery(value)
-  }, [value])
+    if (!multi) setQuery(value)
+  }, [value, multi])
 
   React.useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -61,9 +71,17 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
   }, [normalizedQuery])
 
   const selectOption = (option: HsCodeOption) => {
-    onChange?.(option.code)
-    setQuery(option.code)
-    setOpen(false)
+    if (multi) {
+      if (!values.includes(option.code)) {
+        const next = [...values, option.code]
+        onChangeValues?.(next)
+      }
+      setQuery('')
+    } else {
+      onChange?.(option.code)
+      setQuery(option.code)
+      setOpen(false)
+    }
   }
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
@@ -95,12 +113,41 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
     <div ref={containerRef} className={`relative ${className}`}>
       <div className="flex flex-col">
         <label className="sr-only">Choose HS code</label>
+        {multi && values.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {values.map((code) => (
+              <span
+                key={code}
+                className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-brand-50 dark:bg-brand-800/40 text-sm border border-brand-100 dark:border-brand-700"
+              >
+                <span className="font-mono">{code}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${code}`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    const next = values.filter((c) => c !== code)
+                    onChangeValues?.(next)
+                  }}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <input
           type="text"
           role="combobox"
           aria-expanded={open}
           aria-controls="hs-code-options"
           aria-autocomplete="list"
+          name="hs-code-search"
+          autoComplete="new-password"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          inputMode="search"
           placeholder={placeholder}
           value={query}
           disabled={disabled}
@@ -161,7 +208,7 @@ const HsCodeSelect: React.FC<HsCodeSelectProps> = ({
 
       {disabled && (
         <p className="mt-1 text-xs text-muted-foreground">
-          Select importer and exporter first to load HS codes.
+          {disabledMessage}
         </p>
       )}
     </div>
