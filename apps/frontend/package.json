@@ -55,7 +55,7 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.63.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.20.1",
+    "react-router-dom": "^6.30.3",
     "react-simple-maps": "^3.0.0-ts.1",
     "react-syntax-highlighter": "^16.1.0",
     "recharts": "^2.15.4",
